@@ -1,6 +1,6 @@
 {
   "name": "forgetools",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Offline Developer Utilities",
   "main": "src/main.js",
   "scripts": {
