@@ -92,6 +92,7 @@ jobs:
 
       - name: Generate release notes
         id: release-notes
+        shell: bash
         run: |
           # Get the latest tag
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -136,9 +137,11 @@ jobs:
           fi
           
           # Set the output using the file content
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          cat "$NOTES_FILE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "notes<<EOF"
+            cat "$NOTES_FILE"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
           
           # Clean up
           rm "$NOTES_FILE"
