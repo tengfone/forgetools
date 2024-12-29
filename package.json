@@ -75,6 +75,9 @@
     "appId": "com.forgetools.app",
     "productName": "ForgeTools",
     "asar": true,
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "removePackageKeywords": true,
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -83,9 +86,12 @@
       "src/**/*",
       "package.json"
     ],
+    "extraResources": [],
+    "extraFiles": [],
     "npmRebuild": false,
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
+    "afterPack": "./build/afterPack.js",
     "mac": {
       "icon": "build/icon512.png",
       "target": [
@@ -97,7 +103,13 @@
           ]
         }
       ],
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": null,
+      "entitlementsInherit": null,
+      "provisioningProfile": null
     },
     "win": {
       "target": "portable",
