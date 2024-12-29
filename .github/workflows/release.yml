@@ -78,7 +78,8 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-   changelog:
+  # Generate changelog
+  changelog:
     needs: [test]
     runs-on: ubuntu-latest
     outputs:
@@ -95,59 +96,36 @@ jobs:
         run: |
           # Get the latest tag
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
-          # Create release notes in a temporary file
-          NOTES_FILE=$(mktemp)
-          
+
+          # Create release notes
           if [ -z "$latest_tag" ]; then
             # Initial release
-            {
-              echo "## 🚀 Initial Release"
-              echo
-              echo "### ✨ New Features"
-              git log --pretty=format:"- %s" --grep="^feat" || true
-              echo
-              echo "### 🐛 Bug Fixes"
-              git log --pretty=format:"- %s" --grep="^fix" || true
-              echo
-              echo "### 📝 Documentation"
-              git log --pretty=format:"- %s" --grep="^docs" || true
-              echo
-              echo "### ⚡️ Performance"
-              git log --pretty=format:"- %s" --grep="^perf" || true
-            } > "$NOTES_FILE"
+            release_notes="## 🚀 Initial Release\n\n"
+            release_notes+="### ✨ New Features\n"
+            release_notes+="$(git log --pretty=format:"- %s" --grep="^feat" || echo "")\n\n"
+            release_notes+="### 🐛 Bug Fixes\n"
+            release_notes+="$(git log --pretty=format:"- %s" --grep="^fix" || echo "")\n\n"
+            release_notes+="### 📝 Documentation\n"
+            release_notes+="$(git log --pretty=format:"- %s" --grep="^docs" || echo "")\n\n"
+            release_notes+="### ⚡️ Performance\n"
+            release_notes+="$(git log --pretty=format:"- %s" --grep="^perf" || echo "")"
           else
             # Changes since last tag
-            {
-              echo "## 🔄 Changes since $latest_tag"
-              echo
-              echo "### ✨ New Features"
-              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^feat" || true
-              echo
-              echo "### 🐛 Bug Fixes"
-              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^fix" || true
-              echo
-              echo "### 📝 Documentation"
-              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^docs" || true
-              echo
-              echo "### ⚡️ Performance"
-              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^perf" || true
-            } > "$NOTES_FILE"
+            release_notes="## 🔄 Changes since ${latest_tag}\n\n"
+            release_notes+="### ✨ New Features\n"
+            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^feat" || echo "")\n\n"
+            release_notes+="### 🐛 Bug Fixes\n"
+            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^fix" || echo "")\n\n"
+            release_notes+="### 📝 Documentation\n"
+            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^docs" || echo "")\n\n"
+            release_notes+="### ⚡️ Performance\n"
+            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^perf" || echo "")"
           fi
-          
-          # Debugging step
-          echo "Generated release notes:"
-          cat "$NOTES_FILE"
 
-          # Set the output using the file content
-          {
-              echo "notes<<END_OF_NOTES"
-              cat "$NOTES_FILE" || echo "No notes available."
-              echo "END_OF_NOTES"
-          } >> "$GITHUB_OUTPUT"
-          
-          # Clean up
-          rm "$NOTES_FILE"
+          # Properly escape the content for GitHub Actions output
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$release_notes" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
   # Version bump and tag creation
   version:
