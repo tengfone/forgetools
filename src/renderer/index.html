@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ForgeTools - Offline Developer Utilities</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="../../node_modules/highlight.js/styles/github.css">
+    <link rel="stylesheet" href="../../node_modules/monaco-editor/min/vs/editor/editor.main.css">
+</head>
+<body>
+    <div class="titlebar">
+        <div class="titlebar-title">ForgeTools</div>
+        <div class="titlebar-controls">
+            <button class="titlebar-button minimize" id="minimizeBtn"></button>
+            <button class="titlebar-button maximize" id="maximizeBtn"></button>
+            <button class="titlebar-button close" id="closeBtn"></button>
+        </div>
+    </div>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>ForgeTools</h1>
+            </div>
+            <div class="tools-list">
+                <div class="tool-category">
+                    <h3>Formatters</h3>
+                    <div class="tool-buttons">
+                        <button class="tool-btn editor-tool" data-tool="json">JSON</button>
+                        <button class="tool-btn editor-tool" data-tool="xml">XML</button>
+                        <button class="tool-btn editor-tool" data-tool="sql">SQL</button>
+                        <button class="tool-btn editor-tool" data-tool="html">HTML</button>
+                        <button class="tool-btn editor-tool" data-tool="htmlJsx">HTML to JSX</button>
+                        <button class="tool-btn editor-tool" data-tool="markdownPreview">Markdown Preview</button>
+                    </div>
+                </div>
+                <div class="tool-category">
+                    <h3>Encoders/Decoders</h3>
+                    <div class="tool-buttons">
+                        <button class="tool-btn editor-tool" data-tool="base64">Base64</button>
+                        <button class="tool-btn simple-tool" data-tool="base64image">Base64 Image</button>
+                        <button class="tool-btn editor-tool" data-tool="url">URL</button>
+                        <button class="tool-btn editor-tool" data-tool="jwt">JWT</button>
+                        <button class="tool-btn editor-tool" data-tool="htmlEntity">HTML Entities</button>
+                        <button class="tool-btn editor-tool" data-tool="backslash">Backslash</button>
+                        <button class="tool-btn editor-tool" data-tool="hexAscii">HEX ↔ ASCII</button>
+                    </div>
+                </div>
+                <div class="tool-category">
+                    <h3>Converters</h3>
+                    <div class="tool-buttons">
+                        <button class="tool-btn editor-tool" data-tool="yaml2json">YAML ↔ JSON</button>
+                        <button class="tool-btn editor-tool" data-tool="csvJson">CSV ↔ JSON</button>
+                        <button class="tool-btn simple-tool" data-tool="timestamp">Timestamp</button>
+                        <button class="tool-btn simple-tool" data-tool="color">Color</button>
+                        <button class="tool-btn simple-tool" data-tool="number">Number Base</button>
+                    </div>
+                </div>
+                <div class="tool-category">
+                    <h3>Analyzers</h3>
+                    <div class="tool-buttons">
+                        <button class="tool-btn editor-tool" data-tool="urlParser">URL Parser</button>
+                        <button class="tool-btn editor-tool" data-tool="stringInspector">String Inspector</button>
+                        <button class="tool-btn editor-tool" data-tool="certificate">Certificate Decoder</button>
+                        <button class="tool-btn editor-tool" data-tool="cronParser">Cron Parser</button>
+                    </div>
+                </div>
+                <div class="tool-category">
+                    <h3>Generators</h3>
+                    <div class="tool-buttons">
+                        <button class="tool-btn simple-tool" data-tool="hash">Hash Generator</button>
+                        <button class="tool-btn simple-tool" data-tool="qrcode">QR Code</button>
+                        <button class="tool-btn editor-tool" data-tool="loremIpsum">Lorem Ipsum</button>
+                        <button class="tool-btn editor-tool" data-tool="randomString">Random String</button>
+                    </div>
+                </div>
+                <div class="tool-category">
+                    <h3>Text Tools</h3>
+                    <div class="tool-buttons">
+                        <button class="tool-btn editor-tool" data-tool="textDiff">Text Diff</button>
+                        <button class="tool-btn editor-tool" data-tool="stringCase">String Case</button>
+                        <button class="tool-btn editor-tool" data-tool="lineSortDedupe">Sort & Dedupe Lines</button>
+                        <button class="tool-btn simple-tool" data-tool="regex">RegExp Tester</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="editor-container">
+                <!-- Editor Interface -->
+                <div class="editor-interface tool-interface">
+                    <div class="input-panel">
+                        <div class="panel-header">
+                            <h3>Input</h3>
+                            <div class="actions">
+                                <div class="mode-buttons" style="display: none;">
+                                    <button id="encodeBtn" class="mode-btn active">Encode</button>
+                                    <button id="decodeBtn" class="mode-btn">Decode</button>
+                                </div>
+                                <button id="clearBtn">Clear</button>
+                                <button id="formatBtn">Format</button>
+                            </div>
+                        </div>
+                        <div id="inputEditor"></div>
+                    </div>
+                    <div class="output-panel">
+                        <div class="panel-header">
+                            <h3>Output</h3>
+                            <div class="actions">
+                                <button id="copyBtn">Copy</button>
+                            </div>
+                        </div>
+                        <div id="outputEditor"></div>
+                    </div>
+                </div>
+
+                <!-- Hash Generator Interface -->
+                <div class="hash-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="input-section">
+                            <textarea id="hashInput" placeholder="Enter text to hash" rows="5"></textarea>
+                        </div>
+                        <div class="hash-outputs">
+                            <div class="hash-output">
+                                <label>MD5</label>
+                                <div class="output-row">
+                                    <input type="text" id="md5Output" readonly>
+                                    <button class="copy-btn" data-target="md5Output">Copy</button>
+                                </div>
+                            </div>
+                            <div class="hash-output">
+                                <label>SHA-1</label>
+                                <div class="output-row">
+                                    <input type="text" id="sha1Output" readonly>
+                                    <button class="copy-btn" data-target="sha1Output">Copy</button>
+                                </div>
+                            </div>
+                            <div class="hash-output">
+                                <label>SHA-256</label>
+                                <div class="output-row">
+                                    <input type="text" id="sha256Output" readonly>
+                                    <button class="copy-btn" data-target="sha256Output">Copy</button>
+                                </div>
+                            </div>
+                            <div class="hash-output">
+                                <label>SHA-512</label>
+                                <div class="output-row">
+                                    <input type="text" id="sha512Output" readonly>
+                                    <button class="copy-btn" data-target="sha512Output">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timestamp Converter Interface -->
+                <div class="timestamp-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="input-section">
+                            <div class="input-group">
+                                <input type="text" id="timestampInput" placeholder="Enter timestamp or date string">
+                                <button id="nowBtn">Now</button>
+                            </div>
+                        </div>
+                        <div class="timestamp-outputs">
+                            <div class="timestamp-output">
+                                <label>Local Date</label>
+                                <input type="text" id="localDateOutput" readonly>
+                            </div>
+                            <div class="timestamp-output">
+                                <label>UTC Date</label>
+                                <input type="text" id="utcDateOutput" readonly>
+                            </div>
+                            <div class="timestamp-output">
+                                <label>Unix Timestamp (seconds)</label>
+                                <input type="text" id="unixSecondsOutput" readonly>
+                            </div>
+                            <div class="timestamp-output">
+                                <label>Unix Timestamp (milliseconds)</label>
+                                <input type="text" id="unixMillisOutput" readonly>
+                            </div>
+                            <div class="timestamp-output">
+                                <label>ISO String</label>
+                                <input type="text" id="isoOutput" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Number Base Converter Interface -->
+                <div class="number-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="number-inputs">
+                            <div class="input-group">
+                                <label>Binary (Base 2)</label>
+                                <div class="input-row">
+                                    <input type="text" id="binaryInput" placeholder="Enter binary number">
+                                    <button class="copy-btn" data-target="binaryInput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Octal (Base 8)</label>
+                                <div class="input-row">
+                                    <input type="text" id="octalInput" placeholder="Enter octal number">
+                                    <button class="copy-btn" data-target="octalInput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Decimal (Base 10)</label>
+                                <div class="input-row">
+                                    <input type="text" id="decimalInput" placeholder="Enter decimal number">
+                                    <button class="copy-btn" data-target="decimalInput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Hexadecimal (Base 16)</label>
+                                <div class="input-row">
+                                    <input type="text" id="hexadecimalInput" placeholder="Enter hexadecimal number">
+                                    <button class="copy-btn" data-target="hexadecimalInput">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RegExp Tester Interface -->
+                <div class="regex-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="regex-inputs">
+                            <div class="input-group">
+                                <label>Regular Expression</label>
+                                <input type="text" id="regexInput" placeholder="Enter regular expression">
+                                <div class="regex-flags">
+                                    <label><input type="checkbox" data-flag="g"> Global</label>
+                                    <label><input type="checkbox" data-flag="i"> Case Insensitive</label>
+                                    <label><input type="checkbox" data-flag="m"> Multiline</label>
+                                    <label><input type="checkbox" data-flag="s"> Dot All</label>
+                                    <label><input type="checkbox" data-flag="u"> Unicode</label>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Test String</label>
+                                <textarea id="regexTestInput" placeholder="Enter text to test against"></textarea>
+                            </div>
+                            <div class="regex-results">
+                                <h4>Matches</h4>
+                                <div id="regexMatches"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Converter Interface -->
+                <div class="color-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="input-section">
+                            <div class="color-picker-row">
+                                <input type="color" id="colorPickerInput" value="#1E90FF">
+                                <input type="text" id="colorInput" placeholder="Enter color (e.g., #1E90FF, rgb(30,144,255), or hsl(210,100%,56%))">
+                            </div>
+                        </div>
+                        <div class="color-preview"></div>
+                        <div class="color-palette">
+                            <!-- Material Design colors -->
+                            <div class="palette-color" style="background-color: #F44336" data-color="#F44336"></div>
+                            <div class="palette-color" style="background-color: #E91E63" data-color="#E91E63"></div>
+                            <div class="palette-color" style="background-color: #9C27B0" data-color="#9C27B0"></div>
+                            <div class="palette-color" style="background-color: #673AB7" data-color="#673AB7"></div>
+                            <div class="palette-color" style="background-color: #3F51B5" data-color="#3F51B5"></div>
+                            <div class="palette-color" style="background-color: #2196F3" data-color="#2196F3"></div>
+                            <div class="palette-color" style="background-color: #03A9F4" data-color="#03A9F4"></div>
+                            <div class="palette-color" style="background-color: #00BCD4" data-color="#00BCD4"></div>
+                            <div class="palette-color" style="background-color: #009688" data-color="#009688"></div>
+                            <div class="palette-color" style="background-color: #4CAF50" data-color="#4CAF50"></div>
+                            <div class="palette-color" style="background-color: #8BC34A" data-color="#8BC34A"></div>
+                            <div class="palette-color" style="background-color: #CDDC39" data-color="#CDDC39"></div>
+                            <div class="palette-color" style="background-color: #FFEB3B" data-color="#FFEB3B"></div>
+                            <div class="palette-color" style="background-color: #FFC107" data-color="#FFC107"></div>
+                            <div class="palette-color" style="background-color: #FF9800" data-color="#FF9800"></div>
+                            <div class="palette-color" style="background-color: #FF5722" data-color="#FF5722"></div>
+                            <div class="palette-color" style="background-color: #795548" data-color="#795548"></div>
+                            <div class="palette-color" style="background-color: #9E9E9E" data-color="#9E9E9E"></div>
+                            <div class="palette-color" style="background-color: #607D8B" data-color="#607D8B"></div>
+                            <div class="palette-color" style="background-color: #000000" data-color="#000000"></div>
+                        </div>
+                        <div class="color-outputs"></div>
+                    </div>
+                </div>
+
+                <!-- Base64 Image Interface -->
+                <div class="base64image-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="mode-buttons">
+                            <button id="base64ImageEncodeBtn" class="mode-btn active">Image → Base64</button>
+                            <button id="base64ImageDecodeBtn" class="mode-btn">Base64 → Image</button>
+                        </div>
+                        
+                        <div class="input-section">
+                            <!-- File Input Section -->
+                            <div id="base64ImageFileSection">
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="base64ImageFileInput" accept="image/*">
+                                    <p class="file-input-help">Select an image file or drag and drop here</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Text Input Section -->
+                            <div id="base64ImageTextSection" style="display: none;">
+                                <textarea id="base64ImageTextInput" placeholder="Paste base64 encoded image data here" rows="5"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="preview-section">
+                            <div id="base64ImagePreview"></div>
+                            <div class="actions">
+                                <button id="base64ImageCopyBtn" class="copy-btn">Copy Base64</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code Interface -->
+                <div class="qrcode-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="input-section">
+                            <div class="input-group">
+                                <textarea id="qrcodeInput" placeholder="Enter text to generate QR code" rows="4"></textarea>
+                                <div class="actions">
+                                    <div class="mode-buttons">
+                                        <button id="qrcodeEncodeBtn" class="mode-btn active">Text → QR Code</button>
+                                        <button id="qrcodeDecodeBtn" class="mode-btn">QR Code → Text</button>
+                                    </div>
+                                    <button id="qrcodeConvertBtn">Convert</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="qrcode-preview" id="qrcodePreview"></div>
+                    </div>
+                </div>
+
+                <!-- String Case Interface -->
+                <div class="stringcase-interface tool-interface">
+                    <div class="simple-tool-container">
+                        <div class="input-section">
+                            <textarea id="stringInput" placeholder="Enter text to convert" rows="5"></textarea>
+                        </div>
+                        <div class="case-outputs">
+                            <div class="case-output">
+                                <label>camelCase</label>
+                                <div class="output-row">
+                                    <input type="text" id="camelCaseOutput" readonly>
+                                    <button class="copy-btn" data-target="camelCaseOutput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="case-output">
+                                <label>PascalCase</label>
+                                <div class="output-row">
+                                    <input type="text" id="pascalCaseOutput" readonly>
+                                    <button class="copy-btn" data-target="pascalCaseOutput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="case-output">
+                                <label>snake_case</label>
+                                <div class="output-row">
+                                    <input type="text" id="snakeCaseOutput" readonly>
+                                    <button class="copy-btn" data-target="snakeCaseOutput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="case-output">
+                                <label>kebab-case</label>
+                                <div class="output-row">
+                                    <input type="text" id="kebabCaseOutput" readonly>
+                                    <button class="copy-btn" data-target="kebabCaseOutput">Copy</button>
+                                </div>
+                            </div>
+                            <div class="case-output">
+                                <label>CONSTANT_CASE</label>
+                                <div class="output-row">
+                                    <input type="text" id="constantCaseOutput" readonly>
+                                    <button class="copy-btn" data-target="constantCaseOutput">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="toastContainer"></div>
+        <!-- Load Monaco Editor -->
+        <script>
+            window.monacoPath = '../../node_modules/monaco-editor/min/vs';
+        </script>
+        <script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
+        <script src="js/app.js"></script>
+    </body>
+</html> 
