@@ -95,10 +95,12 @@ jobs:
         run: |
           # Get the latest tag
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
+          
+          # Start the multiline output
+          echo "NOTES<<ENDRELEASENOTES" >> $GITHUB_OUTPUT
+          
           if [ -z "$latest_tag" ]; then
-            # If no tags exist, get all commits
-            echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+            # Initial release
             echo "## 🚀 Initial Release" >> $GITHUB_OUTPUT
             echo "" >> $GITHUB_OUTPUT
             echo "### ✨ New Features" >> $GITHUB_OUTPUT
@@ -112,10 +114,8 @@ jobs:
             echo "" >> $GITHUB_OUTPUT
             echo "### ⚡️ Performance" >> $GITHUB_OUTPUT
             git log --pretty=format:"- %s" --grep="^perf" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
           else
-            # Get commits since last tag
-            echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+            # Changes since last tag
             echo "## 🔄 Changes since $latest_tag" >> $GITHUB_OUTPUT
             echo "" >> $GITHUB_OUTPUT
             echo "### ✨ New Features" >> $GITHUB_OUTPUT
@@ -129,8 +129,10 @@ jobs:
             echo "" >> $GITHUB_OUTPUT
             echo "### ⚡️ Performance" >> $GITHUB_OUTPUT
             git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^perf" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
           fi
+          
+          # End the multiline output
+          echo "ENDRELEASENOTES" >> $GITHUB_OUTPUT
 
   # Version bump and tag creation
   version:
