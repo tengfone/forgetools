@@ -78,8 +78,7 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-  # Generate changelog
-  changelog:
+   changelog:
     needs: [test]
     runs-on: ubuntu-latest
     outputs:
@@ -136,12 +135,16 @@ jobs:
             } > "$NOTES_FILE"
           fi
           
+          # Debugging step
+          echo "Generated release notes:"
+          cat "$NOTES_FILE"
+
           # Set the output using the file content
           {
-            echo "notes<<END_OF_NOTES"
-            cat "$NOTES_FILE"
-            echo "END_OF_NOTES"
-          } >> $GITHUB_OUTPUT
+              echo "notes<<END_OF_NOTES"
+              cat "$NOTES_FILE" || echo "No notes available."
+              echo "END_OF_NOTES"
+          } >> "$GITHUB_OUTPUT"
           
           # Clean up
           rm "$NOTES_FILE"
