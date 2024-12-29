@@ -96,43 +96,52 @@ jobs:
           # Get the latest tag
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
-          # Start the multiline output
-          echo "NOTES<<ENDRELEASENOTES" >> $GITHUB_OUTPUT
+          # Create release notes in a temporary file
+          NOTES_FILE=$(mktemp)
           
           if [ -z "$latest_tag" ]; then
             # Initial release
-            echo "## 🚀 Initial Release" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### ✨ New Features" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s" --grep="^feat" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### 🐛 Bug Fixes" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s" --grep="^fix" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### 📝 Documentation" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s" --grep="^docs" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### ⚡️ Performance" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s" --grep="^perf" >> $GITHUB_OUTPUT
+            {
+              echo "## 🚀 Initial Release"
+              echo
+              echo "### ✨ New Features"
+              git log --pretty=format:"- %s" --grep="^feat" || true
+              echo
+              echo "### 🐛 Bug Fixes"
+              git log --pretty=format:"- %s" --grep="^fix" || true
+              echo
+              echo "### 📝 Documentation"
+              git log --pretty=format:"- %s" --grep="^docs" || true
+              echo
+              echo "### ⚡️ Performance"
+              git log --pretty=format:"- %s" --grep="^perf" || true
+            } > "$NOTES_FILE"
           else
             # Changes since last tag
-            echo "## 🔄 Changes since $latest_tag" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### ✨ New Features" >> $GITHUB_OUTPUT
-            git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^feat" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### 🐛 Bug Fixes" >> $GITHUB_OUTPUT
-            git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^fix" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### 📝 Documentation" >> $GITHUB_OUTPUT
-            git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^docs" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "### ⚡️ Performance" >> $GITHUB_OUTPUT
-            git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^perf" >> $GITHUB_OUTPUT
+            {
+              echo "## 🔄 Changes since $latest_tag"
+              echo
+              echo "### ✨ New Features"
+              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^feat" || true
+              echo
+              echo "### 🐛 Bug Fixes"
+              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^fix" || true
+              echo
+              echo "### 📝 Documentation"
+              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^docs" || true
+              echo
+              echo "### ⚡️ Performance"
+              git log $latest_tag..HEAD --pretty=format:"- %s" --grep="^perf" || true
+            } > "$NOTES_FILE"
           fi
           
-          # End the multiline output
-          echo "ENDRELEASENOTES" >> $GITHUB_OUTPUT
+          # Set the output using the file content
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat "$NOTES_FILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Clean up
+          rm "$NOTES_FILE"
 
   # Version bump and tag creation
   version:
