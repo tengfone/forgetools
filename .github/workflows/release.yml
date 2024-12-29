@@ -34,7 +34,7 @@ jobs:
             libxss1 \
             libgtk-3-0 \
             libnss3 \
-            libasound2t64 \
+            libasound2 \
             libatk1.0-0 \
             libatk-bridge2.0-0 \
             libgbm1 \

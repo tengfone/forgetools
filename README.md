@@ -4,6 +4,8 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
 
 > This project was developed with assistance from Anthropic's Claude AI, which helped with code generation, optimization, and documentation.
 
+![ForgeTools Demo](assets/demo.gif)
+
 ## Features
 
 ### Formatters
@@ -79,7 +81,7 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
 
 3. Start the development server:
    ```bash
-   npm run dev
+   npm start
    ```
 
 ### Building for Production
@@ -87,7 +89,7 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
 1. Build the application:
 
    ```bash
-   npm run build
+   npm run dist
    ```
 
 2. The built application will be available in the `dist` directory.
