@@ -17,7 +17,6 @@ lerna-debug.log*
 gyp/test
 node_modules
 node-gyp-*.tgz
-package-lock.json
 test/.node-gyp
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
