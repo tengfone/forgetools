@@ -315,6 +315,11 @@ const tools = {
         fileInputWrapper.style.background = "";
       });
 
+      // Add click handler for the wrapper
+      fileInputWrapper.addEventListener("click", () => {
+        base64ImageFileInput.click();
+      });
+
       fileInputWrapper.addEventListener("drop", (e) => {
         e.preventDefault();
         fileInputWrapper.style.borderColor = "";
@@ -404,7 +409,13 @@ const tools = {
         if (currentBase64) {
           window.electronAPI.clipboard
             .writeText(currentBase64)
-            .catch((err) => console.error("Failed to copy:", err));
+            .then(() => {
+              showToast("Copied to clipboard", "success");
+            })
+            .catch((err) => {
+              console.error("Failed to copy:", err);
+              showToast("Failed to copy to clipboard", "error");
+            });
         }
       });
 
@@ -770,7 +781,13 @@ const tools = {
           if (!input.trim()) {
             throw new Error("Please enter text to generate QR code");
           }
-          const dataUrl = await window.electronAPI.qrcode.generate(input);
+          const dataUrl = await window.electronAPI.qrcode.generate(input, {
+            errorCorrectionLevel: "M",
+            margin: 4,
+            scale: 8,
+            width: 300,
+            height: 300,
+          });
           return `<img src="${dataUrl}" alt="QR Code">`;
         } else {
           if (!input.startsWith("data:image/")) {
@@ -794,7 +811,7 @@ const tools = {
     decodeText: "QR Code → Text",
     placeholder: isEncodeMode
       ? "Enter text to generate QR code"
-      : "Paste image data URL to decode QR code",
+      : "Select or drag & drop a QR code image",
   },
   stringInspector: {
     format: (input) => {
@@ -1951,13 +1968,16 @@ function initializeQRCodeTool() {
   const qrcodeEncodeBtn = document.getElementById("qrcodeEncodeBtn");
   const qrcodeDecodeBtn = document.getElementById("qrcodeDecodeBtn");
   const qrcodeConvertBtn = document.getElementById("qrcodeConvertBtn");
+  const qrcodeSaveBtn = document.getElementById("qrcodeSaveBtn");
+  const qrcodeFileInput = document.getElementById("qrcodeFileInput");
+  const fileInputWrapper = document.querySelector(".qrcode-interface .file-input-wrapper");
   let isEncodeMode = true;
+  let currentQRImage = null;
 
   async function handleQRCode() {
     try {
-      const input = qrcodeInput.value.trim();
-
       if (isEncodeMode) {
+        const input = qrcodeInput.value.trim();
         if (!input) {
           throw new Error("Please enter text to generate QR code");
         }
@@ -1968,20 +1988,115 @@ function initializeQRCodeTool() {
           width: 300,
           height: 300,
         });
+        currentQRImage = dataUrl;
         qrcodePreview.innerHTML = `<img src="${dataUrl}" alt="QR Code">`;
-      } else {
-        if (!input.startsWith("data:image/")) {
-          throw new Error("Please provide a valid image data URL");
-        }
-        const result = await window.electronAPI.qrcode.read(input);
-        qrcodeInput.value = result || "No QR code found in image";
+        qrcodeSaveBtn.style.display = "block";
       }
-
       qrcodeInput.classList.remove("error");
     } catch (error) {
       qrcodeInput.classList.add("error");
       qrcodePreview.innerHTML = `<div class="error">${error.message}</div>`;
+      qrcodeSaveBtn.style.display = "none";
+      currentQRImage = null;
     }
+  }
+
+  // Handle save button click
+  if (qrcodeSaveBtn) {
+    qrcodeSaveBtn.addEventListener("click", () => {
+      if (currentQRImage) {
+        // Create a temporary link element
+        const link = document.createElement("a");
+        link.href = currentQRImage;
+        link.download = "qrcode.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    });
+  }
+
+  // Handle file input for QR code reading
+  async function handleQRCodeFile(file) {
+    try {
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Please select an image file");
+      }
+
+      qrcodePreview.innerHTML = '<div class="loading">Processing QR code...</div>';
+      qrcodeSaveBtn.style.display = "none";
+      currentQRImage = null;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const result = await window.electronAPI.qrcode.read(e.target.result);
+          qrcodeInput.value = result;
+          qrcodePreview.innerHTML = `
+            <div class="qr-result success">
+              <img src="${e.target.result}" alt="Uploaded QR Code">
+              <div class="result-text">Successfully decoded QR code</div>
+            </div>`;
+        } catch (error) {
+          qrcodePreview.innerHTML = `
+            <div class="qr-result error">
+              <img src="${e.target.result}" alt="Failed QR Code">
+              <div class="error-text">${error.message}</div>
+            </div>`;
+        }
+      };
+      reader.onerror = () => {
+        qrcodePreview.innerHTML = '<div class="error">Failed to read image file</div>';
+        qrcodeSaveBtn.style.display = "none";
+        currentQRImage = null;
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      qrcodePreview.innerHTML = `<div class="error">${error.message}</div>`;
+      qrcodeSaveBtn.style.display = "none";
+      currentQRImage = null;
+    }
+  }
+
+  // File input click handler
+  if (fileInputWrapper) {
+    fileInputWrapper.addEventListener("click", () => {
+      qrcodeFileInput.click();
+    });
+
+    // Handle drag and drop
+    fileInputWrapper.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      fileInputWrapper.style.borderColor = "var(--primary-color)";
+      fileInputWrapper.style.background = "#f0f7ff";
+    });
+
+    fileInputWrapper.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      fileInputWrapper.style.borderColor = "";
+      fileInputWrapper.style.background = "";
+    });
+
+    fileInputWrapper.addEventListener("drop", (e) => {
+      e.preventDefault();
+      fileInputWrapper.style.borderColor = "";
+      fileInputWrapper.style.background = "";
+
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        handleQRCodeFile(file);
+      }
+    });
+  }
+
+  // Handle file selection
+  if (qrcodeFileInput) {
+    qrcodeFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleQRCodeFile(file);
+      }
+    });
   }
 
   // Mode switching
@@ -1989,58 +2104,31 @@ function initializeQRCodeTool() {
     isEncodeMode = true;
     qrcodeEncodeBtn.classList.add("active");
     qrcodeDecodeBtn.classList.remove("active");
+    document.getElementById("qrcodeTextSection").style.display = "block";
+    document.getElementById("qrcodeFileSection").style.display = "none";
     qrcodeInput.value = "";
     qrcodeInput.placeholder = "Enter text to generate QR code";
     qrcodePreview.innerHTML = "";
+    qrcodeConvertBtn.style.display = "block";
+    qrcodeSaveBtn.style.display = "none";
+    currentQRImage = null;
   });
 
   qrcodeDecodeBtn.addEventListener("click", () => {
     isEncodeMode = false;
     qrcodeDecodeBtn.classList.add("active");
     qrcodeEncodeBtn.classList.remove("active");
+    document.getElementById("qrcodeTextSection").style.display = "none";
+    document.getElementById("qrcodeFileSection").style.display = "block";
     qrcodeInput.value = "";
-    qrcodeInput.placeholder = "Paste image data URL to decode QR code";
     qrcodePreview.innerHTML = "";
+    qrcodeConvertBtn.style.display = "none";
+    qrcodeSaveBtn.style.display = "none";
+    currentQRImage = null;
   });
 
   // Convert button
   qrcodeConvertBtn.addEventListener("click", handleQRCode);
-
-  // Handle file drop for decoding
-  qrcodePreview.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    if (!isEncodeMode) {
-      qrcodePreview.classList.add("dragover");
-    }
-  });
-
-  qrcodePreview.addEventListener("dragleave", () => {
-    qrcodePreview.classList.remove("dragover");
-  });
-
-  qrcodePreview.addEventListener("drop", async (e) => {
-    e.preventDefault();
-    qrcodePreview.classList.remove("dragover");
-
-    if (!isEncodeMode && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith("image/")) {
-        try {
-          const reader = new FileReader();
-          reader.onload = async (event) => {
-            qrcodeInput.value = event.target.result;
-            await handleQRCode();
-          };
-          reader.readAsDataURL(file);
-        } catch (error) {
-          qrcodePreview.innerHTML = `<div class="error">Failed to read image: ${error.message}</div>`;
-        }
-      } else {
-        qrcodePreview.innerHTML =
-          '<div class="error">Please drop an image file</div>';
-      }
-    }
-  });
 
   // Initialize with encode mode
   qrcodeEncodeBtn.click();

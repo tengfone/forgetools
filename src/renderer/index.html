@@ -323,13 +323,24 @@
                     <div class="simple-tool-container">
                         <div class="input-section">
                             <div class="input-group">
-                                <textarea id="qrcodeInput" placeholder="Enter text to generate QR code" rows="4"></textarea>
+                                <div id="qrcodeTextSection">
+                                    <textarea id="qrcodeInput" placeholder="Enter text to generate QR code" rows="4"></textarea>
+                                </div>
+                                <div id="qrcodeFileSection" style="display: none;">
+                                    <div class="file-input-wrapper">
+                                        <input type="file" id="qrcodeFileInput" accept="image/*">
+                                        <p class="file-input-help">Select a QR code image or drag and drop here</p>
+                                    </div>
+                                </div>
                                 <div class="actions">
                                     <div class="mode-buttons">
                                         <button id="qrcodeEncodeBtn" class="mode-btn active">Text → QR Code</button>
                                         <button id="qrcodeDecodeBtn" class="mode-btn">QR Code → Text</button>
                                     </div>
-                                    <button id="qrcodeConvertBtn">Convert</button>
+                                    <div class="action-buttons">
+                                        <button id="qrcodeSaveBtn" style="display: none;">Save Image</button>
+                                        <button id="qrcodeConvertBtn">Convert</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

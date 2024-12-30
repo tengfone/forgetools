@@ -6,6 +6,7 @@ const {
   BinaryBitmap,
   HybridBinarizer,
   RGBLuminanceSource,
+  GlobalHistogramBinarizer,
 } = require("@zxing/library");
 
 // Window control handlers
@@ -46,45 +47,72 @@ ipcMain.handle("qrcode:read", async (event, dataUrl) => {
     const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, "base64");
 
-    // Get image dimensions by reading the first few bytes
-    // This avoids needing the canvas library
-    let width = 0;
-    let height = 0;
-
-    // Try to get dimensions from PNG header
-    if (buffer[0] === 0x89 && buffer[1] === 0x50) {
-      // PNG magic number
-      width = buffer.readUInt32BE(16);
-      height = buffer.readUInt32BE(20);
-    } else {
-      // Assume a reasonable default size if we can't detect
-      width = 400;
-      height = 400;
+    // Create a Uint8ClampedArray from the buffer
+    const length = buffer.length;
+    const rgbaData = new Uint8ClampedArray(length);
+    
+    // Copy buffer data to Uint8ClampedArray
+    for (let i = 0; i < length; i++) {
+      rgbaData[i] = buffer[i];
     }
 
-    // Create luminance source from RGB data
+    // Calculate dimensions from the buffer size
+    // Assuming RGBA format (4 bytes per pixel)
+    const pixelCount = length / 4;
+    const width = Math.sqrt(pixelCount);
+    const height = width;
+
+    // Create RGB data (3 bytes per pixel)
     const rgbData = new Uint8ClampedArray(width * height * 3);
-    for (
-      let i = 0, j = 0;
-      i < buffer.length && j < rgbData.length;
-      i += 4, j += 3
-    ) {
-      rgbData[j] = buffer[i]; // R
-      rgbData[j + 1] = buffer[i + 1]; // G
-      rgbData[j + 2] = buffer[i + 2]; // B
+    for (let i = 0, j = 0; i < length; i += 4, j += 3) {
+      rgbData[j] = rgbaData[i];     // R
+      rgbData[j + 1] = rgbaData[i + 1]; // G
+      rgbData[j + 2] = rgbaData[i + 2]; // B
     }
 
+    // Create luminance source and try different approaches
     const luminanceSource = new RGBLuminanceSource(rgbData, width, height);
     const binaryBitmap = new BinaryBitmap(new HybridBinarizer(luminanceSource));
 
-    // Create QR code reader
-    const reader = new MultiFormatReader();
-    const result = reader.decode(binaryBitmap);
+    // Set up hints for QR code reading
+    const hints = new Map();
+    hints.set(2, true); // TRY_HARDER
+    hints.set(3, true); // PURE_BARCODE
+    hints.set(7, true); // TRY_ROTATE
 
-    if (result) {
-      return result.getText();
+    const reader = new MultiFormatReader();
+
+    try {
+      // First attempt: normal read
+      const result = reader.decode(binaryBitmap, hints);
+      if (result) {
+        return result.getText();
+      }
+    } catch (firstError) {
+      try {
+        // Second attempt: inverted image
+        const inverted = luminanceSource.invert();
+        const invertedBitmap = new BinaryBitmap(new HybridBinarizer(inverted));
+        const result = reader.decode(invertedBitmap, hints);
+        if (result) {
+          return result.getText();
+        }
+      } catch (secondError) {
+        try {
+          // Third attempt: try with global histogram binarizer
+          const globalBitmap = new BinaryBitmap(new GlobalHistogramBinarizer(luminanceSource));
+          const result = reader.decode(globalBitmap, hints);
+          if (result) {
+            return result.getText();
+          }
+        } catch (thirdError) {
+          // All attempts failed
+          throw new Error("Could not detect a valid QR code. Please ensure the image is clear and try again.");
+        }
+      }
     }
-    throw new Error("No QR code found in image");
+
+    throw new Error("No QR code found in the image.");
   } catch (error) {
     throw new Error(`Failed to read QR code: ${error.message}`);
   }
