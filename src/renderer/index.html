@@ -1,38 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ForgeTools - Offline Developer Utilities">
     <title>ForgeTools - Offline Developer Utilities</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="../../node_modules/highlight.js/styles/github.css">
     <link rel="stylesheet" href="../../node_modules/monaco-editor/min/vs/editor/editor.main.css">
 </head>
 <body>
-    <div class="titlebar">
+    <header class="titlebar">
         <div class="titlebar-title">ForgeTools</div>
         <div class="titlebar-controls">
-            <button class="titlebar-button minimize" id="minimizeBtn"></button>
-            <button class="titlebar-button maximize" id="maximizeBtn"></button>
-            <button class="titlebar-button close" id="closeBtn"></button>
+            <button class="titlebar-button minimize" id="minimizeBtn" aria-label="Minimize window"></button>
+            <button class="titlebar-button maximize" id="maximizeBtn" aria-label="Maximize window"></button>
+            <button class="titlebar-button close" id="closeBtn" aria-label="Close window"></button>
         </div>
-    </div>
-    <div class="app-container">
-        <div class="sidebar">
+    </header>
+
+    <main class="app-container">
+        <nav class="sidebar">
             <div class="sidebar-header">
                 <h1>ForgeTools</h1>
             </div>
             <div class="tools-list">
-                <div class="tool-category">
+                <section class="tool-category">
                     <h3>Formatters</h3>
                     <div class="tool-buttons">
-                        <button class="tool-btn editor-tool" data-tool="json">JSON</button>
-                        <button class="tool-btn editor-tool" data-tool="xml">XML</button>
-                        <button class="tool-btn editor-tool" data-tool="sql">SQL</button>
-                        <button class="tool-btn editor-tool" data-tool="html">HTML</button>
-                        <button class="tool-btn editor-tool" data-tool="htmlJsx">HTML to JSX</button>
-                        <button class="tool-btn editor-tool" data-tool="markdownPreview">Markdown Preview</button>
+                        <button class="tool-btn editor-tool" data-tool="json" aria-pressed="false">JSON</button>
+                        <button class="tool-btn editor-tool" data-tool="xml" aria-pressed="false">XML</button>
+                        <button class="tool-btn editor-tool" data-tool="sql" aria-pressed="false">SQL</button>
+                        <button class="tool-btn editor-tool" data-tool="html" aria-pressed="false">HTML</button>
+                        <button class="tool-btn editor-tool" data-tool="htmlJsx" aria-pressed="false">HTML to JSX</button>
+                        <button class="tool-btn editor-tool" data-tool="markdownPreview" aria-pressed="false">Markdown Preview</button>
                     </div>
-                </div>
+                </section>
                 <div class="tool-category">
                     <h3>Encoders/Decoders</h3>
                     <div class="tool-buttons">
@@ -83,11 +86,12 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </nav>
+
         <div class="main-content">
             <div class="editor-container">
                 <!-- Editor Interface -->
-                <div class="editor-interface tool-interface">
+                <section class="editor-interface tool-interface">
                     <div class="input-panel">
                         <div class="panel-header">
                             <h3>Input</h3>
@@ -96,22 +100,22 @@
                                     <button id="encodeBtn" class="mode-btn active">Encode</button>
                                     <button id="decodeBtn" class="mode-btn">Decode</button>
                                 </div>
-                                <button id="clearBtn">Clear</button>
-                                <button id="formatBtn">Format</button>
+                                <button id="clearBtn" aria-label="Clear input">Clear</button>
+                                <button id="formatBtn" aria-label="Format input">Format</button>
                             </div>
                         </div>
-                        <div id="inputEditor"></div>
+                        <div id="inputEditor" role="textbox" aria-label="Input editor"></div>
                     </div>
                     <div class="output-panel">
                         <div class="panel-header">
                             <h3>Output</h3>
                             <div class="actions">
-                                <button id="copyBtn">Copy</button>
+                                <button id="copyBtn" aria-label="Copy output">Copy</button>
                             </div>
                         </div>
-                        <div id="outputEditor"></div>
+                        <div id="outputEditor" role="textbox" aria-label="Output editor" aria-readonly="true"></div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Hash Generator Interface -->
                 <div class="hash-interface tool-interface">
@@ -402,5 +406,6 @@
         </script>
         <script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
         <script src="js/app.js"></script>
-    </body>
+    </main>
+</body>
 </html> 
