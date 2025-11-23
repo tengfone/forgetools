@@ -1,0 +1,491 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Custom Properties for Theme Colors - Standard Tailwind Dark Mode Approach */
+@layer base {
+  :root {
+    /* Light Mode (Default) */
+    --bg-app: #f2f2f7;
+    --bg-sidebar: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-card: #ffffff;
+    --bg-input: #e5e5ea;
+    --text-primary: #000000;
+    --text-secondary: rgba(60, 60, 67, 0.6);
+    --text-tertiary: rgba(60, 60, 67, 0.3);
+    --accent-color: #007aff;
+    --accent-hover: #0062cc;
+    --border-color: #d1d1d6;
+    --border-hover: #aeaeb2;
+    --success-color: #34c759;
+    --error-color: #ff3b30;
+    --warning-color: #ffcc00;
+  }
+
+  .dark {
+    /* Dark Mode */
+    --bg-app: #1c1c1e;
+    --bg-sidebar: #2c2c2e;
+    --bg-panel: #1c1c1e;
+    --bg-card: #2c2c2e;
+    --bg-input: #3a3a3c;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(235, 235, 245, 0.6);
+    --text-tertiary: rgba(235, 235, 245, 0.3);
+    --accent-color: #0a84ff;
+    --accent-hover: #409cff;
+    --border-color: #38383a;
+    --border-hover: #636366;
+    --success-color: #30d158;
+    --error-color: #ff453a;
+    --warning-color: #ffd60a;
+  }
+}
+
+/* Material Icons Font - Local for offline use */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url(../fonts/material-icons.woff2) format('woff2'),
+       url(../fonts/material-icons.woff) format('woff');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+}
+
+/* Custom scrollbar styles */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: theme('colors.border.DEFAULT');
+    border: 4px solid transparent;
+    background-clip: content-box;
+    border-radius: 8px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: theme('colors.border.hover');
+  }
+}
+
+/* Window controls are now native on all platforms - no custom CSS needed */
+
+/* WebKit app region for window dragging */
+.titlebar {
+  -webkit-app-region: drag;
+}
+
+.titlebar-controls,
+.titlebar button,
+.titlebar select {
+  -webkit-app-region: no-drag;
+}
+
+/* Command palette and settings overlay visibility */
+.command-palette-overlay.visible {
+  @apply flex;
+}
+
+.settings-overlay.visible {
+  @apply flex;
+}
+
+/* Custom Component Styles */
+@layer components {
+  /* Form Controls */
+  .form-control {
+    @apply w-full px-3 py-2.5 bg-bg-input border border-transparent rounded-sm text-text-primary font-mono text-[13px] transition-all duration-200;
+  }
+  
+  .form-control:focus {
+    @apply outline-none bg-bg-app;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+  }
+  
+  .form-control[readonly] {
+    @apply opacity-80 cursor-default;
+  }
+  
+  textarea.form-control {
+    @apply resize-y;
+    min-height: 100px;
+    line-height: 1.5;
+  }
+
+  /* Tool Cards */
+  .tool-card {
+    @apply bg-bg-card border border-border rounded-[10px] p-4 mb-4;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  .dark .tool-card {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  .tool-card h3 {
+    @apply m-0 mb-3 text-xs font-semibold text-text-secondary uppercase tracking-wider;
+    letter-spacing: 0.5px;
+  }
+
+  /* Button Styles */
+  .btn-icon,
+  .btn-pill {
+    @apply flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans;
+  }
+  
+  .btn-icon:hover,
+  .btn-pill:hover {
+    @apply bg-[rgba(255,255,255,0.1)] dark:bg-[rgba(0,0,0,0.05)] text-text-primary;
+  }
+  
+  .btn-icon:active,
+  .btn-pill:active {
+    transform: translateY(1px);
+  }
+  
+  .btn-icon i,
+  .btn-pill i {
+    @apply text-base opacity-80;
+  }
+
+  /* Toolbar Select */
+  .toolbar-select {
+    @apply bg-bg-input text-text-primary border border-transparent px-2 rounded-md text-xs h-7 outline-none cursor-pointer;
+  }
+  
+  .toolbar-select:hover {
+    @apply bg-[rgba(255,255,255,0.1)] dark:bg-[rgba(0,0,0,0.05)];
+  }
+
+  /* Grid Layouts */
+  .grid-2 {
+    @apply grid grid-cols-2 gap-3;
+  }
+  
+  .result-grid {
+    @apply grid gap-3;
+  }
+  
+  .input-group {
+    @apply mb-3;
+  }
+  
+  .input-group label {
+    @apply block mb-1.5 text-text-secondary text-xs font-medium;
+  }
+
+  /* Navigation Items */
+  .nav-item {
+    @apply flex items-center w-full px-2 py-1.5 mb-px border-none bg-transparent text-text-primary text-[13px] text-left cursor-pointer rounded-[6px] transition-colors duration-150;
+  }
+  
+  .nav-item:hover:not(.active) {
+    @apply bg-[rgba(255,255,255,0.08)] dark:bg-[rgba(0,0,0,0.04)];
+  }
+  
+  /* Active state - subtle contrast matching theme */
+  .nav-item.active {
+    @apply font-medium;
+    /* Light mode: slightly darker than sidebar */
+    background-color: rgba(0, 0, 0, 0.06) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Dark mode active state - slightly lighter than sidebar */
+  .dark .nav-item.active {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Hover state for active items */
+  .nav-item.active:hover {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+  }
+  
+  .dark .nav-item.active:hover {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+  }
+  
+  .nav-icon {
+    @apply mr-2 opacity-70 text-lg flex items-center transition-opacity duration-150;
+  }
+  
+  .nav-item.active .nav-icon {
+    opacity: 0.9;
+  }
+
+  /* Category Header */
+  .category-header {
+    @apply text-[11px] font-bold text-text-secondary uppercase mx-2 my-3 tracking-wider;
+  }
+
+  /* Custom Interface Containers */
+  .simple-tool-container,
+  .custom-interface {
+    @apply p-4 max-w-[1000px] mx-auto w-full overflow-y-auto h-full;
+  }
+
+  /* JWT Parts */
+  .jwt-parts {
+    @apply flex flex-col gap-4;
+  }
+  
+  .jwt-part {
+    @apply p-4 rounded-[10px] bg-bg-input border-l-4 border-transparent;
+  }
+  
+  .jwt-header {
+    border-left-color: #ff3b30;
+  }
+  
+  .jwt-payload {
+    border-left-color: #bf5af2;
+  }
+  
+  .jwt-signature {
+    border-left-color: #0a84ff;
+  }
+
+  /* Result Box */
+  .result-box {
+    @apply font-mono whitespace-pre-wrap break-all text-text-primary;
+  }
+
+  /* Color Preview */
+  .color-preview {
+    @apply h-[100px] rounded-[10px] border border-border mb-4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark .color-preview {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  
+  .stat-card {
+    @apply bg-bg-card border border-border rounded-[10px] p-4 text-center;
+  }
+  
+  .stat-value {
+    @apply text-2xl font-bold;
+    color: var(--accent-color);
+  }
+  
+  .stat-label {
+    @apply text-xs text-text-secondary mt-1;
+  }
+
+  /* Command Palette Items */
+  .cmd-item {
+    @apply px-4 py-3 flex justify-between items-center cursor-pointer rounded-sm text-text-primary;
+  }
+  
+  .cmd-item:hover {
+    @apply bg-accent text-white;
+  }
+  
+  .cmd-shortcut {
+    @apply text-xs opacity-60;
+  }
+
+  /* Toast Styles */
+  .toast {
+    @apply fixed bottom-6 right-6 bg-bg-card text-text-primary px-5 py-3 rounded-[10px] shadow-lg border border-border transform translate-y-24 opacity-0 transition-all duration-300 ease-out z-[2000] font-medium flex items-center gap-2;
+  }
+  
+  .toast.visible {
+    @apply translate-y-0 opacity-100;
+  }
+  
+  .toast::before {
+    content: '';
+    @apply block w-2 h-2 rounded-full;
+  }
+  
+  .toast-success::before {
+    @apply bg-success dark:bg-success;
+  }
+  
+  .toast-error::before {
+    @apply bg-error dark:bg-error;
+  }
+
+  /* Panel Header */
+  .panel-header.toolbar {
+    @apply px-3 h-11 bg-bg-panel border-b border-border flex justify-between items-center;
+  }
+  
+  .toolbar-left,
+  .toolbar-right {
+    @apply flex items-center gap-2;
+  }
+  
+  .panel-title {
+    @apply text-[13px] font-medium text-text-secondary mr-2;
+  }
+
+  /* Panel - remove border on last child */
+  .panel:last-child {
+    @apply border-r-0;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply flex flex-col items-center justify-center h-full text-text-secondary;
+  }
+  
+  .empty-icon {
+    @apply text-[64px] mb-6 opacity-20;
+  }
+}
+
+/* Global scrollbar styles */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border: 4px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-hover);
+}
+
+/* Hidden utility */
+.hidden {
+  display: none !important;
+}
+
+/* Markdown Preview Styles */
+.markdown-preview {
+  line-height: 1.6;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  @apply font-semibold mt-6 mb-3;
+}
+
+.markdown-preview h1 {
+  @apply text-2xl border-b border-border pb-2;
+}
+
+.markdown-preview h2 {
+  @apply text-xl border-b border-border pb-2;
+}
+
+.markdown-preview h3 {
+  @apply text-lg;
+}
+
+.markdown-preview p {
+  @apply mb-4;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  @apply mb-4 pl-6;
+}
+
+.markdown-preview ul {
+  @apply list-disc;
+}
+
+.markdown-preview ol {
+  @apply list-decimal;
+}
+
+.markdown-preview li {
+  @apply mb-1;
+}
+
+.markdown-preview code {
+  @apply bg-bg-app px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.markdown-preview pre {
+  @apply bg-bg-app p-4 rounded-md overflow-x-auto mb-4;
+}
+
+.markdown-preview pre code {
+  @apply bg-transparent p-0;
+}
+
+.markdown-preview blockquote {
+  @apply border-l-4 pl-4 italic my-4;
+  border-left-color: var(--accent-color);
+}
+
+.markdown-preview a {
+  color: var(--accent-color);
+}
+
+.markdown-preview a:hover {
+  @apply underline;
+}
+
+.markdown-preview table {
+  @apply w-full border-collapse mb-4;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  @apply border border-border px-4 py-2;
+}
+
+.markdown-preview th {
+  @apply bg-bg-panel font-semibold;
+}
+
+.markdown-preview img {
+  @apply max-w-full h-auto rounded-md my-4;
+}
+
+.markdown-preview hr {
+  @apply border-t border-border my-6;
+}
+

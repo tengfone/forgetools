@@ -1,8 +1,16 @@
 # ForgeTools
 
-ForgeTools is a comprehensive desktop application built with Electron that provides a suite of essential development tools for software engineers. It offers a collection of formatters, encoders/decoders, converters, and other utilities that work entirely offline.
+ForgeTools is a comprehensive desktop application built with Electron, TypeScript, and Tailwind CSS that provides a suite of essential development tools for software engineers. It offers a collection of formatters, encoders/decoders, converters, and other utilities that work entirely **offline**.
 
 > This project was developed with assistance from Anthropic's Claude AI, which helped with code generation, optimization, and documentation.
+
+## Tech Stack
+
+- **Electron-Vite** - Fast build tool for Electron applications
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first CSS framework
+- **Monaco Editor** - VS Code's editor for code editing
+- **Playwright** - End-to-end testing
 
 ![ForgeTools Demo](assets/demo.gif)
 
@@ -15,17 +23,20 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
 - SQL Formatter
 - HTML Formatter
 - HTML to JSX Converter
+- Markdown to HTML Converter
 - Markdown Preview
+- YAML Formatter
+- SVG Optimizer
 
 ### Encoders/Decoders
 
 - Base64 Text Encoder/Decoder
-- Base64 Image Converter
 - URL Encoder/Decoder
 - JWT Decoder
-- HTML Entity Encoder/Decoder
 - Backslash Escape/Unescape
 - HEX ↔ ASCII Converter
+- Certificate Decoder (X.509)
+- Hash Generator (MD5, SHA-1, SHA-256, SHA-512)
 
 ### Converters
 
@@ -34,26 +45,22 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
 - Timestamp Converter
 - Color Converter & Picker
 - Number Base Converter
-
-### Analyzers
-
-- URL Parser
-- String Inspector
-- Certificate Decoder
-- Cron Expression Parser
+- Image to Base64 Converter
 
 ### Generators
 
-- Hash Generator (MD5, SHA1, SHA256, SHA512)
-- QR Code Generator/Reader
+- UUID/ULID Generator
+- QR Code Generator
+- Barcode Generator (EAN-13, UPC, CODE128, CODE39)
 - Lorem Ipsum Generator
 - Random String Generator
 
 ### Text Tools
 
 - Text Diff Viewer
-- String Case Converter
-- Line Sorter & Deduplicator
+- String Case Converter (Camel, Pascal, Snake, Kebab, Constant)
+- String Inspector
+- Cron Expression Parser
 - Regular Expression Tester
 
 ## Installation
@@ -80,8 +87,17 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
    ```
 
 3. Start the development server:
+
    ```bash
+   npm run dev
+   # or
    npm start
+   ```
+
+4. Build the application (required before running tests):
+
+   ```bash
+   npm run build
    ```
 
 ### Building for Production
@@ -89,31 +105,59 @@ ForgeTools is a comprehensive desktop application built with Electron that provi
 1. Build the application:
 
    ```bash
+   npm run build
+   ```
+
+   This compiles TypeScript and bundles the application to the `out/` directory.
+
+2. Create distribution packages:
+
+   ```bash
    npm run dist
    ```
 
-2. The built application will be available in the `dist` directory.
+   This builds the application and creates platform-specific installers in the `dist/` directory.
+
+3. Preview the production build (without packaging):
+
+   ```bash
+   npm run preview
+   ```
 
 ## Project Structure
 
 ```
 forgetools/
 ├── src/                    # Source code
-│   ├── main.js            # Main process (Electron entry point)
-│   ├── preload.js         # Preload script for secure IPC
-│   └── renderer/          # Renderer process
-│       ├── index.html     # Main HTML file
-│       ├── js/            # JavaScript files
-│       │   └── app.js     # Main application logic
-│       └── styles/        # CSS styles
-│           └── main.css   # Main stylesheet
-├── assets/                # Application assets
-│   └── icons/            # Application icons
-├── dist/                  # Built application
-├── node_modules/         # Dependencies
-├── package.json          # Project configuration
-├── package-lock.json     # Dependency lock file
-└── README.md            # Project documentation
+│   ├── main/              # Main process (Electron entry point)
+│   │   └── main.ts        # Main process TypeScript
+│   ├── preload/           # Preload script for secure IPC
+│   │   └── index.ts       # Preload script TypeScript
+│   ├── renderer/          # Renderer process
+│   │   ├── index.html     # Main HTML file
+│   │   └── src/           # Renderer source files
+│   │       ├── app.ts     # Main application logic
+│   │       ├── tools.ts    # Tool definitions
+│   │       └── main.css    # Tailwind CSS styles
+│   ├── types/             # TypeScript type definitions
+│   │   ├── electronAPI.ts # Electron API types
+│   │   ├── ipc.ts         # IPC channel types
+│   │   └── tools.ts       # Tool type definitions
+│   └── renderer/          # Renderer assets
+│       ├── vs/            # Monaco Editor files
+│       └── fonts/         # Font files
+├── out/                    # Build output (generated)
+│   ├── main/              # Compiled main process
+│   ├── preload/           # Compiled preload script
+│   └── renderer/          # Compiled renderer
+├── tests/                  # Test files
+│   └── e2e/               # End-to-end tests
+├── assets/                 # Application assets
+├── dist/                   # Distribution builds (generated)
+├── electron.vite.config.ts # Electron-Vite configuration
+├── tailwind.config.js      # Tailwind CSS configuration
+├── tsconfig.json           # TypeScript configuration
+└── package.json            # Project configuration
 ```
 
 ## CI/CD and Releases
@@ -172,10 +216,10 @@ Release notes are automatically generated and include:
 
 2. **Version Management**:
 
-   - Automatic version bumping based on commit types:
-     - `feat:` → Minor version (1.2.0 → 1.3.0)
-     - `fix:`, `docs:`, `perf:` → Patch version (1.2.0 → 1.2.1)
-     - `BREAKING CHANGE` → Major version (1.2.0 → 2.0.0)
+   - Automatic version bumping using `phips28/gh-action-bump-version` based on commit types:
+     - `feat:` → Minor version (1.0.14 → 1.1.0)
+     - `fix:`, `docs:`, `perf:`, `chore:` → Patch version (1.0.14 → 1.0.15)
+     - `feat!:` or `BREAKING CHANGE` → Major version (1.0.14 → 2.0.0)
 
 3. **Build Pipeline**:
 
@@ -190,6 +234,7 @@ Release notes are automatically generated and include:
    - SHA-256 checksums
    - Detailed changelog
    - Installation instructions
+   - **Note**: Releases are created as **drafts** and must be manually published on GitHub
 
 #### Release Schedule
 
@@ -260,10 +305,10 @@ ForgeTools uses Playwright for end-to-end testing of the Electron application. T
 
 ### Running Tests
 
-1. Install test dependencies:
+1. Build the application first (required):
 
    ```bash
-   npm install
+   npm run build
    ```
 
 2. Run the tests:
@@ -272,7 +317,14 @@ ForgeTools uses Playwright for end-to-end testing of the Electron application. T
    npm test
    ```
 
-3. To view the test report:
+3. Run tests with UI (interactive mode):
+
+   ```bash
+   npm run test:ui
+   ```
+
+4. To view the test report:
+
    ```bash
    npx playwright show-report
    ```
@@ -287,7 +339,45 @@ tests/
 │   ├── app.spec.js        # Main application tests
 │   └── helpers/           # Test helpers
 │       └── electronApp.js # Electron app launch helper
+└── globalSetup.js          # Test setup (Monaco Editor files)
 ```
+
+### Test Coverage
+
+The test suite covers:
+
+- Application launch and basic UI rendering
+- Sidebar navigation and tool loading
+- Core application functionality
+
+Tests are kept minimal and focused on essential functionality to ensure reliability.
+
+## Development
+
+### Key Features
+
+- **Native Window Controls**: Uses platform-native window controls (macOS traffic lights, Windows/Linux standard controls)
+- **Dark Mode**: System-aware dark/light theme switching
+- **Offline-First**: All functionality works without internet connection
+- **Type-Safe**: Full TypeScript implementation for better code quality
+- **Modern UI**: Built with Tailwind CSS for a clean, responsive interface
+
+### Development Commands
+
+```bash
+npm run dev      # Start development server with hot reload
+npm run build    # Build for production
+npm run preview  # Preview production build
+npm test         # Run end-to-end tests
+npm run test:ui  # Run tests with interactive UI
+```
+
+### Code Structure
+
+- **Main Process** (`src/main/`): Electron main process with IPC handlers
+- **Preload** (`src/preload/`): Secure bridge between main and renderer
+- **Renderer** (`src/renderer/`): UI and application logic
+- **Types** (`src/types/`): Shared TypeScript type definitions
 
 ## Contributing
 

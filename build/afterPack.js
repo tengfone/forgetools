@@ -4,7 +4,7 @@ const path = require('path');
 exports.default = async function(context) {
   const { appOutDir, packager, electronPlatformName } = context;
 
-  // Paths to clean up
+  // Paths to clean up - more aggressive cleanup
   const pathsToRemove = [
     'node_modules/@playwright',
     'node_modules/@types',
@@ -14,9 +14,27 @@ exports.default = async function(context) {
     'node_modules/**/*.md',
     'node_modules/**/test',
     'node_modules/**/tests',
+    'node_modules/**/__tests__',
     'node_modules/**/docs',
     'node_modules/**/.bin',
-    'node_modules/**/.github'
+    'node_modules/**/.github',
+    'node_modules/**/examples',
+    'node_modules/**/example',
+    'node_modules/**/samples',
+    'node_modules/**/sample',
+    'node_modules/**/CHANGELOG*',
+    'node_modules/**/LICENSE*',
+    'node_modules/**/README*',
+    'node_modules/**/*.spec.js',
+    'node_modules/**/*.test.js',
+    'node_modules/**/*.spec.ts',
+    'node_modules/**/*.test.ts',
+    'node_modules/**/.eslintrc*',
+    'node_modules/**/.prettierrc*',
+    'node_modules/**/tsconfig.json',
+    'node_modules/**/jest.config*',
+    'node_modules/**/.nyc_output',
+    'node_modules/**/coverage'
   ];
 
   // Function to recursively remove directories
