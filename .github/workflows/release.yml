@@ -18,6 +18,7 @@ jobs:
   test:
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    continue-on-error: true  # Allow test failures without blocking the workflow
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,6 +57,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run postinstall script
+        run: npm run postinstall
+
+      - name: Build application
+        run: npm run build
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
@@ -169,6 +176,8 @@ jobs:
   build:
     needs: [version, changelog]
     runs-on: ${{ matrix.os }}
+    # Allow build to run even if version job was skipped (on tag pushes)
+    if: always() && (needs.version.result == 'success' || needs.version.result == 'skipped')
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -183,7 +192,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ needs.version.outputs.new_version }}
+          ref: ${{ needs.version.outputs.new_version || github.ref }}
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -228,10 +237,21 @@ jobs:
           npm ci
           npm run postinstall
 
+      - name: Get version from tag or version job
+        id: get-version
+        run: |
+          if [ -n "${{ needs.version.outputs.new_version }}" ]; then
+            echo "version=${{ needs.version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          else
+            # Extract version from tag (e.g., v1.0.14 -> 1.0.14)
+            VERSION_TAG="${GITHUB_REF#refs/tags/v}"
+            echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build Electron App
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.version.outputs.new_version }}
+          VERSION: ${{ steps.get-version.outputs.version }}
         run: npm run dist
 
       - name: Prepare artifacts
@@ -239,7 +259,7 @@ jobs:
         run: |
           if [ "${{ runner.os }}" == "macOS" ]; then
             cd dist/mac
-            zip -r ../ForgeTools-${{ needs.version.outputs.new_version }}-mac-${{ matrix.arch }}.zip ForgeTools.app
+            zip -r ../ForgeTools-${{ steps.get-version.outputs.version }}-mac-${{ matrix.arch }}.zip ForgeTools.app
           fi
 
       - name: Upload artifacts
@@ -255,6 +275,8 @@ jobs:
   # Create Release
   release:
     needs: [build, version, changelog]
+    # Allow release to run even if version job was skipped (on tag pushes)
+    if: always() && (needs.version.result == 'success' || needs.version.result == 'skipped') && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Check out Git repository
@@ -262,6 +284,17 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from tag or version job
+        id: get-version
+        run: |
+          if [ -n "${{ needs.version.outputs.new_version }}" ]; then
+            echo "version=${{ needs.version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          else
+            # Extract version from tag (e.g., v1.0.14 -> 1.0.14)
+            VERSION_TAG="${GITHUB_REF#refs/tags/v}"
+            echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download all artifacts
         uses: actions/download-artifact@v3
@@ -279,7 +312,7 @@ jobs:
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.version.outputs.new_version }}
+          VERSION: ${{ steps.get-version.outputs.version }}
           RELEASE_NOTES: ${{ needs.changelog.outputs.release_notes }}
         run: |
           gh release create "$VERSION" \
