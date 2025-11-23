@@ -239,6 +239,7 @@ jobs:
 
       - name: Get version from tag or version job
         id: get-version
+        shell: bash
         run: |
           if [ -n "${{ needs.version.outputs.new_version }}" ]; then
             echo "version=${{ needs.version.outputs.new_version }}" >> $GITHUB_OUTPUT
@@ -287,6 +288,7 @@ jobs:
 
       - name: Get version from tag or version job
         id: get-version
+        shell: bash
         run: |
           if [ -n "${{ needs.version.outputs.new_version }}" ]; then
             echo "version=${{ needs.version.outputs.new_version }}" >> $GITHUB_OUTPUT
