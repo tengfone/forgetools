@@ -10,23 +10,50 @@ import { ulid } from 'ulid';
 import { diffLines } from 'diff';
 import cronParser from 'cron-parser';
 import Papa from 'papaparse';
-import HTMLtoJSX from 'htmltojsx';
+import { htmlToJsx } from 'html-to-jsx-transform';
 import { serialize, unserialize } from 'php-serialize';
 import { optimize } from 'svgo';
 import sass from 'sass';
 import less from 'less';
-import forge from 'node-forge';
 import Ajv from 'ajv';
 import type { ElectronAPI, CronParserAPI, DiffAPI } from '../types/electronAPI';
 import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions } from '../types/ipc';
 
 const ajv = new Ajv();
 
-// Initialize HTML to JSX converter
-const htmlToJSXConverter = new HTMLtoJSX({
-  createClass: false,
-  indent: '  ',
-});
+// Read the signatureAlgorithm OID from a DER-encoded X.509 certificate:
+// Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm SEQUENCE { OID, ... }, signature }
+function readSignatureAlgorithmOid(der: Buffer): string {
+  let pos = 0;
+  const readHeader = (tag: number): number => {
+    if (der[pos++] !== tag) throw new Error('Unexpected ASN.1 structure');
+    let len = der[pos++]!;
+    if (len & 0x80) {
+      const bytes = len & 0x7f;
+      len = 0;
+      for (let i = 0; i < bytes; i++) len = len * 256 + der[pos++]!;
+    }
+    return len;
+  };
+  readHeader(0x30); // Certificate
+  const tbsLength = readHeader(0x30); // tbsCertificate
+  pos += tbsLength;
+  readHeader(0x30); // signatureAlgorithm
+  const oidLength = readHeader(0x06);
+  const oidEnd = pos + oidLength;
+  const arcs: number[] = [];
+  let value = 0;
+  for (; pos < oidEnd; pos++) {
+    value = value * 128 + (der[pos]! & 0x7f);
+    if (!(der[pos]! & 0x80)) {
+      arcs.push(value);
+      value = 0;
+    }
+  }
+  const first = arcs.shift() ?? 0;
+  const head = first < 40 ? [0, first] : first < 80 ? [1, first - 40] : [2, first - 80];
+  return [...head, ...arcs].join('.');
+}
 
 // Define the electronAPI object
 const electronAPI: ElectronAPI = {
@@ -207,7 +234,7 @@ const electronAPI: ElectronAPI = {
     fromJSON: (json: unknown) => Papa.unparse(json),
   },
   htmlToJsx: {
-    convert: (html: string) => htmlToJSXConverter.convert(html),
+    convert: (html: string) => htmlToJsx(html),
   },
   php: {
     serialize: (data: unknown) => serialize(data),
@@ -219,37 +246,18 @@ const electronAPI: ElectronAPI = {
   x509: {
     decode: (cert: string) => {
       try {
-        const certificate = forge.pki.certificateFromPem(cert);
+        const certificate = new crypto.X509Certificate(cert);
+        const formatName = (name: string) => name.split('\n').filter(Boolean).join(', ');
         return {
-          subject: certificate.subject.attributes
-            .map((attr) => `${attr.shortName}=${attr.value}`)
-            .join(', '),
-          issuer: certificate.issuer.attributes
-            .map((attr) => `${attr.shortName}=${attr.value}`)
-            .join(', '),
-          notBefore: certificate.validity.notBefore.toISOString(),
-          notAfter: certificate.validity.notAfter.toISOString(),
-          serialNumber: certificate.serialNumber,
-          signatureAlgorithm: certificate.signatureOid,
+          subject: formatName(certificate.subject),
+          issuer: formatName(certificate.issuer),
+          notBefore: new Date(certificate.validFrom).toISOString(),
+          notAfter: new Date(certificate.validTo).toISOString(),
+          serialNumber: certificate.serialNumber.toLowerCase(),
+          signatureAlgorithm: readSignatureAlgorithmOid(certificate.raw),
           fingerprint: {
-            sha1: forge.md.sha1
-              .create()
-              .update(
-                forge.asn1
-                  .toDer(forge.pki.certificateToAsn1(certificate))
-                  .getBytes()
-              )
-              .digest()
-              .toHex(),
-            sha256: forge.md.sha256
-              .create()
-              .update(
-                forge.asn1
-                  .toDer(forge.pki.certificateToAsn1(certificate))
-                  .getBytes()
-              )
-              .digest()
-              .toHex(),
+            sha1: crypto.createHash('sha1').update(certificate.raw).digest('hex'),
+            sha256: crypto.createHash('sha256').update(certificate.raw).digest('hex'),
           },
         };
       } catch (e) {

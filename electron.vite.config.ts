@@ -102,7 +102,7 @@ export default defineConfig({
         }
       } : undefined,
       rollupOptions: {
-        external: ['@zxing/library', 'qrcode', 'jsbarcode', 'xmldom']
+        external: ['@zxing/library', 'qrcode', 'jsbarcode', '@xmldom/xmldom']
       }
     }
   },
@@ -132,17 +132,15 @@ export default defineConfig({
           'marked',
           'color-convert',
           'qrcode',
-          'jsrsasign',
           'uuid',
           'ulid',
           'diff',
           'cron-parser',
-          'htmltojsx',
+          'html-to-jsx-transform',
           'php-serialize',
           'svgo',
           'sass',
           'less',
-          'node-forge',
           'ajv'
         ]
       }

@@ -9,7 +9,7 @@ import {
   GlobalHistogramBinarizer,
 } from '@zxing/library';
 import JsBarcode from 'jsbarcode';
-import { DOMImplementation, XMLSerializer } from 'xmldom';
+import { DOMImplementation, XMLSerializer } from '@xmldom/xmldom';
 import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions } from '../types/ipc';
 
 // Window control handlers
