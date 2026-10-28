@@ -14,6 +14,9 @@
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "postinstall": "node scripts/setup-monaco.js",
+    "release:patch": "npm version patch -m \"chore(release): v%s\" && git push --follow-tags",
+    "release:minor": "npm version minor -m \"chore(release): v%s\" && git push --follow-tags",
+    "release:major": "npm version major -m \"chore(release): v%s\" && git push --follow-tags",
     "rebuild": "electron-rebuild"
   },
   "keywords": [
@@ -139,6 +142,7 @@
           ]
         }
       ],
+      "artifactName": "ForgeTools-${version}-mac-${arch}.${ext}",
       "category": "public.app-category.developer-tools",
       "identity": null,
       "hardenedRuntime": false,
@@ -160,6 +164,7 @@
           ]
         }
       ],
+      "artifactName": "ForgeTools-${version}.${ext}",
       "category": "Development",
       "icon": "build/icon512.png"
     },

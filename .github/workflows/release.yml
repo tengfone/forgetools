@@ -1,29 +1,33 @@
 name: Release
+
+# Builds and releases only when a version tag is pushed, e.g.:
+#   npm version patch   (bumps package.json, commits, creates tag vX.Y.Z)
+#   git push --follow-tags
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
 
-# Add permissions block
 permissions:
   contents: write
-  packages: write
-  issues: write
-  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 22
 
 jobs:
-  # Run Playwright tests first
   test:
-    timeout-minutes: 10
+    timeout-minutes: 15
     runs-on: ubuntu-latest
-    continue-on-error: true  # Allow test failures without blocking the workflow
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Install system dependencies
@@ -35,6 +39,7 @@ jobs:
             libxss1 \
             libgtk-3-0 \
             libnss3 \
+            libnss3-tools \
             libasound2t64 \
             libatk1.0-0 \
             libatk-bridge2.0-0 \
@@ -51,32 +56,23 @@ jobs:
             libxrender1 \
             libpango-1.0-0 \
             libcairo2 \
-            libnss3-tools \
-            libxss1 \
             libsecret-1-0
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Run postinstall script
-        run: npm run postinstall
+        run: npm ci # also runs the postinstall script
 
       - name: Build application
         run: npm run build
 
-      - name: Install Playwright Browsers
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        run: |
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-          sleep 3
-          DISPLAY=:99 xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm run test:ci
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm run test:ci
         env:
           CI: true
           ELECTRON_NO_SANDBOX: 1
           ELECTRON_DISABLE_SANDBOX: 1
-          DEBUG: electron*,playwright*
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -85,123 +81,23 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-  # Generate changelog
-  changelog:
-    needs: [test]
-    runs-on: ubuntu-latest
-    outputs:
-      release_notes: ${{ steps.release-notes.outputs.notes }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate release notes
-        id: release-notes
-        shell: bash
-        run: |
-          # Get the latest tag
-          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          # Create release notes
-          if [ -z "$latest_tag" ]; then
-            # Initial release
-            release_notes="## 🚀 Initial Release\n\n"
-            release_notes+="### ✨ New Features\n"
-            release_notes+="$(git log --pretty=format:"- %s" --grep="^feat" || echo "")\n\n"
-            release_notes+="### 🐛 Bug Fixes\n"
-            release_notes+="$(git log --pretty=format:"- %s" --grep="^fix" || echo "")\n\n"
-            release_notes+="### 📝 Documentation\n"
-            release_notes+="$(git log --pretty=format:"- %s" --grep="^docs" || echo "")\n\n"
-            release_notes+="### ⚡️ Performance\n"
-            release_notes+="$(git log --pretty=format:"- %s" --grep="^perf" || echo "")"
-          else
-            # Changes since last tag
-            release_notes="## 🔄 Changes since ${latest_tag}\n\n"
-            release_notes+="### ✨ New Features\n"
-            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^feat" || echo "")\n\n"
-            release_notes+="### 🐛 Bug Fixes\n"
-            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^fix" || echo "")\n\n"
-            release_notes+="### 📝 Documentation\n"
-            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^docs" || echo "")\n\n"
-            release_notes+="### ⚡️ Performance\n"
-            release_notes+="$(git log ${latest_tag}..HEAD --pretty=format:"- %s" --grep="^perf" || echo "")"
-          fi
-
-          # Properly escape the content for GitHub Actions output
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$release_notes" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-  # Version bump and tag creation
-  version:
-    needs: [changelog]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    outputs:
-      new_version: ${{ steps.version-bump.outputs.newTag }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Configure Git
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Bump version and push tag
-        id: version-bump
-        uses: phips28/gh-action-bump-version@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: github-actions[bot]
-          GITHUB_EMAIL: github-actions[bot]@users.noreply.github.com
-        with:
-          tag-prefix: "v"
-          commit-message: "chore(release): bump version to {{version}} [skip ci]"
-
-      - name: Get new version
-        id: get-version
-        run: echo "New version will be ${{ steps.version-bump.outputs.newTag }}"
-
-  # Build process
   build:
-    needs: [version, changelog]
+    needs: [test]
     runs-on: ${{ matrix.os }}
-    # Allow build to run even if version job was skipped (on tag pushes)
-    if: always() && (needs.version.result == 'success' || needs.version.result == 'skipped')
     strategy:
+      fail-fast: true
       matrix:
+        # macOS builds both x64 and arm64 in one run (see package.json "mac.target")
         os: [macos-latest, ubuntu-latest, windows-latest]
-        arch: [x64, arm64]
-        exclude:
-          - os: windows-latest
-            arch: arm64
-          - os: ubuntu-latest
-            arch: arm64
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.version.outputs.new_version || github.ref }}
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
@@ -212,128 +108,101 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libxtst6 \
-            libxss1 \
-            libgtk-3-0 \
-            libnss3 \
-            libasound2t64 \
-            libatk1.0-0 \
-            libatk-bridge2.0-0 \
-            libgbm1 \
-            libdrm2 \
-            libxcb1 \
-            libxkbcommon0 \
-            libx11-6 \
-            libxcomposite1 \
-            libxdamage1 \
-            libxext6 \
-            libxfixes3 \
-            libxrandr2 \
-            libxrender1
+          sudo apt-get install -y libxtst6 libxss1 libgtk-3-0 libnss3 libasound2t64 libgbm1
 
       - name: Install dependencies
-        run: |
-          npm ci
-          npm run postinstall
+        run: npm ci
 
-      - name: Get version from tag or version job
-        id: get-version
+      - name: Sync package.json version with tag
         shell: bash
         run: |
-          if [ -n "${{ needs.version.outputs.new_version }}" ]; then
-            echo "version=${{ needs.version.outputs.new_version }}" >> $GITHUB_OUTPUT
-          else
-            # Extract version from tag (e.g., v1.0.14 -> 1.0.14)
-            VERSION_TAG="${GITHUB_REF#refs/tags/v}"
-            echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
-          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Building version $VERSION"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
 
-      - name: Build Electron App
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.get-version.outputs.version }}
-        run: npm run dist
-
-      - name: Prepare artifacts
-        shell: bash
-        run: |
-          if [ "${{ runner.os }}" == "macOS" ]; then
-            cd dist/mac
-            zip -r ../ForgeTools-${{ steps.get-version.outputs.version }}-mac-${{ matrix.arch }}.zip ForgeTools.app
-          fi
+      - name: Build Electron app
+        run: npm run build && npx electron-builder --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: forgetools-${{ matrix.os }}-${{ matrix.arch }}
+          name: forgetools-${{ runner.os }}
           path: |
             dist/*.exe
             dist/*.zip
             dist/*.AppImage
-          if-no-files-found: ignore
+          if-no-files-found: error
 
-  # Create Release
   release:
-    needs: [build, version, changelog]
-    # Allow release to run even if version job was skipped (on tag pushes)
-    if: always() && (needs.version.result == 'success' || needs.version.result == 'skipped') && needs.build.result == 'success'
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get version from tag or version job
-        id: get-version
-        shell: bash
-        run: |
-          if [ -n "${{ needs.version.outputs.new_version }}" ]; then
-            echo "version=${{ needs.version.outputs.new_version }}" >> $GITHUB_OUTPUT
-          else
-            # Extract version from tag (e.g., v1.0.14 -> 1.0.14)
-            VERSION_TAG="${GITHUB_REF#refs/tags/v}"
-            echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
-          fi
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: artifacts
+          pattern: forgetools-*
+          merge-multiple: true
 
-      - name: Display structure of downloaded files
-        run: ls -R dist
-
-      - name: Move artifacts to root dist
+      - name: Collect release files
         run: |
           mkdir -p release
-          find dist -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.AppImage" \) -exec mv {} release/ \;
+          find artifacts -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.AppImage" \) -exec mv {} release/ \;
+          ls -la release
 
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.get-version.outputs.version }}
-          RELEASE_NOTES: ${{ needs.changelog.outputs.release_notes }}
+      - name: Generate release notes
+        shell: bash
         run: |
-          gh release create "$VERSION" \
-            --title "ForgeTools $VERSION" \
-            --notes "# 🚀 ForgeTools $VERSION
+          TAG="$GITHUB_REF_NAME"
+          VERSION="${TAG#v}"
+          PREV_TAG=$(git describe --tags --abbrev=0 --match "v*" "${TAG}^" 2>/dev/null || true)
+          RANGE="${PREV_TAG:+${PREV_TAG}..}${TAG}"
 
-            $RELEASE_NOTES
-            
-            ## 📥 Installation
-            Choose the appropriate file for your platform:
-            
-            - 🪟 Windows: Download \`ForgeTools-Portable-$VERSION.exe\`
-            - 🍎 macOS Intel: Download and unzip \`ForgeTools-$VERSION-mac-x64.zip\`
-            - 🍎 macOS Apple Silicon: Download and unzip \`ForgeTools-$VERSION-mac-arm64.zip\`
-            - 🐧 Linux: Download \`ForgeTools-$VERSION.AppImage\`
-            
-            ## 🔍 SHA-256 Checksums
-            \`\`\`
-            $(cd release && sha256sum * 2>/dev/null || true)
-            \`\`\`" \
+          section() {
+            local title="$1" pattern="$2"
+            local entries
+            entries=$(git log "$RANGE" --no-merges --pretty=format:"- %s (%h)" -E --grep="$pattern" || true)
+            if [ -n "$entries" ]; then
+              printf '### %s\n%s\n\n' "$title" "$entries"
+            fi
+          }
+
+          {
+            printf '# 🚀 ForgeTools %s\n\n' "$VERSION"
+            if [ -n "$PREV_TAG" ]; then
+              printf '## 🔄 Changes since %s\n\n' "$PREV_TAG"
+            else
+              printf '## 🚀 Initial Release\n\n'
+            fi
+            section "✨ New Features" '^feat'
+            section "🐛 Bug Fixes"    '^fix'
+            section "⚡️ Performance"  '^perf'
+            section "📝 Documentation" '^docs'
+
+            printf '## 📥 Installation\n\n'
+            printf -- '- 🪟 Windows: download `ForgeTools-Portable-%s.exe`\n' "$VERSION"
+            printf -- '- 🍎 macOS Intel: download and unzip `ForgeTools-%s-mac-x64.zip`\n' "$VERSION"
+            printf -- '- 🍎 macOS Apple Silicon: download and unzip `ForgeTools-%s-mac-arm64.zip`\n' "$VERSION"
+            printf -- '- 🐧 Linux: download `ForgeTools-%s.AppImage`\n\n' "$VERSION"
+
+            printf '## 🔍 SHA-256 Checksums\n\n```\n'
+            (cd release && sha256sum *)
+            printf '```\n'
+          } > release-notes.md
+
+          cat release-notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "ForgeTools ${GITHUB_REF_NAME#v}" \
+            --notes-file release-notes.md \
             --draft \
             release/*
