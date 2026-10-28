@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import colorConvert from 'color-convert';
 import { v4 as uuidv4 } from 'uuid';
 import { ulid } from 'ulid';
-import { diffLines } from 'diff';
+import { diffLines, diffWords, diffChars } from 'diff';
 import cronParser from 'cron-parser';
 import Papa from 'papaparse';
 import { htmlToJsx } from 'html-to-jsx-transform';
@@ -417,7 +417,9 @@ contextBridge.exposeInMainWorld('cronParser', cronParserAPI);
 
 // Expose Diff library for text diff tool
 const diffAPI: DiffAPI = {
-  diffLines: diffLines,
+  diffLines,
+  diffWords,
+  diffChars,
 };
 
 contextBridge.exposeInMainWorld('Diff', diffAPI);
