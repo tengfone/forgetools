@@ -147,3 +147,7 @@ docs-shots/
 .opencode/
 .pi/
 .impeccable/
+
+# demo recording scratch
+.demo-frames/
+
