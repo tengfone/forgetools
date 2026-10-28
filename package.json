@@ -134,7 +134,7 @@
     ],
     "afterPack": "./build/afterPack.js",
     "mac": {
-      "icon": "build/icon512.png",
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "zip",
@@ -155,7 +155,7 @@
     },
     "win": {
       "target": "portable",
-      "icon": "build/icon256.png"
+      "icon": "build/icon.ico"
     },
     "linux": {
       "target": [
