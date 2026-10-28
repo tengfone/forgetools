@@ -13,7 +13,7 @@ import Papa from 'papaparse';
 import { htmlToJsx } from 'html-to-jsx-transform';
 import { serialize, unserialize } from 'php-serialize';
 import type { ElectronAPI, CronParserAPI, DiffAPI } from '../types/electronAPI';
-import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions } from '../types/ipc';
+import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions, type BackgroundSettings } from '../types/ipc';
 
 // Heavy libraries (sass, less, svgo, ajv) are loaded on first use rather than at
 // preload time, so window startup does not pay for tools the user never opens.
@@ -82,6 +82,17 @@ const electronAPI: ElectronAPI = {
     minimize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.MINIMIZE),
     maximize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.MAXIMIZE),
     close: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.CLOSE),
+    setTitleBarTheme: (theme: 'dark' | 'light') => ipcRenderer.send(IPC_CHANNELS.WINDOW.SET_THEME, theme === 'dark' ? 'dark' : 'light'),
+  },
+  // Background / tray mode
+  background: {
+    getBackgroundSettings: () => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.GET),
+    setBackgroundSettings: (patch: Partial<BackgroundSettings>) => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.SET, {
+      ...(typeof patch.keepInBackground === 'boolean' ? { keepInBackground: patch.keepInBackground } : {}),
+      ...(typeof patch.openAtLogin === 'boolean' ? { openAtLogin: patch.openAtLogin } : {}),
+    }),
+    setGlobalShortcut: (accel: string | null) => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.SET_SHORTCUT, typeof accel === 'string' ? accel : null),
+    onGoHome: (cb: () => void) => { ipcRenderer.on(IPC_CHANNELS.BACKGROUND.GO_HOME, () => cb()); },
   },
   beautify: {
     html: beautify.html,
@@ -127,7 +138,8 @@ const electronAPI: ElectronAPI = {
     parse: marked.parse,
   },
   clipboard: {
-    writeText: async (text: string) => navigator.clipboard.writeText(text),
+    writeText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write', text),
+    readText: (): Promise<string> => ipcRenderer.invoke('clipboard:read'),
   },
   crypto: {
     md5: (text: string) => crypto.createHash('md5').update(text).digest('hex'),

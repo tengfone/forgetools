@@ -22,6 +22,7 @@ async function launchElectronApp() {
       ELECTRON_ENABLE_LOGGING: true,
       ELECTRON_ENABLE_STACK_DUMPING: true,
       NODE_ENV: "test",
+      FORGE_E2E: "1", // no tray, no close-to-tray, no single-instance lock
       DISPLAY: process.env.DISPLAY || ":99.0",
       ELECTRON_NO_SANDBOX: "1",
       ELECTRON_DISABLE_SANDBOX: "1",
@@ -131,6 +132,8 @@ async function launchElectronApp() {
         
         // Give app time to fully initialize
         await window.waitForTimeout(1000);
+
+        await window.waitForSelector("#toolsNav [data-tool-id]", { state: "visible", timeout: 10000 });
         
         console.log("Window loaded successfully");
         break;

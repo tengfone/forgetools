@@ -3,7 +3,14 @@ export const IPC_CHANNELS = {
   WINDOW: {
     MINIMIZE: 'window:minimize',
     MAXIMIZE: 'window:maximize',
-    CLOSE: 'window:close'
+    CLOSE: 'window:close',
+    SET_THEME: 'window:set-theme'
+  },
+  BACKGROUND: {
+    GET: 'background:get',
+    SET: 'background:set',
+    SET_SHORTCUT: 'background:set-shortcut',
+    GO_HOME: 'background:go-home'
   },
   QRCODE: {
     GENERATE: 'qrcode:generate',
@@ -44,3 +51,12 @@ export interface BarcodeGenerateOptions {
   marginRight?: number;
 }
 
+
+/** Main-process preferences for background/tray mode (persisted in userData). */
+export interface BackgroundSettings {
+  keepInBackground: boolean;
+  openAtLogin: boolean;
+  globalShortcut: string | null;
+}
+
+export interface ShortcutResult { ok: boolean; error?: string; accelerator: string | null }

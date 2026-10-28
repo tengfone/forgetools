@@ -144,11 +144,27 @@ export function clearableFieldIds(root: HTMLElement): string[] {
   }).map(el => el.id);
 }
 
-export async function copyText(text: string): Promise<void> {
+type ClipApi = { writeText?: (t: string) => Promise<void>; readText?: () => Promise<string> };
+const clipApi = (): ClipApi | undefined =>
+  (window as unknown as { electronAPI?: { clipboard?: ClipApi } }).electronAPI?.clipboard;
+
+/** Write to the system clipboard via the main process (navigator fallback outside Electron). */
+export function writeClipboardText(text: string): Promise<void> {
+  const api = clipApi();
+  return api?.writeText ? api.writeText(text) : navigator.clipboard.writeText(text);
+}
+
+/** Read the system clipboard via the main process (navigator fallback outside Electron). */
+export function readClipboardText(): Promise<string> {
+  const api = clipApi();
+  return api?.readText ? api.readText() : navigator.clipboard.readText();
+}
+
+export async function copyText(text: string, msg = 'Copied'): Promise<void> {
   if (!text) { showToast('Nothing to copy yet', 'error'); return; }
   try {
-    await navigator.clipboard.writeText(text);
-    showToast('Copied');
+    await writeClipboardText(text);
+    showToast(msg);
   } catch {
     showToast('Copy failed. Select the text and copy it manually.', 'error');
   }
@@ -158,7 +174,7 @@ export async function pasteInto(id: string): Promise<void> {
   const field = $f(id);
   if (!field) return;
   try {
-    field.value = await navigator.clipboard.readText();
+    field.value = await readClipboardText();
     // Flag as a user edit so two-way tools treat the pasted pane as the source.
     field.dispatchEvent(Object.assign(new Event('input', { bubbles: true }), { fromPaste: true }));
   } catch {

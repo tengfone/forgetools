@@ -121,7 +121,7 @@
       "!**/node_modules/**/CHANGELOG*",
       "**/node_modules/**/{LICENSE,LICENCE,COPYING,NOTICE}*"
     ],
-    "extraResources": [],
+    "extraResources": [{ "from": "build/icon256.png", "to": "tray.png" }],
     "extraFiles": [],
     "npmRebuild": false,
     "nodeGypRebuild": false,

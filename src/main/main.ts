@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, session } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeTheme, session } from 'electron';
 import path from 'path';
 import QRCode from 'qrcode';
 import {
@@ -11,6 +11,11 @@ import {
 import JsBarcode from 'jsbarcode';
 import { DOMImplementation, XMLSerializer } from '@xmldom/xmldom';
 import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions } from '../types/ipc';
+import { attachWindow, claimSingleInstance, initBackground, showWindow, startHidden } from './background';
+
+if (!claimSingleInstance()) app.quit();
+
+let mainWindow: BrowserWindow | null = null;
 
 // Window control handlers
 ipcMain.on(IPC_CHANNELS.WINDOW.MINIMIZE, () => {
@@ -30,12 +35,57 @@ ipcMain.on(IPC_CHANNELS.WINDOW.MAXIMIZE, () => {
 });
 
 ipcMain.on(IPC_CHANNELS.WINDOW.CLOSE, () => {
-  // On macOS, closing the window should quit the app (not keep it running in background)
-  // This provides a more intuitive experience for users
-  app.quit();
+  // Same path as the native close button: hides to the tray when background mode is on
+  BrowserWindow.getFocusedWindow()?.close();
 });
 
+// Title bar overlay (Windows/Linux): keep the native caption buttons in our palette
+const TITLEBAR_HEIGHT = 40;
+const overlayFor = (dark: boolean) => dark
+  ? { color: '#0b0b0c', symbolColor: '#a1a1aa', height: TITLEBAR_HEIGHT }
+  : { color: '#f4f4f2', symbolColor: '#52525b', height: TITLEBAR_HEIGHT };
+
+ipcMain.on(IPC_CHANNELS.WINDOW.SET_THEME, (event, theme: unknown) => {
+  if (process.platform === 'darwin') return;
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+  try {
+    win.setTitleBarOverlay(overlayFor(theme === 'dark'));
+  } catch {
+    // Overlay not supported on this platform/window: nothing to sync
+  }
+});
+
+// Minimal hidden menu on Windows/Linux: no visible menu bar, but the role
+// accelerators (undo/redo/cut/copy/paste/select all, reload, devtools) keep working.
+function installMenu(): void {
+  if (process.platform === 'darwin') return; // keep the default macOS app menu
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { label: 'Edit', submenu: [
+      { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+      { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
+    ] },
+    { label: 'View', submenu: [
+      { role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }, { type: 'separator' },
+      { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' },
+    ] },
+  ]));
+}
+
 // QR code handlers
+// Clipboard goes through the main process: navigator.clipboard needs
+// permissions that the deny-all permission handler refuses.
+const CLIPBOARD_MAX = 20 * 1024 * 1024;
+ipcMain.handle('clipboard:write', (_event, text: unknown): void => {
+  if (typeof text !== 'string') throw new Error('clipboard:write expects a string');
+  if (text.length > CLIPBOARD_MAX) throw new Error('Text too large for clipboard');
+  clipboard.writeText(text);
+});
+ipcMain.handle('clipboard:read', (): string => {
+  const t = clipboard.readText();
+  return t.length > CLIPBOARD_MAX ? t.slice(0, CLIPBOARD_MAX) : t;
+});
+
 ipcMain.handle(IPC_CHANNELS.QRCODE.GENERATE, async (_event, text: string, options?: QRCodeGenerateOptions) => {
   return await QRCode.toDataURL(text, {
     errorCorrectionLevel: 'M',
@@ -152,17 +202,19 @@ ipcMain.handle(IPC_CHANNELS.BARCODE.GENERATE, async (_event, text: string, optio
 function createWindow(): void {
   const isMac = process.platform === 'darwin';
   
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
+    show: false,
     width: 1000,
     height: 600,
-    minWidth: 1000,
+    minWidth: 720,
     minHeight: 500,
     center: true,
-    // Use native window controls on all platforms
-    // macOS: hiddenInset gives native controls with custom titlebar area
-    // Windows/Linux: frame: true gives native titlebar with controls
-    frame: true, // Native frame on all platforms
-    titleBarStyle: isMac ? 'hiddenInset' : undefined, // Native macOS controls with inset
+    // No native title bar on any platform; the renderer draws its own 40px bar.
+    // macOS: hiddenInset keeps the traffic lights inset into our bar.
+    // Windows/Linux: 'hidden' + titleBarOverlay keeps the REAL native caption
+    // buttons (minimise / maximise / close, snap layouts) drawn over our bar.
+    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
+    ...(isMac ? {} : { titleBarOverlay: overlayFor(nativeTheme.shouldUseDarkColors) }),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -172,6 +224,12 @@ function createWindow(): void {
     },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0c' : '#f4f4f2', // match theme to avoid white flash
   });
+
+  if (!isMac) { mainWindow.setAutoHideMenuBar(false); mainWindow.setMenuBarVisibility(false); }
+  const win = mainWindow;
+  attachWindow(win);
+  win.on('closed', () => { if (mainWindow === win) mainWindow = null; });
+  if (!startHidden()) win.once('ready-to-show', () => win.show());
 
   // Set proper CSP headers
   // Note: 'unsafe-eval' is required for Monaco Editor workers (AMD/RequireJS)
@@ -239,18 +297,19 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, callback) => callback(false));
+  session.defaultSession.setPermissionCheckHandler(() => false);
+  installMenu();
   createWindow();
+  initBackground(() => mainWindow);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (!mainWindow) createWindow();
+    else showWindow();
   });
 });
 
 app.on('window-all-closed', () => {
-  // Quit the app when all windows are closed, even on macOS
-  // This ensures the app doesn't stay running in the background
+  // Only reached when background mode is off (the close handler hides otherwise): quit for real
   app.quit();
 });
 

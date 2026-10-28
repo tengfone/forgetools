@@ -8,10 +8,11 @@ import { logger } from './logger';
 import { detect, type Candidate } from './detect';
 import './tools';
 import { getHelp } from './tools/help';
+import { CATEGORY_ORDER } from './tools';
 import { scoreTool } from './search';
 import { esc, bumpToolEpoch } from './ui';
 import { captureFields, restoreFields, clearableFieldIds, clearWithUndo, type FieldSnapshot } from './ui';
-import { showToast, wireClipboardActions, setStatus, openModal, closeModal, getIndent, getIndentChoice, setIndentChoice, type IndentChoice } from './ui';
+import { showToast, copyText, readClipboardText, wireClipboardActions, setStatus, openModal, closeModal, getIndent, getIndentChoice, setIndentChoice, type IndentChoice } from './ui';
 
 // Configure Monaco loader (using requirejs for Monaco)
 // Monaco Editor uses AMD/RequireJS which is loaded via script tag
@@ -172,12 +173,27 @@ function setTheme(theme: 'system' | 'light' | 'dark'): void {
   if (isDark) {
     document.documentElement.classList.add('dark');
   }
+  // Keep the native caption buttons (Windows/Linux overlay) in step with the app theme
+  try { window.electronAPI?.window?.setTitleBarTheme?.(isDark ? 'dark' : 'light'); } catch { /* not in Electron */ }
   
   // Update Monaco Theme (themes are rebuilt from the CSS variables now in effect)
   if (window.monaco) {
     defineMonacoThemes();
     window.monaco.editor.setTheme(isDark ? 'forge-dark' : 'forge-light');
   }
+  syncThemeButton();
+}
+
+function syncThemeButton(): void {
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  const name = currentTheme === 'system' ? 'System' : currentTheme === 'light' ? 'Light' : 'Dark';
+  const next = currentTheme === 'system' ? 'light' : currentTheme === 'light' ? 'dark' : 'system';
+  btn.dataset.theme = currentTheme;
+  btn.setAttribute('aria-label', `Theme: ${name}. Switch to ${next}`);
+  btn.title = `Theme: ${name} (click for ${next})`;
+  const icon = btn.querySelector('.material-icons');
+  if (icon) icon.textContent = currentTheme === 'system' ? 'brightness_auto' : currentTheme === 'light' ? 'light_mode' : 'dark_mode';
 }
 
 function isDarkActive(): boolean {
@@ -437,58 +453,160 @@ function setupTitlebar(): void {
   const titlebar = document.querySelector<HTMLElement>('.titlebar');
   if (!titlebar) return;
   document.querySelectorAll('.mod-key').forEach(el => { el.textContent = isMac ? '\u2318' : 'Ctrl'; });
-  // macOS: native traffic lights sit on the left with titleBarStyle 'hiddenInset'
-  if (isMac) titlebar.style.paddingLeft = '78px';
+  document.getElementById('railSearch')?.setAttribute('title', `Search (${isMac ? '\u2318' : 'Ctrl '}K)`);
+  // Platform class drives titlebar insets: traffic lights (mac, left) or caption overlay (win/linux, right)
+  document.documentElement.classList.add(isMac ? 'platform-mac' : (window.platform?.isLinux ? 'platform-linux' : 'platform-win'));
+  document.getElementById('homeLogo')?.addEventListener('click', () => goHome());
 
   const controls = document.getElementById('titlebarControls') ?? titlebar;
-  const label = document.createElement('label');
-  label.htmlFor = 'themeSelect';
-  label.className = 'sr-only';
-  label.textContent = 'Theme';
-  const themeSelect = document.createElement('select');
-  themeSelect.id = 'themeSelect';
-  themeSelect.className = 'toolbar-select';
-  themeSelect.innerHTML = '<option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>';
-  themeSelect.value = currentTheme;
-  themeSelect.onchange = () => setTheme(themeSelect.value as 'system' | 'light' | 'dark');
-  const themeIcon = document.createElement('span');
-  themeIcon.className = 'material-icons theme-icon';
-  themeIcon.setAttribute('aria-hidden', 'true');
-  themeIcon.textContent = 'contrast';
-  controls.append(themeIcon, label, themeSelect);
-  const settings = document.createElement('button');
+  // Theme: one icon button cycling System -> Light -> Dark (label states the current mode)
+  const themeBtn = document.createElement('button');
+  themeBtn.type = 'button';
+  themeBtn.id = 'themeToggle';
+  themeBtn.className = 'tb-btn';
+  themeBtn.innerHTML = '<i class="material-icons" aria-hidden="true"></i>';
+  themeBtn.onclick = () => {
+    const order = ['system', 'light', 'dark'] as const;
+    setTheme(order[(order.indexOf(currentTheme) + 1) % order.length]!);
+  };
+  controls.append(themeBtn);
+  syncThemeButton();  const settings = document.createElement('button');
   settings.type = 'button';
   settings.id = 'titlebarSettings';
-  settings.className = 'btn-icon btn-ghost btn-sm';
+  settings.className = 'tb-btn';
   settings.title = 'Settings';
   settings.setAttribute('aria-label', 'Settings');
   settings.setAttribute('aria-haspopup', 'dialog');
-  settings.innerHTML = '<i class="material-icons icon-sm" aria-hidden="true">tune</i>';
+  settings.innerHTML = '<i class="material-icons" aria-hidden="true">tune</i>';
   settings.onclick = () => openSettingsSheet(settings);
   controls.append(settings);
 }
 
-// ---- Responsive off-canvas sidebar (< 760px) ----
-const narrowMq = window.matchMedia('(max-width: 759px)');
+// ---- Sidebar: one navigation surface ----
+// Wide (>= 900px): docked sidebar; the header toggle (Ctrl+B) collapses it to a
+// 56px icon rail (Home, pinned tools, category icons). State is persisted.
+// Narrow (< 900px): the same sidebar is a drawer opened from the titlebar menu button.
+const narrowMq = window.matchMedia('(max-width: 899px)');
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
+const CATEGORY_ICONS: Record<string, string> = {
+  'Format': 'format_align_left',
+  'Convert': 'swap_horiz',
+  'Inspect & Decode': 'manage_search',
+  'Compare': 'compare_arrows',
+  'Generate': 'auto_fix_high',
+  'Text & Utilities': 'text_fields',
+};
+const isCollapsed = (): boolean => !narrowMq.matches && document.body.classList.contains('sidebar-collapsed');
+function syncSidebarToggle(): void {
+  const btn = document.getElementById('sidebarToggle');
+  const menu = document.getElementById('navMenuBtn');
+  const drawerOpen = document.body.classList.contains('drawer-open');
+  if (btn) {
+    const label = narrowMq.matches ? 'Close sidebar' : isCollapsed() ? 'Expand sidebar' : 'Collapse sidebar';
+    btn.setAttribute('aria-label', label);
+    btn.title = `${label} (${modKey()}+B)`;
+    btn.setAttribute('aria-expanded', String(narrowMq.matches ? drawerOpen : !isCollapsed()));
+    const icon = btn.querySelector('.material-icons');
+    if (icon) icon.textContent = narrowMq.matches ? 'close' : isCollapsed() ? 'menu' : 'menu_open';
+  }
+  menu?.setAttribute('aria-expanded', String(drawerOpen));
+  // Collapsed rail: labels move to tooltips
+  document.querySelectorAll<HTMLElement>('#sidebar .nav-item').forEach(el => {
+    const label = el.querySelector('.nav-label')?.textContent ?? '';
+    if (isCollapsed()) el.setAttribute('aria-label', label); else el.removeAttribute('aria-label');
+  });
+}
 function setDrawer(open: boolean, focusSearch = false): void {
-  const toggle = document.getElementById('sidebarToggle');
   const scrim = document.getElementById('sidebarScrim');
-  document.body.classList.toggle('drawer-open', open);
-  toggle?.setAttribute('aria-expanded', String(open));
-  toggle?.setAttribute('aria-label', open ? 'Hide tools list' : 'Show tools list');
-  if (scrim) scrim.hidden = !open;
-  if (open && focusSearch) (document.getElementById('sidebarSearch') as HTMLInputElement | null)?.focus();
+  document.body.classList.toggle('drawer-open', open && narrowMq.matches);
+  if (scrim) scrim.hidden = !(open && narrowMq.matches);
+  syncSidebarToggle();
+  if (open && focusSearch) document.getElementById('sidebarSearch')?.focus();
+}
+function setCollapsed(collapsed: boolean): void {
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  syncSidebarToggle();
+}
+function toggleSidebar(): void {
+  if (narrowMq.matches) setDrawer(!document.body.classList.contains('drawer-open'), true);
+  else setCollapsed(!isCollapsed());
+}
+/** Collapsed rail: one icon per category; clicking expands the sidebar to that category. */
+function renderCategoryIcons(categories: string[]): void {
+  const wrap = document.getElementById('sideCats');
+  if (!wrap) return;
+  wrap.textContent = '';
+  categories.forEach(cat => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'nav-item side-cat';
+    b.dataset.category = cat;
+    b.title = cat;
+    b.setAttribute('aria-label', `Show ${cat}`);
+    b.innerHTML = `<i class="material-icons nav-icon" aria-hidden="true">${CATEGORY_ICONS[cat] ?? 'folder'}</i>`;
+    b.onclick = () => {
+      setCollapsed(false);
+      const group = document.querySelector<HTMLElement>(`#toolsNav .nav-group[data-category="${CSS.escape(cat)}"]`);
+      if (!group) return;
+      setGroupExpanded(group, true);
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(getCollapsed().filter(c => c !== cat)));
+      group.scrollIntoView({ block: 'start' });
+      group.querySelector<HTMLElement>('.category-toggle')?.focus();
+    };
+    wrap.appendChild(b);
+  });
 }
 function setupDrawer(): void {
-  const toggle = document.getElementById('sidebarToggle');
-  toggle?.addEventListener('click', () => setDrawer(!document.body.classList.contains('drawer-open'), true));
-  document.getElementById('sidebarScrim')?.addEventListener('click', () => { setDrawer(false); toggle?.focus(); });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) { setDrawer(false); toggle?.focus(); }
+  document.body.classList.toggle('sidebar-collapsed', localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true');
+  syncSidebarToggle();
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    const wasDrawer = narrowMq.matches;
+    toggleSidebar();
+    if (wasDrawer) document.getElementById('navMenuBtn')?.focus();
   });
-  narrowMq.addEventListener('change', () => { if (!narrowMq.matches) setDrawer(false); });
+  document.getElementById('navMenuBtn')?.addEventListener('click', () => setDrawer(!document.body.classList.contains('drawer-open'), true));
+  document.getElementById('sidebarScrim')?.addEventListener('click', () => { setDrawer(false); document.getElementById('navMenuBtn')?.focus(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) { setDrawer(false); document.getElementById('navMenuBtn')?.focus(); }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
+      // Leave Ctrl+B to editors / text fields that use it? It has no meaning in our fields, so always toggle.
+      e.preventDefault();
+      toggleSidebar();
+    }
+  });
+  narrowMq.addEventListener('change', () => setDrawer(false));
+  document.getElementById('railHome')?.addEventListener('click', () => goHome());
 }
 
+/** Home row active state (the sidebar no longer lists recent tools, so nothing reorders). */
+function renderRail(): void {
+  const home = document.getElementById('railHome');
+  const onHome = !currentTool;
+  home?.classList.toggle('active', onHome);
+  if (onHome) home?.setAttribute('aria-current', 'page'); else home?.removeAttribute('aria-current');
+  // Collapsed rail: the current tool's category icon carries the active marker
+  document.querySelectorAll<HTMLElement>('#sideCats .side-cat').forEach(b => b.classList.toggle('active', b.dataset.category === currentTool?.category));
+}
+/** Back to the start screen: snapshot the open tool, deselect it. */
+function goHome(): void {
+  snapshotSession();
+  currentTool = null;
+  renderToken++;
+  bumpToolEpoch();
+  closeHelp();
+  if (narrowMq.matches) setDrawer(false);
+  document.getElementById('toolContainer')?.classList.add('hidden');
+  document.getElementById('welcomeState')?.classList.remove('hidden');
+  const custom = document.getElementById('customInterface');
+  if (custom) custom.innerHTML = '';
+  document.querySelectorAll('#toolsNav .nav-item').forEach(btn => { btn.classList.remove('active'); btn.removeAttribute('aria-current'); });
+  renderWelcome();
+  renderQuickGroups();
+  const live = document.getElementById('toolAnnounce');
+  if (live) { live.textContent = ''; setTimeout(() => { live.textContent = 'Home'; }, 50); }
+  focusHomeSearch(false);
+}
 function setupIndent(): void {
   const sel = document.getElementById('indentSelect') as HTMLSelectElement | null;
   if (!sel) return;
@@ -520,17 +638,18 @@ function copyCurrentOutput(): void {
       text = (typeof v === 'string' ? v : target.textContent ?? '').trim();
     }
   }
-  if (!text) { showToast('Nothing to copy yet', 'error'); return; }
-  navigator.clipboard.writeText(text)
-    .then(() => showToast('Copied output'))
-    .catch(() => showToast('Copy failed. Select the output and copy it manually.', 'error'));
+  void copyText(text, 'Copied output');
 }
 
 function initApp(): void {
   renderSidebar();
   renderWelcome();
-  document.getElementById('welcomeSearch')?.addEventListener('click', () => openPalette());
-  setupWelcomePaste();
+  setupHomeSearch();
+  setupBackgroundSettings();
+  window.electronAPI?.background?.onGoHome(() => {
+    if (currentTool) goHome();
+    focusHomeSearch();
+  });
   wireClipboardActions();
   setupHelp();
   setupEventListeners();
@@ -585,6 +704,7 @@ function renderSidebar(): void {
 
   nav.textContent = '';
   nav.appendChild(fragment);
+  renderCategoryIcons(Object.keys(categories));
   renderQuickGroups();
 }
 
@@ -633,7 +753,7 @@ function makeNavRow(tool: Tool, attr: 'data-tool-id' | 'data-tool-ref'): HTMLEle
   icon.setAttribute('aria-hidden', 'true');
   icon.textContent = tool.icon;
   const label = document.createElement('span');
-  label.className = 'truncate';
+  label.className = 'nav-label truncate';
   label.textContent = tool.title;
   btn.append(icon, label);
   btn.onclick = () => { switchTool(tool.id); if (narrowMq.matches) setDrawer(false); };
@@ -710,12 +830,11 @@ function renderQuickGroups(): void {
   if (!quick || !window.tools) return;
   const tools = window.tools;
   const pinned = getPinned();
-  // Recent: at most 3, never the tool that is already open, never a pinned tool.
-  const recent = getRecent().filter(id => !pinned.includes(id) && id !== currentTool?.id).slice(0, 3);
+
   const focusedRef = (document.activeElement as HTMLElement | null)?.closest('#navQuick') ? (document.activeElement as HTMLElement).getAttribute('data-tool-ref') : null;
   quick.textContent = '';
   if (pinned.length) quick.appendChild(makeNavGroup('nav-pinned', 'Pinned', pinned.map(id => tools[id]!), 'data-tool-ref', false));
-  if (recent.length) quick.appendChild(makeNavGroup('nav-recent', 'Recent', recent.map(id => tools[id]!), 'data-tool-ref', false));
+
   // Pin state shows on category rows too
   document.querySelectorAll<HTMLElement>('#toolsNav .nav-row').forEach(row => {
     const id = row.querySelector('.nav-item')?.getAttribute('data-tool-id');
@@ -728,10 +847,10 @@ function renderQuickGroups(): void {
     pin.title = on ? 'Unpin' : 'Pin';
   });
   if (focusedRef) quick.querySelector<HTMLElement>(`[data-tool-ref="${focusedRef}"]`)?.focus();
-  applySidebarFilter();
+  renderRail();
+  syncHomePins();
+  syncSidebarToggle();
 }
-
-let applySidebarFilter: () => void = () => {};
 
 function switchTool(toolId: string): void {
   if (!window.tools) return;
@@ -753,6 +872,7 @@ function switchTool(toolId: string): void {
     
     // Use requestAnimationFrame to batch DOM updates
     requestAnimationFrame(() => {
+      if (currentTool !== tool) return;
       if (welcome) welcome.classList.add('hidden');
       if (container) container.classList.remove('hidden');
       if (titleEl) titleEl.textContent = tool.title;
@@ -910,35 +1030,76 @@ function applyHandoff(tool: Tool): void {
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-function setupWelcomePaste(): void {
-  const box = document.getElementById('welcomePaste') as HTMLTextAreaElement | null;
-  const line = document.getElementById('welcomeDetect');
+/** Detection only kicks in when the box holds data, not a tool name being typed. */
+function looksLikeData(raw: string, top: Candidate | undefined): boolean {
+  const s = raw.trim();
+  if (!s || !top) return false;
+  return s.length > 12 || /\n/.test(s) || top.confidence >= 0.9;
+}
+
+/** Home's single box: filters the tool grid as you type, and offers a tool for pasted data. */
+function setupHomeSearch(): void {
+  const box = document.getElementById('homeSearch') as HTMLTextAreaElement | null;
+  const line = document.getElementById('homeDetect');
   if (!box || !line) return;
   let top: Candidate[] = [];
+  const visibleTiles = (): HTMLElement[] =>
+    Array.from(document.querySelectorAll<HTMLElement>('#homeGrid .home-tile')).filter(x => x.offsetParent !== null);
+
+  const grow = (): void => {
+    const cs = getComputedStyle(box);
+    const lh = parseFloat(cs.lineHeight) || 20;
+    const chrome = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    const max = lh * 6 + chrome;
+    box.style.height = 'auto';
+    const want = box.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    box.style.height = `${Math.min(want, max)}px`;
+    box.style.overflowY = want > max ? 'auto' : 'hidden';
+  };
+
+  const filter = (q: string): void => {
+    let total = 0;
+    document.querySelectorAll<HTMLElement>('#homeGrid .home-cat').forEach(sec => {
+      let n = 0;
+      sec.querySelectorAll<HTMLElement>('.home-tile-wrap').forEach(w => {
+        const t = window.tools?.[w.dataset.toolTileWrap!];
+        const ok = !q || (!!t && scoreTool(t, q) > 0);
+        w.hidden = !ok;
+        if (ok) n++;
+      });
+      sec.hidden = n === 0;
+      total += n;
+    });
+    const empty = document.getElementById('homeEmpty');
+    if (empty) empty.hidden = total > 0;
+    const count = document.getElementById('homeCount');
+    if (count) count.textContent = q ? `${total} match${total === 1 ? '' : 'es'}` : '';
+  };
+
   const open = (c: Candidate): void => {
     const text = box.value.trim();
     if (!text || !window.tools?.[c.toolId]) return;
     pendingHandoff = { toolId: c.toolId, text };
-    box.value = '';
-    render();
+    clear();
     switchTool(c.toolId);
   };
+
   const render = (): void => {
-    top = detect(box.value).filter(c => window.tools?.[c.toolId]).slice(0, 3);
-    line.innerHTML = '';
-    if (!box.value.trim()) return;
-    if (!top.length) {
-      line.innerHTML = '<span class="welcome-detect-none">No match. Try <button type="button" class="link-btn" id="welcomeJump">Jump to a tool</button>.</span>';
-      document.getElementById('welcomeJump')?.addEventListener('click', () => openPalette());
-      return;
-    }
+    const raw = box.value;
+    const found = detect(raw).filter(c => window.tools?.[c.toolId]).slice(0, 3);
+    top = looksLikeData(raw, found[0]) ? found : [];
+    box.classList.toggle('is-data', top.length > 0 || /\n/.test(raw));
+    // Pasted data is not a tool name: keep the whole grid instead of filtering it to nothing
+    filter(top.length || /\n/.test(raw.trim()) ? '' : raw.trim());
+    line.textContent = '';
     top.forEach((c, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       const title = window.tools![c.toolId]!.title;
       if (i === 0) {
         b.className = 'btn-primary';
-        b.innerHTML = `Looks like ${esc(c.label)} <span aria-hidden="true">&rarr;</span> Open ${esc(title)} <kbd class="welcome-detect-kbd">&crarr;</kbd>`;
+        b.dataset.detectTop = c.toolId;
+        b.innerHTML = `Looks like ${esc(c.label)} <span aria-hidden="true">&rarr;</span> Open in ${esc(title)} <kbd class="welcome-detect-kbd" aria-hidden="true">&crarr;</kbd>`;
       } else {
         b.className = 'welcome-detect-alt';
         b.textContent = `or ${title}`;
@@ -946,11 +1107,44 @@ function setupWelcomePaste(): void {
       b.onclick = () => open(c);
       line.appendChild(b);
     });
+    grow();
   };
+
+  const clear = (): void => { box.value = ''; render(); };
+
   box.addEventListener('input', render);
   box.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && top[0]) { e.preventDefault(); open(top[0]); }
+    if (e.isComposing) return;
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (top[0]) { open(top[0]); return; }
+      const first = visibleTiles()[0];
+      if (first && box.value.trim()) { const id = first.dataset.toolTile!; clear(); switchTool(id); }
+    } else if (e.key === 'Escape' && box.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      clear();
+    } else if (e.key === 'ArrowDown') {
+      // Leave the textarea only from its last line, so multi-line pastes stay editable
+      const after = box.value.slice(box.selectionEnd);
+      if (after.includes('\n')) return;
+      const target = line.querySelector<HTMLElement>('button') ?? visibleTiles()[0];
+      if (target) { e.preventDefault(); target.focus(); }
+    }
   });
+  // Arrow Down from the detection row continues into the grid
+  line.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { const t = visibleTiles()[0]; if (t) { e.preventDefault(); t.focus(); } }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); box.focus(); }
+  });
+  render();
+}
+
+function focusHomeSearch(select = true): void {
+  const box = document.getElementById('homeSearch') as HTMLTextAreaElement | null;
+  if (!box) return;
+  box.focus({ preventScroll: true });
+  if (select) box.select();
 }
 
 function restoreSession(tool: Tool): void {
@@ -1145,53 +1339,11 @@ async function processInput(): Promise<void> {
 }
 
 function setupEventListeners(): void {
-  // Sidebar Search - optimized with debouncing and batched DOM updates
-  const searchInput = document.getElementById('sidebarSearch') as HTMLInputElement | null;
+  // Sidebar search trigger: opens the command palette (one search model)
+  const searchInput = document.getElementById('sidebarSearch') as HTMLButtonElement | null;
   if (searchInput) {
-    const applyFilter = (): void => {
-      const term = searchInput.value.trim().toLowerCase();
-      let total = 0;
-      document.querySelectorAll<HTMLElement>('#toolsNav .nav-group').forEach(group => {
-        let visible = 0;
-        group.querySelectorAll<HTMLElement>('.nav-row').forEach(row => {
-          const item = row.querySelector<HTMLElement>('.nav-item');
-          const toolId = item?.getAttribute('data-tool-id') ?? item?.getAttribute('data-tool-ref') ?? '';
-          const tool = window.tools?.[toolId];
-          const matches = !term || (tool ? scoreTool(tool, term) > 0 : (item?.textContent?.toLowerCase() ?? '').includes(term));
-          row.hidden = !matches;
-          if (matches) visible++;
-        });
-        group.hidden = visible === 0;
-        // Searching temporarily expands matching groups; clearing restores the saved state
-        group.classList.toggle('is-searching', !!term);
-        // Quick groups duplicate category rows; don't count them toward "no match"
-        if (group.closest('#navQuick')) return;
-        total += visible;
-      });
-      const empty = document.getElementById('navEmpty');
-      if (empty) empty.hidden = total > 0;
-    };
-    applySidebarFilter = applyFilter;
-    const visibleItems = (): HTMLElement[] =>
-      Array.from(document.querySelectorAll<HTMLElement>('#toolsNav .nav-item')).filter(el => el.offsetParent !== null);
-    const searchHandler = debounce(() => requestAnimationFrame(applyFilter), 80);
-    searchInput.addEventListener('input', searchHandler);
-    eventListeners.push({ element: searchInput, event: 'input', handler: searchHandler });
-    searchInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        applyFilter();
-        const first = visibleItems()[0];
-        if (first) { e.preventDefault(); first.click(); }
-      } else if (e.key === 'ArrowDown') {
-        applyFilter();
-        const first = visibleItems()[0];
-        if (first) { e.preventDefault(); first.focus(); }
-      } else if (e.key === 'Escape' && searchInput.value) {
-        e.stopPropagation();
-        searchInput.value = '';
-        applyFilter();
-      }
-    });
+    searchInput.addEventListener('click', () => openPalette());
+    document.getElementById('railSearch')?.addEventListener('click', () => openPalette());
     // Arrow-key movement within the tool list (category toggles included, collapsed rows skipped)
     document.getElementById('toolsNav')?.addEventListener('keydown', e => {
       const el = document.activeElement as HTMLElement;
@@ -1231,7 +1383,7 @@ function setupEventListeners(): void {
 
   if (pasteBtn) pasteBtn.onclick = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await readClipboardText();
       if (inputEditor) {
         inputEditor.setValue(text);
         inputEditor.focus();
@@ -1245,10 +1397,7 @@ function setupEventListeners(): void {
   if (copyBtn) copyBtn.onclick = () => {
     if (outputEditor) {
       const text = outputEditor.getValue();
-      if (!text) { showToast('Nothing to copy yet', 'error'); return; }
-      navigator.clipboard.writeText(text)
-        .then(() => showToast('Copied output'))
-        .catch(() => showToast('Copy failed. Select the output and copy it manually.', 'error'));
+      void copyText(text, 'Copied output');
     }
   };
 
@@ -1393,7 +1542,9 @@ function setupCommandPalette(): void {
   const keydownHandler = (e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      if (isOpen()) close(); else open();
+      if (isOpen()) close();
+      else if (!currentTool && !document.querySelector('.settings-overlay.visible')) focusHomeSearch();
+      else open();
     }
   };
   document.addEventListener('keydown', keydownHandler);
@@ -1468,6 +1619,9 @@ function setupCommandPalette(): void {
         cmds.push({ id: '__clear-session', title: label, category: 'Commands', description: '', icon: 'backspace', run: clearToolSession } as unknown as Tool);
       }
     }
+    if (t && ('go home'.includes(t) || 'home'.startsWith(t) || t.startsWith('go h'))) {
+      cmds.push({ id: '__go-home', title: 'Go home', category: 'Commands', description: '', icon: 'home', run: () => goHome() } as unknown as Tool);
+    }
     if (t && ('open settings'.includes(t) || 'settings'.startsWith(t) || t.startsWith('sett'))) {
       cmds.push({ id: '__open-settings', title: 'Open settings', category: 'Commands', description: '', icon: 'tune', run: () => openSettingsSheet() } as unknown as Tool);
     }
@@ -1539,7 +1693,6 @@ function setupCommandPalette(): void {
 
 // ---- Recent tools + start screen ----
 const RECENT_KEY = 'recent-tools';
-const POPULAR = ['json', 'jwt', 'base64', 'url', 'timestamp', 'uuid', 'hash', 'textDiff'];
 let openPalette: () => void = () => {};
 
 function getRecent(): string[] {
@@ -1556,48 +1709,232 @@ function rememberRecent(id: string): void {
   localStorage.setItem(RECENT_KEY, JSON.stringify(list));
 }
 
+/** Home: Pinned + Recent chip rows, then every tool as a tile grouped by CATEGORY_ORDER. */
 function renderWelcome(): void {
   if (!window.tools) return;
   const tools = window.tools;
-  const make = (tool: Tool): HTMLButtonElement => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'welcome-tool';
-    const icon = document.createElement('i');
-    icon.className = 'material-icons';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = tool.icon;
-    const title = document.createElement('span');
-    title.className = 'truncate';
-    title.textContent = tool.title;
-    const desc = document.createElement('span');
-    desc.className = 'welcome-tool-desc';
-    desc.textContent = tool.description;
-    desc.title = tool.description;
-    b.append(icon, title, desc);
-    b.onclick = () => switchTool(tool.id);
-    return b;
-  };
-  const recent = getRecent().map(id => tools[id]).filter(Boolean) as Tool[];
-  const recentWrap = document.getElementById('recentTools');
-  const recentSection = document.getElementById('recentSection');
-  if (recentWrap && recentSection) {
-    recentWrap.textContent = '';
-    recent.forEach(t => recentWrap.appendChild(make(t)));
-    recentSection.classList.toggle('hidden', recent.length === 0);
+  const quick = document.getElementById('homeQuick');
+  if (quick) {
+    quick.textContent = '';
+    const pinned = getPinned();
+    const recent = getRecent().filter(id => !pinned.includes(id)).slice(0, 6);
+    const row = (label: string, ids: string[]): void => {
+      if (!ids.length) return;
+      const r = document.createElement('div');
+      r.className = 'home-chips';
+      r.setAttribute('role', 'group');
+      r.setAttribute('aria-label', label);
+      const h = document.createElement('span');
+      h.className = 'welcome-section home-chips-label';
+      h.setAttribute('aria-hidden', 'true');
+      h.textContent = label;
+      r.appendChild(h);
+      ids.forEach(id => {
+        const t = tools[id]!;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'home-chip';
+        b.dataset.chipTool = id;
+        const i = document.createElement('i');
+        i.className = 'material-icons';
+        i.setAttribute('aria-hidden', 'true');
+        i.textContent = t.icon;
+        const s = document.createElement('span');
+        s.textContent = t.title;
+        b.append(i, s);
+        b.onclick = () => switchTool(id);
+        r.appendChild(b);
+      });
+      quick.appendChild(r);
+    };
+    row('Pinned', pinned);
+    row('Recent', recent);
   }
-  const popularWrap = document.getElementById('popularTools');
-  if (popularWrap) {
-    popularWrap.textContent = '';
-    const missing = POPULAR.filter(id => !tools[id]);
-    if (missing.length) logger.warn('Popular tool ids not found in registry:', missing.join(', '));
-    let popular = POPULAR.map(id => tools[id]).filter(t => t && !recent.includes(t)) as Tool[];
-    if (missing.length) {
-      // Only backfill the slots lost to missing ids
-      const extra = Object.values(tools).filter(t => !recent.includes(t) && !popular.includes(t));
-      popular = [...popular, ...extra.slice(0, missing.length)];
-    }
-    popular.forEach(t => popularWrap.appendChild(make(t)));
+  const grid = document.getElementById('homeGrid');
+  if (grid && !grid.firstChild) {
+    const byCat = new Map<string, Tool[]>();
+    CATEGORY_ORDER.forEach(c => byCat.set(c, []));
+    Object.values(tools).forEach(t => { if (!byCat.has(t.category)) byCat.set(t.category, []); byCat.get(t.category)!.push(t); });
+    let gi = 0;
+    byCat.forEach((list, cat) => {
+      if (!list.length) return;
+      const sec = document.createElement('section');
+      sec.className = 'home-cat';
+      const hid = `home-cat-${gi++}`;
+      sec.setAttribute('aria-labelledby', hid);
+      const h = document.createElement('h3');
+      h.className = 'welcome-section home-cat-title';
+      h.id = hid;
+      h.textContent = cat;
+      const tiles = document.createElement('div');
+      tiles.className = 'home-tiles';
+      list.forEach(t => tiles.appendChild(makeTile(t)));
+      sec.append(h, tiles);
+      grid.appendChild(sec);
+    });
+  }
+  syncHomePins();
+}
+
+function makeTile(t: Tool): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'home-tile-wrap';
+  wrap.dataset.toolTileWrap = t.id;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'home-tile';
+  b.dataset.toolTile = t.id;
+  const i = document.createElement('i');
+  i.className = 'material-icons home-tile-icon';
+  i.setAttribute('aria-hidden', 'true');
+  i.textContent = t.icon;
+  const title = document.createElement('span');
+  title.className = 'home-tile-title';
+  title.textContent = t.title;
+  const desc = document.createElement('span');
+  desc.className = 'home-tile-desc';
+  desc.textContent = t.description;
+  b.append(i, title, desc);
+  b.onclick = () => switchTool(t.id);
+  const pin = document.createElement('button');
+  pin.type = 'button';
+  pin.className = 'nav-pin home-tile-pin';
+  pin.dataset.pinTool = t.id;
+  const pi = document.createElement('i');
+  pi.className = 'material-icons';
+  pi.setAttribute('aria-hidden', 'true');
+  pi.textContent = 'push_pin';
+  pin.appendChild(pi);
+  pin.onclick = e => { e.stopPropagation(); togglePin(t.id); };
+  wrap.append(b, pin);
+  return wrap;
+}
+
+function syncHomePins(): void {
+  const pinned = getPinned();
+  document.querySelectorAll<HTMLElement>('#homeGrid .home-tile-pin').forEach(pin => {
+    const id = pin.dataset.pinTool!;
+    const on = pinned.includes(id);
+    const title = window.tools?.[id]?.title ?? id;
+    pin.classList.toggle('is-pinned', on);
+    pin.setAttribute('aria-pressed', String(on));
+    pin.setAttribute('aria-label', on ? `Unpin ${title}` : `Pin ${title}`);
+    pin.title = on ? 'Unpin' : 'Pin';
+  });
+  // Chips reflect pin changes immediately when Home is showing
+  if (!currentTool && document.getElementById('homeQuick')) {
+    const quick = document.getElementById('homeQuick')!;
+    const sig = pinned.join(',') + '|' + getRecent().join(',');
+    if (quick.dataset.sig !== sig) { quick.dataset.sig = sig; renderWelcome(); }
   }
 }
 
+/** KeyboardEvent -> Electron accelerator ("Ctrl+Alt+Space"). Null while only modifiers are held. */
+function toAccelerator(e: KeyboardEvent): string | null {
+  const k = e.key;
+  if (['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].includes(k)) return null;
+  const isMac = !!window.platform?.isMac;
+  const mods: string[] = [];
+  if (e.ctrlKey) mods.push(isMac ? 'Control' : 'Ctrl');
+  if (e.metaKey) mods.push(isMac ? 'Command' : 'Super');
+  if (e.altKey) mods.push(isMac ? 'Option' : 'Alt');
+  if (e.shiftKey) mods.push('Shift');
+  let key: string | null = null;
+  const code = e.code;
+  if (/^Key[A-Z]$/.test(code)) key = code.slice(3);
+  else if (/^Digit[0-9]$/.test(code)) key = code.slice(5);
+  else if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) key = code;
+  else {
+    const map: Record<string, string> = {
+      Space: 'Space', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete', Insert: 'Insert',
+      Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown',
+      ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+      Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\',
+      Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
+    };
+    key = map[code] ?? null;
+  }
+  if (!key) return null;
+  // A global shortcut needs a modifier (function keys excepted) or it would swallow normal typing
+  if (!mods.length && !/^F\d+$/.test(key)) return null;
+  return [...mods, key].join('+');
+}
+
+/** Pretty label for an accelerator: mac glyphs, otherwise as-is. */
+function accelLabel(a: string): string {
+  if (!window.platform?.isMac) return a.replace(/\+/g, ' + ');
+  return a.replace(/Command\+?/g, '\u2318').replace(/Control\+?/g, '\u2303').replace(/Option\+?|Alt\+?/g, '\u2325').replace(/Shift\+?/g, '\u21e7');
+}
+
+function setupBackgroundSettings(): void {
+  const api = window.electronAPI?.background;
+  const group = document.getElementById('settingsBackground');
+  if (!api || !group) { group?.setAttribute('hidden', ''); return; }
+  const bg = document.getElementById('setting-background') as HTMLInputElement | null;
+  const login = document.getElementById('setting-login') as HTMLInputElement | null;
+  const rec = document.getElementById('shortcutRec') as HTMLButtonElement | null;
+  const clearBtn = document.getElementById('shortcutClear') as HTMLButtonElement | null;
+  const chips = document.getElementById('shortcutChips');
+  const msg = document.getElementById('shortcutMsg');
+  if (!bg || !login || !rec || !clearBtn || !chips || !msg) return;
+  const HINT = 'Shows or hides ForgeTools from any app.';
+  let current: string | null = null;
+  let recording = false;
+
+  const paint = (): void => {
+    rec.classList.toggle('is-recording', recording);
+    rec.setAttribute('aria-pressed', String(recording));
+    rec.textContent = recording ? 'Press a key combination\u2026' : current ? accelLabel(current) : 'Not set';
+    rec.classList.toggle('is-empty', !current && !recording);
+    clearBtn.disabled = !current;
+  };
+  const say = (text: string, error = false): void => {
+    msg.textContent = text;
+    msg.classList.toggle('is-error', error);
+  };
+  const apply = async (accel: string | null): Promise<void> => {
+    const r = await api.setGlobalShortcut(accel);
+    current = r.accelerator;
+    if (r.ok) say(accel ? `${accelLabel(accel)} now shows or hides ForgeTools.` : HINT);
+    else say(r.error ?? 'Shortcut is in use by another app', true);
+    paint();
+  };
+
+  const isMac = !!window.platform?.isMac;
+  const suggestions = isMac ? ['Option+Space', 'Control+Shift+Option+F'] : ['Ctrl+Alt+Space', 'Ctrl+Shift+Alt+F'];
+  suggestions.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'home-chip shortcut-chip';
+    b.dataset.accel = s;
+    b.textContent = accelLabel(s);
+    b.onclick = () => { recording = false; void apply(s); };
+    chips.appendChild(b);
+  });
+
+  rec.addEventListener('click', () => { recording = !recording; if (recording) say('Press the combination, or Esc to cancel.'); else say(HINT); paint(); });
+  rec.addEventListener('blur', () => { if (recording) { recording = false; say(HINT); paint(); } });
+  rec.addEventListener('keydown', e => {
+    if (!recording) return;
+    if (e.key === 'Tab') { recording = false; paint(); return; }
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) { recording = false; say(HINT); paint(); return; }
+    const accel = toAccelerator(e);
+    if (!accel) { if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) say('Add Ctrl, Alt or Shift to the key.', true); return; }
+    recording = false;
+    void apply(accel);
+  });
+  clearBtn.addEventListener('click', () => { recording = false; void apply(null); });
+
+  bg.addEventListener('change', () => { void api.setBackgroundSettings({ keepInBackground: bg.checked }); });
+  login.addEventListener('change', () => { void api.setBackgroundSettings({ openAtLogin: login.checked }); });
+
+  void api.getBackgroundSettings().then(s => {
+    bg.checked = s.keepInBackground;
+    login.checked = s.openAtLogin;
+    current = s.globalShortcut;
+    paint();
+  });
+  paint();
+}

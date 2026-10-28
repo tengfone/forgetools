@@ -1,4 +1,4 @@
-import { QRCodeGenerateOptions, BarcodeGenerateOptions } from './ipc';
+import { QRCodeGenerateOptions, BarcodeGenerateOptions, BackgroundSettings, ShortcutResult } from './ipc';
 
 export interface RGB {
   r: number;
@@ -71,6 +71,15 @@ export interface ElectronAPI {
     minimize: () => void;
     maximize: () => void;
     close: () => void;
+    /** Sync the native title bar overlay (Windows/Linux) with the app theme. */
+    setTitleBarTheme: (theme: 'dark' | 'light') => void;
+  };
+  background: {
+    getBackgroundSettings: () => Promise<BackgroundSettings>;
+    setBackgroundSettings: (patch: Partial<BackgroundSettings>) => Promise<BackgroundSettings>;
+    setGlobalShortcut: (accel: string | null) => Promise<ShortcutResult>;
+    /** Global shortcut brought the window back: show Home with the search box focused. */
+    onGoHome: (cb: () => void) => void;
   };
   beautify: {
     html: (html: string, options?: unknown) => string;
@@ -90,6 +99,7 @@ export interface ElectronAPI {
   };
   clipboard: {
     writeText: (text: string) => Promise<void>;
+    readText: () => Promise<string>;
   };
   crypto: {
     md5: (text: string) => string;

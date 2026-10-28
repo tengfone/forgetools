@@ -160,7 +160,7 @@ UI: `Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui` (no bundled webfont
 
 ## Layout
 
-36px canvas-coloured titlebar (macOS traffic-light padding preserved) ? 248px sidebar (collapsible category groups, Pinned and Recent groups on top) sitting directly on canvas ? inset tool panel with a 44px header toolbar (breadcrumb `Category / Tool`, description, actions, help) ? 24px mono status bar on canvas under the panel. Below 760px the sidebar becomes an off-canvas drawer.
+40px canvas-coloured titlebar (`-webkit-app-region: drag`; buttons/selects/inputs `no-drag`). The `forge` wordmark is a button (aria-label "Home"). Platform class on `<html>`: `platform-mac` reserves 78px left for traffic lights (`hiddenInset`); `platform-win`/`platform-linux` use `titleBarStyle: hidden` + `titleBarOverlay` (dark `#0b0b0c`/`#a1a1aa`, light `#f4f4f2`/`#52525b`, 40px) and reserve right padding from `env(titlebar-area-*)` (fallback 140px). The renderer syncs overlay colours via `electronAPI.window.setTitleBarTheme` on every theme change, including system changes. A hidden role-based menu keeps Ctrl+C/V/Z, reload and DevTools accelerators. Then a 56px **rail** (toolbar, arrow keys, roving tabindex): Home, Search (palette), hairline, pinned tool icons, recent tool icons, and an "All tools" toggle at the bottom. Rail buttons are 36px, 8px radius, with a title tooltip and aria-label; active = tint + 2px amber marker at the rail edge. "All tools" docks the 240px categorized list (`#toolsNav`, collapsible groups, persisted as `nav-expanded`) beside the rail; below 900px the same list opens as an overlay drawer beside the rail. Inset tool panel with a 44px header toolbar, then the 24px mono status bar.
 
 Inside tools, sections are flat (`.tool-card` = 20px×16px padding, 1px hairline between sections); side-by-side sections (`.grid-2`) are split by a vertical hairline. Editor tools split input/output panes with a 1px border and mono pane labels.
 
@@ -175,7 +175,7 @@ Flat. Only floating layers (command palette, help popover, settings sheet, toast
 - **Range sliders** use neutral ink (`--text-secondary`); checkboxes keep amber (selection). Placeholders use `--text-tertiary` (4.9:1 light / 5.2:1 dark on `--bg-input`). Radii are on the 4/6/8/10 scale (scrollbar thumbs and colour swatches 6px).
 - **Inputs**: control fill, 1px control border, 6px radius, mono for data; focus = amber border + 2px amber/25% ring. Read-only fields drop to transparent.
 - **Command palette**: 640px at 18vh, 48px borderless search with a hairline, results grouped (Recent, then categories) under mono labels, 36px rows `icon · title — Category`, footer kbd hints.
-- **Welcome**: wordmark, one-line purpose, a fake-search button that opens the palette, then Recent and Popular as 28px rows.
+- **Home (tool browser)**: wordmark, purpose line, palette button, Paste anything; then Pinned and Recent chip rows (28px, hairline-bordered); then "All tools" with a live filter (`scoreTool`) and every tool as a flat tile (icon, title, one-line description, hover pin) grouped by `CATEGORY_ORDER` in an auto-fill grid (min 260px). Tiles are not cards: no border or fill until hover. Reached from the logo, the rail Home button, or the palette command "Go home"; going home snapshots the open tool's session and deselects it.
 - **Kbd**: mono 11px, 1px border, 4px radius, control fill.
 - **JWT parts**: header rose `#f08a8a`/`#b4434a`, payload sage `#93bf9e`/`#3d7650`, signature steel `#8fadd6`/`#3a5d8c` (dark/light; all >=5.3:1 on panel, chosen to stay clear of the amber accent); flat sections with a coloured 6px dot + coloured mono label (`--part-*`), never a stripe.
 
@@ -213,3 +213,7 @@ Flat. Only floating layers (command palette, help popover, settings sheet, toast
 - **Formatter indent**: editor tools expose `format(input, indent?)`; indent defaults to 2.
 
 
+
+## Home search & background mode
+- Home has one box, "Search tools or paste anything": typing filters the grid; data (len > 12, multi-line, or detection confidence = 0.9) switches the box to mono and shows the detection row (amber primary = top match, text alternatives). Enter opens the top detection, else the top grid match; ? moves into the grid; Esc clears. Ctrl/?+K focuses the box on Home and opens the palette inside a tool.
+- Close hides to the tray/menu bar (setting, default on; one-time notification). Tray menu: Open, Global shortcut (read-only), Start at login, Quit. Global shortcut is user-recorded in Settings, validated by registration ("Shortcut is in use by another app"). Prefs live in userData/background.json. FORGE_E2E disables tray, close-to-tray and the single-instance lock.

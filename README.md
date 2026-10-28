@@ -57,3 +57,6 @@ To release, run `npm run release:patch` (or `release:minor` / `release:major`). 
 ---
 
 Built with Electron, TypeScript, Tailwind CSS and Monaco Editor. Developed with assistance from Anthropic's Claude.
+## Background mode
+
+Closing the window keeps ForgeTools running in the system tray (menu bar on macOS); quit from the tray menu or with Cmd+Q. Turn this off in Settings ? "Keep running in background". Settings also offer **Start at login** (launches hidden) and a user-defined **global shortcut** (none by default; suggestions Ctrl+Alt+Space / Ctrl+Shift+Alt+F) that shows ForgeTools on Home with the search box focused, or hides it when focused.

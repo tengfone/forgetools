@@ -47,13 +47,38 @@ test("delegated copy writes to the clipboard", async () => {
   await chip.waitFor();
   const text = (await chip.textContent()).trim();
   await chip.click();
-  // Either outcome must be reported to the user; never a silent no-op.
-  const toast = window.locator(".toast");
-  await expect(toast).toContainText(/Copied|Copy failed/);
-  if ((await toast.textContent()).includes("Copied")) {
-    const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
-    expect(clip).toBe(text);
-  }
+  await expect(window.locator(".toast").last()).toContainText("Copied");
+  const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
+  expect(clip).toBe(text);
+});
+
+test("JSON output Copy goes through the main-process clipboard", async () => {
+  await window.click('#toolsNav [data-tool-id="json"]');
+  await window.click("#sampleBtn");
+  await expect.poll(async () => (await window.evaluate(() =>
+    document.querySelector("#outputEditor .view-lines")?.textContent ?? "")).length, { timeout: 10000 }).toBeGreaterThan(5);
+  await app.evaluate(({ clipboard }) => clipboard.writeText(""));
+  await window.click("#copyBtn");
+  await expect(window.locator(".toast").last()).toContainText("Copied output");
+  const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
+  expect(clip.length).toBeGreaterThan(5);
+  expect(() => JSON.parse(clip)).not.toThrow();
+  expect(clip).toContain("\n"); // formatted output, not the raw sample echo
+});
+
+test("Paste button reads the main-process clipboard", async () => {
+  await app.evaluate(({ clipboard }) => clipboard.writeText("hello paste"));
+  await window.click('#toolsNav [data-tool-id="base64"]');
+  await window.click('[data-paste="b64-plain"]');
+  await expect(window.locator("#b64-plain")).toHaveValue("hello paste");
+});
+
+test("sidebar search trigger opens the palette", async () => {
+  await window.click("#sidebarSearch");
+  await expect(window.locator("#cmdPalette")).toHaveClass(/visible/);
+  await expect(window.locator("#sidebarSearch kbd").first()).toBeVisible();
+  await window.keyboard.press("Escape");
+  await expect(window.locator("#cmdPalette")).not.toHaveClass(/visible/);
 });
 
 test("diff tool supports word and char modes", async () => {
