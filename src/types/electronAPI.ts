@@ -190,6 +190,8 @@ export interface CronParserAPI {
 
 export interface DiffAPI {
   diffLines: (oldStr: string, newStr: string) => DiffPart[];
+  diffWords: (oldStr: string, newStr: string) => DiffPart[];
+  diffChars: (oldStr: string, newStr: string) => DiffPart[];
 }
 
 declare global {
@@ -197,12 +199,6 @@ declare global {
     electronAPI: ElectronAPI;
     cronParser: CronParserAPI;
     Diff: DiffAPI;
-    tools?: unknown;
-    monaco?: unknown;
-    MonacoEnvironment?: {
-      getWorkerUrl?: (workerId: string, label: string) => string;
-      getWorker?: (workerId: string, label: string) => Worker | Promise<Worker>;
-    };
     platform?: {
       isMac: boolean;
       isWindows: boolean;

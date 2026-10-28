@@ -16,7 +16,8 @@ export interface Tool {
   placeholder?: string;
   sampleData?: string;
   format?: (input: string) => string | Promise<string>;
-  render?: (container: HTMLElement) => void;
+  /** Lazily loaded custom UI module (code-split per tool). */
+  load?: () => Promise<{ render: (container: HTMLElement) => void }>;
 }
 
 export interface ToolsRegistry {

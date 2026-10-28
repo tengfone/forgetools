@@ -9,19 +9,14 @@
     <link rel="stylesheet" href="/vs/editor/editor.main.css">
 </head>
 <body class="m-0 p-0 font-sans bg-bg-app text-text-primary h-screen overflow-hidden text-[13px] antialiased leading-[1.4]">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="forge-mark" viewBox="0 0 24 24"><rect x="1.5" y="1.5" width="21" height="21" rx="5.5" fill="var(--accent-color)"/><path d="M7 9.5l3 2.5-3 2.5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 15.5h4.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></symbol></svg>
     <header class="titlebar h-[52px] flex items-center px-4 bg-transparent border-b border-border dark:bg-transparent relative z-[100]">
-        <!-- Custom window controls are hidden - using native controls on all platforms -->
-        <div class="titlebar-controls flex gap-2 mr-4" style="display: none;">
-            <button class="window-control close" id="closeBtn" aria-label="Close"></button>
-            <button class="window-control minimize" id="minimizeBtn" aria-label="Minimize"></button>
-            <button class="window-control maximize" id="maximizeBtn" aria-label="Maximize"></button>
-        </div>
         <div class="font-semibold text-[13px] text-text-primary flex-grow text-center opacity-90">ForgeTools</div>
         <div class="w-[50px]"></div>
     </header>
 
     <div id="loadingScreen" class="fixed inset-0 bg-bg-app z-[9999] flex flex-col items-center justify-center transition-opacity duration-300">
-        <div class="text-[48px] mb-4">🛠️</div>
+        <svg class="forge-mark mb-4" width="40" height="40" viewBox="0 0 24 24" aria-hidden="true"><use href="#forge-mark"/></svg>
         <div class="text-sm font-medium text-text-secondary">ForgeTools</div>
         <div class="mt-6 w-[120px] h-0.5 bg-bg-input rounded-sm overflow-hidden">
             <div class="w-full h-full bg-accent animate-[loading_1.5s_infinite_ease-in-out] origin-left"></div>
@@ -38,7 +33,7 @@
     <div class="flex h-[calc(100vh-52px)]">
         <aside class="w-[260px] bg-bg-sidebar border-r border-border flex flex-col p-2 backdrop-blur-[20px]">
             <div class="mb-2">
-                <input type="text" class="w-full bg-bg-input border border-transparent rounded-[6px] py-1.5 pl-[30px] pr-2.5 text-text-primary text-[13px] outline-none transition-all duration-200 bg-no-repeat focus:bg-bg-app focus:border-accent focus:shadow-[0_0_0_3px_rgba(10,132,255,0.15)]" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;gray&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><circle cx=&quot;11&quot; cy=&quot;11&quot; r=&quot;8&quot;></circle><line x1=&quot;21&quot; y1=&quot;21&quot; x2=&quot;16.65&quot; y2=&quot;16.65&quot;></line></svg>'); background-position: 8px center;" placeholder="Search tools... (Cmd+K)" id="sidebarSearch">
+                <input type="text" class="w-full bg-bg-input border border-transparent rounded-[6px] py-1.5 pl-[30px] pr-2.5 text-text-primary text-[13px] outline-none transition-all duration-200 bg-no-repeat focus:bg-bg-app focus:border-accent focus:shadow-[0_0_0_3px_var(--focus-ring)]" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;gray&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><circle cx=&quot;11&quot; cy=&quot;11&quot; r=&quot;8&quot;></circle><line x1=&quot;21&quot; y1=&quot;21&quot; x2=&quot;16.65&quot; y2=&quot;16.65&quot;></line></svg>'); background-position: 8px center;" placeholder="Search tools" aria-label="Search tools" id="sidebarSearch">
             </div>
             
             <nav class="flex-1 overflow-y-auto scrollbar-thin" id="toolsNav">
@@ -48,38 +43,61 @@
 
         <main class="flex-1 flex flex-col bg-bg-app overflow-hidden">
             <!-- Welcome / Empty State -->
-            <div id="welcomeState" class="flex flex-col items-center justify-center h-full text-text-secondary">
-                <div class="text-[64px] mb-6 opacity-20">🛠️</div>
-                <h2 class="text-2xl font-semibold mb-2">Welcome to ForgeTools</h2>
-                <p>Select a tool from the sidebar or press Cmd+K to search.</p>
+            <div id="welcomeState" class="welcome">
+                <div class="welcome-inner">
+                    <div class="welcome-head">
+                        <svg class="forge-mark" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><use href="#forge-mark"/></svg>
+                        <div>
+                            <h1 class="welcome-title text-[28px]">ForgeTools</h1>
+                            <p class="welcome-sub">Offline developer utilities. Nothing you paste leaves this machine.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="welcome-search" id="welcomeSearch">
+                        <i class="material-icons text-[18px] opacity-60">search</i>
+                        <span>Jump to a tool</span>
+                        <span class="ml-auto flex gap-1"><kbd class="mod-key">Ctrl</kbd><kbd>K</kbd></span>
+                    </button>
+                    <section id="recentSection" class="hidden">
+                        <h2 class="welcome-section">Recent</h2>
+                        <div id="recentTools" class="welcome-grid"></div>
+                    </section>
+                    <section>
+                        <h2 class="welcome-section">Popular</h2>
+                        <div id="popularTools" class="welcome-grid"></div>
+                    </section>
+                </div>
             </div>
-
             <!-- Tool Container -->
             <div id="toolContainer" class="hidden h-full flex flex-col">
                 <header class="py-3 px-4 border-b border-border flex justify-between items-center bg-bg-app">
                     <div>
-                        <h2 id="currentToolTitle" class="m-0 text-xl font-semibold tracking-[-0.5px]">Tool Name</h2>
+                        <h2 id="currentToolTitle" class="m-0 text-[22px]">Tool Name</h2>
                         <div class="text-text-secondary text-[13px] mt-1" id="currentToolDesc">Tool description goes here</div>
                     </div>
-                    <div class="tool-actions" id="toolActions">
-                        <!-- Dynamic Actions -->
+                    <div class="flex items-center gap-2">
+                        <div class="tool-actions" id="toolActions"></div>
+                        <div class="relative">
+                            <button class="btn-icon" id="helpBtn" title="Tool help (F1)" aria-label="Tool help" aria-expanded="false" aria-controls="helpPopover"><i class="material-icons">help_outline</i></button>
+                            <div id="helpPopover" class="help-popover" role="dialog" aria-label="Tool help" hidden></div>
+                        </div>
                     </div>
                 </header>
 
                 <div class="flex-1 overflow-hidden flex flex-col" id="workspace">
                     <!-- Editor Interface (Split View) -->
-                    <div id="editorInterface" class="split-view hidden flex h-full">
+                    <div id="editorInterface" class="hidden flex flex-col h-full">
+                    <div class="split-view flex flex-1 min-h-0">
                         <div class="flex-1 flex flex-col border-r border-border min-w-0">
                             <div class="px-3 h-11 bg-bg-panel border-b border-border flex justify-between items-center">
                                 <div class="flex items-center gap-2">
                                     <span class="text-[13px] font-medium text-text-secondary mr-2">Input:</span>
-                                    <button class="btn-pill flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)] hover:text-text-primary dark:hover:text-text-primary active:translate-y-px" id="pasteBtn" title="Paste from Clipboard" aria-label="Paste from Clipboard"><i class="material-icons text-base opacity-80">content_paste</i> Paste</button>
-                                    <button class="btn-pill flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)] hover:text-text-primary dark:hover:text-text-primary active:translate-y-px" id="sampleBtn" title="Load Sample Data" aria-label="Load Sample Data"><i class="material-icons text-base opacity-80">data_object</i> Sample</button>
-                                    <button class="btn-pill flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)] hover:text-text-primary dark:hover:text-text-primary active:translate-y-px" id="clearBtn" title="Clear Input" aria-label="Clear Input"><i class="material-icons text-base opacity-80">delete_outline</i> Clear</button>
+                                    <button class="btn-pill" id="pasteBtn" title="Paste from Clipboard" aria-label="Paste from Clipboard"><i class="material-icons text-base opacity-80">content_paste</i> Paste</button>
+                                    <button class="btn-pill" id="sampleBtn" title="Load Sample Data" aria-label="Load Sample Data"><i class="material-icons text-base opacity-80">data_object</i> Sample</button>
+                                    <button class="btn-pill" id="clearBtn" title="Clear Input" aria-label="Clear Input"><i class="material-icons text-base opacity-80">delete_outline</i> Clear</button>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <button class="btn-icon flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)] hover:text-text-primary dark:hover:text-text-primary active:translate-y-px" id="settingsBtn" title="Settings"><i class="material-icons text-base opacity-80">settings</i></button>
-                                    <select id="languageSelect" class="hidden bg-bg-input text-text-primary border border-transparent px-2 rounded-md text-xs h-7 outline-none cursor-pointer hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)]">
+                                    <button class="btn-icon" id="settingsBtn" title="Editor settings" aria-label="Editor settings"><i class="material-icons text-base opacity-80">settings</i></button>
+                                    <select id="languageSelect" class="toolbar-select hidden">
                                         <!-- Populated by JS -->
                                     </select>
                                 </div>
@@ -94,12 +112,12 @@
                                     <span class="text-[13px] font-medium text-text-secondary mr-2">Output:</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <select id="indentSelect" class="bg-bg-input text-text-primary border border-transparent px-2 rounded-md text-xs h-7 outline-none cursor-pointer hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)]">
+                                    <select id="indentSelect" class="toolbar-select">
                                         <option value="2">2 spaces</option>
                                         <option value="4">4 spaces</option>
                                         <option value="tab">Tab</option>
                                     </select>
-                                    <button class="btn-icon flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)] hover:text-text-primary dark:hover:text-text-primary active:translate-y-px" id="copyBtn" title="Copy Output"><i class="material-icons text-base opacity-80">content_copy</i> Copy</button>
+                                    <button class="btn-icon" id="copyBtn" title="Copy Output"><i class="material-icons text-base opacity-80">content_copy</i> Copy</button>
                                 </div>
                             </div>
                             <div class="flex-1 relative bg-bg-app overflow-hidden">
@@ -107,23 +125,25 @@
                             </div>
                         </div>
                     </div>
-
+                    </div>
                     <!-- Custom Interfaces will be injected here -->
                     <div id="customInterface" class="simple-tool-container hidden p-4 max-w-[1000px] mx-auto w-full overflow-y-auto h-full">
                         <!-- Dynamic Content -->
                     </div>
                 </div>
+                <div class="status-bar" id="statusBar" role="status" aria-live="polite"><span class="status-dot"></span><span class="status-msg" id="statusMsg">Ready</span><span class="status-meta" id="statusMeta">offline</span></div>
             </div>
         </main>
     </div>
 
     <!-- Command Palette -->
     <div class="command-palette-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] hidden justify-center pt-[15vh]" id="cmdPalette">
-        <div class="command-palette w-[600px] max-h-[60vh] bg-bg-card rounded-[14px] shadow-lg border border-border flex flex-col overflow-hidden">
-            <input type="text" class="cmd-input w-full p-4 bg-transparent border-none border-b border-border text-text-primary text-lg outline-none" placeholder="Type a command or search..." id="cmdInput">
-            <div class="cmd-results overflow-y-auto p-2 scrollbar-thin" id="cmdResults">
+        <div class="command-palette w-[600px] max-w-[calc(100vw-48px)] max-h-[60vh] bg-bg-card rounded-lg shadow-lg border border-border flex flex-col overflow-hidden">
+            <input type="text" class="cmd-input w-full px-4 py-3.5 bg-transparent border-0 border-b border-solid border-border text-text-primary text-base outline-none" placeholder="Search tools…" id="cmdInput" role="combobox" aria-expanded="true" aria-controls="cmdResults" aria-autocomplete="list" autocomplete="off" spellcheck="false">
+            <div class="cmd-results overflow-y-auto p-2 scrollbar-thin" id="cmdResults" role="listbox">
                 <!-- Results -->
             </div>
+            <div class="cmd-footer"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>
         </div>
     </div>
 
@@ -132,7 +152,7 @@
         <div class="settings-panel w-80 bg-bg-card shadow-lg border-l border-border flex flex-col">
             <div class="settings-header p-4 border-b border-border flex justify-between items-center">
                 <h3 class="m-0 text-base font-semibold">Editor Settings</h3>
-                <button class="btn-icon flex items-center gap-1.5 bg-transparent border border-transparent text-text-secondary px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-100 h-7 font-sans hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)] hover:text-text-primary dark:hover:text-text-primary active:translate-y-px" id="settingsClose"><i class="material-icons text-base opacity-80">close</i></button>
+                <button class="btn-icon" id="settingsClose" aria-label="Close settings"><i class="material-icons text-base opacity-80">close</i></button>
             </div>
             <div class="settings-content p-4 overflow-y-auto">
                 <div class="setting-item mb-4">
@@ -149,7 +169,7 @@
                 </div>
                 <div class="setting-item mb-4">
                     <label class="block mb-1.5 text-[13px]">Font Size</label>
-                    <select id="setting-fontsize" class="bg-bg-input text-text-primary border border-transparent px-2 rounded-md text-xs h-7 outline-none cursor-pointer hover:bg-[rgba(255,255,255,0.1)] dark:hover:bg-[rgba(0,0,0,0.05)]">
+                    <select id="setting-fontsize" class="toolbar-select">
                         <option value="12">12px</option>
                         <option value="13" selected>13px</option>
                         <option value="14">14px</option>
@@ -204,7 +224,6 @@
         };
     </script>
     <script src="./vs/loader.js"></script>
-    <script type="module" src="/src/tools.ts"></script>
     <script type="module" src="/src/app.ts"></script>
 </body>
 </html>

@@ -2,6 +2,10 @@ import type { Tool } from '../../types/tools';
 import type { editor } from 'monaco-editor';
 import '../../types/electronAPI'; // Ensure Window types are available
 import { logger } from './logger';
+import './tools';
+import { getHelp } from './tools/help';
+import { esc } from './ui';
+import { showToast, wireClipboardActions, setStatus } from './ui';
 
 // Configure Monaco loader (using requirejs for Monaco)
 // Monaco Editor uses AMD/RequireJS which is loaded via script tag
@@ -9,13 +13,13 @@ declare global {
   interface Window {
     require?: {
       config: (config: { paths: Record<string, string> }) => void;
-      (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void): void;
+      (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void, errback?: (err: Error) => void): void;
     };
   }
   
   const require: {
     config: (config: { paths: Record<string, string> }) => void;
-    (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void): void;
+    (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void, errback?: (err: Error) => void): void;
   } | undefined;
 }
 
@@ -24,6 +28,7 @@ let inputEditor: editor.IStandaloneCodeEditor | null = null;
 let outputEditor: editor.IStandaloneCodeEditor | null = null;
 let currentTool: Tool | null = null;
 let isEncodeMode = true;
+let renderToken = 0; // guards against a slow tool module rendering over a newer one
 let currentTheme: 'system' | 'light' | 'dark' = (localStorage.getItem('theme') as 'system' | 'light' | 'dark') || 'system';
 
 // Optimized LRU Cache implementation for processed results
@@ -198,38 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set theme immediately on load
   setTheme(currentTheme);
   
-  // Wait for tools to be loaded - use Promise-based approach instead of polling
-  const waitForTools = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (window.tools) {
-        resolve();
-        return;
-      }
-      
-      let attempts = 0;
-      const maxAttempts = 200; // 2 seconds max wait
-      const checkTools = setInterval(() => {
-        attempts++;
-        if (window.tools) {
-          clearInterval(checkTools);
-          resolve();
-        } else if (attempts >= maxAttempts) {
-          clearInterval(checkTools);
-          reject(new Error('window.tools not found after timeout'));
-        }
-      }, 10);
-    });
-  };
-  
-  waitForTools()
-    .then(() => initApp())
-    .catch((error) => {
-      logger.error('Failed to initialize app:', error);
-      // Still try to initialize in case tools load later
-      setTimeout(() => {
-        if (window.tools) initApp();
-      }, 1000);
-    });
+  initApp();
   
   // Try to load Monaco - improved with better error handling and retry logic
   // Use requestIdleCallback in production for non-critical loading
@@ -351,8 +325,47 @@ function initMonaco(): void {
   }
 }
 
+// --- Tool help popover (button + F1) ---
+function closeHelp(): void {
+  const pop = document.getElementById('helpPopover');
+  if (!pop || pop.hidden) return;
+  pop.hidden = true;
+  document.getElementById('helpBtn')?.setAttribute('aria-expanded', 'false');
+}
+
+function toggleHelp(): void {
+  const pop = document.getElementById('helpPopover');
+  const btn = document.getElementById('helpBtn');
+  if (!pop || !btn || !currentTool) return;
+  if (!pop.hidden) { closeHelp(); return; }
+  const help = getHelp(currentTool.id);
+  const rows = help?.rows?.length
+    ? `<table class="help-table">${help.rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`
+    : '';
+  pop.innerHTML = `<p class="help-tip">${esc(help?.tip ?? currentTool.description)}</p>${rows}`
+    + `<div class="help-foot">Runs offline. Ctrl+K to switch tools · Esc to close</div>`;
+  pop.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+}
+
+function setupHelp(): void {
+  document.getElementById('helpBtn')?.addEventListener('click', e => { e.stopPropagation(); toggleHelp(); });
+  document.addEventListener('click', e => {
+    const pop = document.getElementById('helpPopover');
+    if (pop && !pop.hidden && !pop.contains(e.target as Node)) closeHelp();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F1') { e.preventDefault(); toggleHelp(); }
+    else if (e.key === 'Escape') closeHelp();
+  });
+}
+
 function initApp(): void {
   renderSidebar();
+  renderWelcome();
+  document.getElementById('welcomeSearch')?.addEventListener('click', () => openPalette());
+  wireClipboardActions();
+  setupHelp();
   setupEventListeners();
   setupCommandPalette();
   
@@ -365,6 +378,7 @@ function initApp(): void {
     // Hide custom window controls - native controls are used on all platforms
     (titlebarControls as HTMLElement).style.display = 'none';
     
+    document.querySelectorAll('.mod-key').forEach(el => { el.textContent = isMac ? '⌘' : 'Ctrl'; });
     if (isMac) {
       // macOS: native controls on the left with titleBarStyle: 'hiddenInset'
       // Adjust titlebar padding to account for native controls
@@ -376,7 +390,8 @@ function initApp(): void {
     
     // Theme Switcher
     const themeSelect = document.createElement('select');
-    themeSelect.className = 'absolute top-3.5 right-4 z-[200] -webkit-app-region-no-drag bg-bg-input text-text-primary border border-border px-2 py-1 rounded-[6px] text-xs cursor-pointer outline-none';
+    themeSelect.className = 'toolbar-select absolute top-3 right-4 z-[200]';
+    themeSelect.setAttribute('aria-label', 'Theme');
     themeSelect.innerHTML = `
       <option value="system">System</option>
       <option value="light">Light</option>
@@ -415,7 +430,7 @@ function renderSidebar(): void {
 
   Object.entries(categories).forEach(([category, categoryTools]) => {
     const header = document.createElement('div');
-    header.className = 'text-[11px] font-bold text-text-secondary dark:text-text-secondary uppercase my-3 mx-2 tracking-wider';
+    header.className = 'category-header';
     header.textContent = category;
     fragment.appendChild(header);
 
@@ -441,6 +456,7 @@ function switchTool(toolId: string): void {
 
   // Ensure we have a proper reference to the tool with all properties
   currentTool = tool;
+  rememberRecent(tool.id);
   
   try {
     // Batch DOM updates to reduce reflows
@@ -473,7 +489,7 @@ function switchTool(toolId: string): void {
       actionsContainer.innerHTML = '';
       if (!tool.useCustomUI && tool.hasMode) {
         const toggleBtn = document.createElement('button');
-        toggleBtn.className = 'px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-md text-sm font-medium cursor-pointer transition-colors';
+        toggleBtn.className = 'btn-primary';
         toggleBtn.textContent = isEncodeMode ? tool.encodeText || 'Encode' : tool.decodeText || 'Decode';
         toggleBtn.onclick = () => {
           isEncodeMode = !isEncodeMode;
@@ -488,15 +504,26 @@ function switchTool(toolId: string): void {
     const editorInterface = document.getElementById('editorInterface');
     const customInterface = document.getElementById('customInterface');
     
+    setStatus('idle', 'Ready');
+    closeHelp();
     if (tool.useCustomUI) {
       // Show Custom UI
       if (editorInterface) editorInterface.classList.add('hidden');
       if (customInterface) {
         customInterface.classList.remove('hidden');
-        customInterface.innerHTML = ''; // Clear previous
-        if (tool.render) tool.render(customInterface);
+        customInterface.innerHTML = '';
+        if (tool.load) {
+          const token = ++renderToken;
+          tool.load()
+            .then(mod => { if (token === renderToken) mod.render(customInterface); })
+            .catch(err => {
+              logger.error(`Failed to load ${tool.id}:`, err);
+              if (token === renderToken) showToast(`Could not open ${tool.title}`, 'error');
+            });
+        }
       }
     } else {
+      renderToken++; // cancel any pending custom UI load
       // Show Editor UI
       if (editorInterface) editorInterface.classList.remove('hidden');
       if (customInterface) customInterface.classList.add('hidden');
@@ -524,6 +551,7 @@ function switchTool(toolId: string): void {
         // Set value (this triggers processInput via event listener)
         inputEditor.setValue(''); // Start blank, don't use placeholder as value
         outputEditor.setValue('');
+        clearMarkers();
       }
       
       if (tool.autoRun) {
@@ -536,56 +564,80 @@ function switchTool(toolId: string): void {
     }
 }
 
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// Best-effort location extraction from common parser error messages
+function locateError(message: string, input: string): { line: number; col: number } | null {
+  let m = message.match(/line\s+(\d+)\D+column\s+(\d+)/i) || message.match(/\((\d+):(\d+)\)/);
+  if (m) return { line: parseInt(m[1], 10), col: parseInt(m[2], 10) };
+  m = message.match(/position\s+(\d+)/i);
+  if (m) {
+    const pos = Math.min(parseInt(m[1], 10), input.length);
+    const before = input.slice(0, pos).split('\n');
+    return { line: before.length, col: before[before.length - 1].length + 1 };
+  }
+  return null;
+}
+
+function clearMarkers(): void {
+  const model = inputEditor?.getModel();
+  if (model && window.monaco) window.monaco.editor.setModelMarkers(model, 'forgetools', []);
+}
+
+function showOutput(text: string, input: string): void {
+  clearMarkers();
+  requestAnimationFrame(() => outputEditor?.setValue(text));
+  if (!input.trim()) {
+    setStatus('idle', 'Ready');
+  } else {
+    setStatus('ok', 'Done', `${formatBytes(input.length)} → ${formatBytes(text.length)}`);
+  }
+}
+
 async function processInput(): Promise<void> {
   if (!currentTool || currentTool.useCustomUI || !outputEditor) return;
-  
+  const input = inputEditor?.getValue() || '';
+
   try {
-    const input = inputEditor?.getValue() || '';
-    
     if (!currentTool.format) return;
-    
-    // Check cache first (only for non-empty inputs to avoid caching empty results)
+
     if (input.trim()) {
-      const cacheKey = `${currentTool.id}:${input}`;
-      const cached = resultCache.get(cacheKey);
-      
+      const cached = resultCache.get(`${currentTool.id}:${input}`);
       if (cached !== undefined) {
-        // Use requestAnimationFrame for smooth UI updates
-        requestAnimationFrame(() => {
-          outputEditor?.setValue(
-            currentTool.customOutput 
-              ? 'Custom output not fully implemented in this version.\n\n' + cached 
-              : cached
-          );
-        });
+        showOutput(cached, input);
         return;
       }
     }
-    
+
     const result = currentTool.format(input);
-    const output = typeof result === 'string' ? result : await result;
-    const outputStr = String(output);
-    
-    // Cache the result (LRU cache handles size limits automatically)
+    const outputStr = String(typeof result === 'string' ? result : await result);
+
     if (input.trim()) {
-      const cacheKey = `${currentTool.id}:${input}`;
-      resultCache.set(cacheKey, outputStr);
+      resultCache.set(`${currentTool.id}:${input}`, outputStr);
     }
-    
-    // Use requestAnimationFrame for smooth UI updates
-    requestAnimationFrame(() => {
-      outputEditor?.setValue(
-        currentTool.customOutput 
-          ? 'Custom output not fully implemented in this version.\n\n' + outputStr 
-          : outputStr
-      );
-    });
+    showOutput(outputStr, input);
   } catch (e) {
+    // Keep the last good output; report the problem in the status bar and mark the input
     const error = e instanceof Error ? e : new Error(String(e));
-    if (outputEditor) {
-      requestAnimationFrame(() => {
-        outputEditor?.setValue('Error: ' + error.message);
-      });
+    const loc = locateError(error.message, input);
+    setStatus('error', error.message, loc ? `Ln ${loc.line}, Col ${loc.col}` : 'previous output kept');
+    const model = inputEditor?.getModel();
+    if (model && window.monaco) {
+      const line = loc ? Math.max(1, Math.min(loc.line, model.getLineCount())) : 1;
+      const col = loc ? Math.max(1, loc.col) : 1;
+      window.monaco.editor.setModelMarkers(model, 'forgetools', [{
+        severity: window.monaco.MarkerSeverity.Error,
+        message: error.message,
+        startLineNumber: line,
+        startColumn: col,
+        endLineNumber: line,
+        endColumn: loc ? col + 1 : model.getLineMaxColumn(line)
+      }]);
     }
   }
 }
@@ -620,10 +672,15 @@ function setupEventListeners(): void {
   const sampleBtn = document.getElementById('sampleBtn');
 
   if (clearBtn) clearBtn.onclick = () => {
-    if (inputEditor) {
-      inputEditor.setValue('');
-      inputEditor.focus();
-    }
+    const ed = inputEditor;
+    const model = ed?.getModel();
+    if (!ed || !model || !model.getValue()) return;
+    // Use an edit (not setValue) so Monaco's own Ctrl+Z history also restores it
+    ed.pushUndoStop();
+    ed.executeEdits('clear', [{ range: model.getFullModelRange(), text: '' }]);
+    ed.pushUndoStop();
+    ed.focus();
+    showToast('Input cleared', 'success', { label: 'Undo', run: () => { ed.trigger('toast', 'undo', null); ed.focus(); } });
   };
 
   if (pasteBtn) pasteBtn.onclick = async () => {
@@ -635,31 +692,35 @@ function setupEventListeners(): void {
       }
     } catch (e) {
       logger.error('Paste failed:', e);
+      showToast('Clipboard is unavailable. Paste into the editor directly.', 'error');
     }
   };
 
   if (copyBtn) copyBtn.onclick = () => {
     if (outputEditor) {
-      navigator.clipboard.writeText(outputEditor.getValue());
-      showToast('Copied to clipboard');
+      const text = outputEditor.getValue();
+      if (!text) { showToast('Nothing to copy yet', 'error'); return; }
+      navigator.clipboard.writeText(text)
+        .then(() => showToast('Copied output'))
+        .catch(() => showToast('Copy failed. Select the output and copy it manually.', 'error'));
     }
   };
 
   if (sampleBtn) sampleBtn.onclick = () => {
     if (!currentTool) {
-      showToast('No tool selected', 'error');
+      showToast('Pick a tool first', 'error');
       return;
     }
     
     // Check if tool has sampleData property
     const sampleData = currentTool.sampleData;
     if (!sampleData) {
-      showToast('No sample data available for this tool', 'error');
+      showToast('This tool has no sample. Paste your own input.', 'error');
       return;
     }
     
     if (!inputEditor) {
-      showToast('Editor not ready', 'error');
+      showToast('Editor is still loading. Try again in a moment.', 'error');
       return;
     }
     
@@ -680,7 +741,17 @@ function setupEventListeners(): void {
     settingsBtn.onclick = () => {
       settingsOverlay.classList.remove('hidden');
       settingsOverlay.classList.add('visible');
+      (document.getElementById('setting-wordwrap') as HTMLElement | null)?.focus();
     };
+    const settingsEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && settingsOverlay.classList.contains('visible')) {
+        settingsOverlay.classList.remove('visible');
+        settingsOverlay.classList.add('hidden');
+        settingsBtn.focus();
+      }
+    };
+    document.addEventListener('keydown', settingsEsc);
+    eventListeners.push({ element: document, event: 'keydown', handler: settingsEsc as EventListener });
   }
   
   if (settingsClose && settingsOverlay) {
@@ -748,101 +819,208 @@ function setupCommandPalette(): void {
   const palette = document.getElementById('cmdPalette');
   const input = document.getElementById('cmdInput') as HTMLInputElement | null;
   const results = document.getElementById('cmdResults');
-  
+
   if (!palette || !input || !results || !window.tools) return;
 
+  let matches: Tool[] = [];
+  let selected = 0;
+  let returnFocus: HTMLElement | null = null;
+
+  const open = (): void => {
+    returnFocus = document.activeElement as HTMLElement | null;
+    palette.classList.add('visible');
+    input.value = '';
+    renderCmdResults('');
+    input.focus();
+  };
+  const close = (): void => {
+    palette.classList.remove('visible');
+    returnFocus?.focus?.();
+  };
+  openPalette = open;
+
+  const choose = (tool: Tool | undefined): void => {
+    if (!tool) return;
+    palette.classList.remove('visible');
+    switchTool(tool.id);
+  };
+
   const keydownHandler = (e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      palette.classList.add('visible');
-      input.focus();
-      renderCmdResults('');
+      if (palette.classList.contains('visible')) close(); else open();
+      return;
     }
-    if (e.key === 'Escape') {
-      palette.classList.remove('visible');
+    if (palette.classList.contains('visible') && e.key === 'Escape') {
+      e.preventDefault();
+      close();
     }
   };
   document.addEventListener('keydown', keydownHandler);
-  eventListeners.push({ element: document, event: 'keydown', handler: keydownHandler });
+  eventListeners.push({ element: document, event: 'keydown', handler: keydownHandler as EventListener });
+
+  const navHandler = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!matches.length) return;
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      selected = (selected + step + matches.length) % matches.length;
+      updateSelection();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      choose(matches[selected]);
+    }
+  };
+  input.addEventListener('keydown', navHandler);
+  eventListeners.push({ element: input, event: 'keydown', handler: navHandler as EventListener });
 
   const paletteClickHandler = (e: Event) => {
-    if (e.target === palette) {
-      palette.classList.remove('visible');
-    }
+    if (e.target === palette) close();
   };
   palette.addEventListener('click', paletteClickHandler);
   eventListeners.push({ element: palette, event: 'click', handler: paletteClickHandler });
 
-  const inputHandler = debounce((e: Event) => {
-    renderCmdResults((e.target as HTMLInputElement).value);
-  }, 100);
-  
+  // No debounce: filtering a few dozen tools is instant, and lag here is felt
+  const inputHandler = () => renderCmdResults(input.value);
   input.addEventListener('input', inputHandler);
   eventListeners.push({ element: input, event: 'input', handler: inputHandler });
 
+  function updateSelection(): void {
+    const items = results!.querySelectorAll<HTMLElement>('.cmd-item');
+    items.forEach((el, i) => {
+      const on = i === selected;
+      el.classList.toggle('is-selected', on);
+      el.setAttribute('aria-selected', String(on));
+      if (on) {
+        el.scrollIntoView({ block: 'nearest' });
+        input!.setAttribute('aria-activedescendant', el.id);
+      }
+    });
+  }
+
+  function highlight(text: string, term: string): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    const idx = term ? text.toLowerCase().indexOf(term) : -1;
+    if (idx < 0) { frag.append(text); return frag; }
+    const mark = document.createElement('mark');
+    mark.textContent = text.slice(idx, idx + term.length);
+    frag.append(text.slice(0, idx), mark, text.slice(idx + term.length));
+    return frag;
+  }
+
   function renderCmdResults(term: string): void {
     if (!window.tools || !results) return;
-    
-    const lowerTerm = term.toLowerCase();
-    
-    // Filter tools first, then create elements (more efficient)
-    const matchingTools = Object.values(window.tools).filter(tool => 
-      tool.title.toLowerCase().includes(lowerTerm) || 
-      tool.description.toLowerCase().includes(lowerTerm)
-    );
-    
-    // Use requestAnimationFrame for batched DOM updates
-    requestAnimationFrame(() => {
-      // Use DocumentFragment for better performance when adding multiple elements
-      const fragment = document.createDocumentFragment();
-      
-      matchingTools.forEach(tool => {
-        const item = document.createElement('div');
-        item.className = 'p-3 px-4 flex justify-between items-center cursor-pointer rounded-[6px] text-text-primary hover:bg-accent hover:text-white transition-colors';
-        
-        const titleSpan = document.createElement('span');
-        titleSpan.textContent = tool.title;
-        
-        const categorySpan = document.createElement('span');
-        categorySpan.className = 'text-xs opacity-60';
-        categorySpan.textContent = tool.category;
-        
-        item.appendChild(titleSpan);
-        item.appendChild(categorySpan);
-        
-        item.onclick = () => {
-          switchTool(tool.id);
-          palette.classList.remove('visible');
-        };
-        fragment.appendChild(item);
-      });
-      
-      // Clear and append in one operation to minimize reflows
-      results.textContent = '';
-      results.appendChild(fragment);
+    const t = term.trim().toLowerCase();
+    const all = Object.values(window.tools);
+    if (!t) {
+      const recent = getRecent().map(id => window.tools![id]).filter(Boolean) as Tool[];
+      matches = [...recent, ...all.filter(x => !recent.includes(x))];
+    } else {
+      // Rank: title prefix > title contains > id/category > description
+      const score = (x: Tool): number => {
+        const title = x.title.toLowerCase();
+        if (title.startsWith(t)) return 0;
+        if (title.includes(t)) return 1;
+        if (x.id.toLowerCase().includes(t) || x.category.toLowerCase().includes(t)) return 2;
+        if (x.description.toLowerCase().includes(t)) return 3;
+        return 9;
+      };
+      matches = all.map(x => [x, score(x)] as const).filter(([, sc]) => sc < 9)
+        .sort((a, b) => a[1] - b[1]).map(([x]) => x);
+    }
+    selected = 0;
+
+    const fragment = document.createDocumentFragment();
+    if (!matches.length) {
+      const empty = document.createElement('div');
+      empty.className = 'cmd-empty';
+      empty.textContent = `No tool matches "${term.trim()}"`;
+      fragment.appendChild(empty);
+      input!.removeAttribute('aria-activedescendant');
+    }
+    matches.forEach((tool, i) => {
+      const item = document.createElement('div');
+      item.className = 'cmd-item';
+      item.id = `cmd-opt-${i}`;
+      item.setAttribute('role', 'option');
+      const left = document.createElement('span');
+      left.className = 'flex items-center gap-2.5 min-w-0';
+      const icon = document.createElement('i');
+      icon.className = 'material-icons text-[18px] opacity-70';
+      icon.textContent = tool.icon;
+      const title = document.createElement('span');
+      title.className = 'truncate';
+      title.appendChild(highlight(tool.title, t));
+      left.append(icon, title);
+      const cat = document.createElement('span');
+      cat.className = 'cmd-meta';
+      cat.textContent = tool.category;
+      item.append(left, cat);
+      item.onmousemove = () => { if (selected !== i) { selected = i; updateSelection(); } };
+      item.onclick = () => choose(tool);
+      fragment.appendChild(item);
     });
+    results.textContent = '';
+    results.appendChild(fragment);
+    updateSelection();
   }
 }
 
-function showToast(msg: string, type: 'success' | 'error' = 'success'): void {
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  
-  const toast = document.createElement('div');
-  const bgColor = type === 'success' ? 'bg-success' : 'bg-error';
-  toast.className = `fixed bottom-6 right-6 bg-bg-card dark:bg-bg-card text-text-primary dark:text-text-primary px-5 py-3 rounded-[10px] shadow-lg border border-border dark:border-border translate-y-[100px] opacity-0 transition-all duration-300 z-[2000] font-medium flex items-center gap-2.5 ${bgColor} before:content-[''] before:block before:w-2 before:h-2 before:rounded-full`;
-  toast.textContent = msg;
-  container.appendChild(toast);
-  
-  // Trigger animation
-  setTimeout(() => {
-    toast.classList.remove('translate-y-[100px]', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
-  }, 10);
-  
-  setTimeout(() => {
-    toast.classList.add('translate-y-[100px]', 'opacity-0');
-    setTimeout(() => toast.remove(), 300);
-  }, 2000);
+// ---- Recent tools + start screen ----
+const RECENT_KEY = 'recent-tools';
+const POPULAR = ['json-formatter', 'jwt-decoder', 'base64', 'url-encoder', 'timestamp', 'uuid-generator', 'hash-generator', 'diff'];
+let openPalette: () => void = () => {};
+
+function getRecent(): string[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') as string[];
+    return list.filter(id => window.tools?.[id]);
+  } catch {
+    return [];
+  }
+}
+
+function rememberRecent(id: string): void {
+  const list = [id, ...getRecent().filter(x => x !== id)].slice(0, 6);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+}
+
+function renderWelcome(): void {
+  if (!window.tools) return;
+  const tools = window.tools;
+  const make = (tool: Tool): HTMLButtonElement => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'welcome-tool';
+    const icon = document.createElement('i');
+    icon.className = 'material-icons';
+    icon.textContent = tool.icon;
+    const title = document.createElement('span');
+    title.className = 'truncate';
+    title.textContent = tool.title;
+    const cat = document.createElement('span');
+    cat.className = 'welcome-tool-cat';
+    cat.textContent = tool.category;
+    b.append(icon, title, cat);
+    b.onclick = () => switchTool(tool.id);
+    return b;
+  };
+  const recent = getRecent().map(id => tools[id]).filter(Boolean) as Tool[];
+  const recentWrap = document.getElementById('recentTools');
+  const recentSection = document.getElementById('recentSection');
+  if (recentWrap && recentSection) {
+    recentWrap.textContent = '';
+    recent.forEach(t => recentWrap.appendChild(make(t)));
+    recentSection.classList.toggle('hidden', recent.length === 0);
+  }
+  const popularWrap = document.getElementById('popularTools');
+  if (popularWrap) {
+    popularWrap.textContent = '';
+    let popular = POPULAR.map(id => tools[id]).filter(t => t && !recent.includes(t)) as Tool[];
+    if (popular.length < 4) {
+      popular = Object.values(tools).filter(t => !recent.includes(t));
+    }
+    popular.slice(0, 8).forEach(t => popularWrap.appendChild(make(t)));
+  }
 }
 
