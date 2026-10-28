@@ -119,7 +119,7 @@
       "!**/node_modules/**/*.d.ts",
       "!**/node_modules/**/README*",
       "!**/node_modules/**/CHANGELOG*",
-      "!**/node_modules/**/LICENSE*"
+      "**/node_modules/**/{LICENSE,LICENCE,COPYING,NOTICE}*"
     ],
     "extraResources": [],
     "extraFiles": [],

@@ -43,7 +43,8 @@ function matchesPattern(filePath, pattern) {
     return filePath.endsWith('.map');
   }
   if (pattern.includes('**/*.md')) {
-    return filePath.endsWith('.md');
+    // Keep license files (e.g. LICENSE.md): their notices must ship with the app
+    return filePath.endsWith('.md') && !/^LICEN[CS]E/i.test(path.basename(filePath));
   }
   if (pattern.includes('**/*.spec.js') || pattern.includes('**/*.test.js')) {
     return /\.(spec|test)\.js$/.test(filePath);
@@ -108,7 +109,8 @@ exports.default = async function(context) {
     'node_modules/**/samples',
     'node_modules/**/sample',
     'node_modules/**/CHANGELOG*',
-    'node_modules/**/LICENSE*',
+    // LICENSE files are intentionally kept: MIT and similar licenses require
+    // their notices to ship with redistributed copies.
     'node_modules/**/README*',
     'node_modules/**/*.spec.js',
     'node_modules/**/*.test.js',
