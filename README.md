@@ -67,7 +67,7 @@ ForgeTools is a comprehensive desktop application built with Electron, TypeScrip
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v22 or higher)
 - npm (v6 or higher)
 - Git
 
@@ -162,101 +162,77 @@ forgetools/
 
 ## CI/CD and Releases
 
-ForgeTools uses GitHub Actions for continuous integration and automated releases. The workflow includes:
+ForgeTools uses GitHub Actions (`.github/workflows/release.yml`) to build and publish releases. **The pipeline runs only when a version tag (`v*`) is pushed.** Pushing commits to `main` does not trigger a build.
 
-1. **Automated Testing**:
+### How to Cut a Release
 
-   - Runs Playwright end-to-end tests in a headless environment
-   - Tests are executed on Ubuntu with Node.js 18
-   - Test artifacts are uploaded for debugging
+1. Make sure your working tree is clean (everything committed) and `main` is up to date:
 
-2. **Automated Versioning**:
+   ```bash
+   git checkout main
+   git pull
+   ```
 
-   - Automatically bumps version numbers
-   - Creates Git tags for releases
-   - Generates detailed changelogs
+2. Run one of the release scripts:
 
-3. **Multi-Platform Builds**:
+   ```bash
+   npm run release:patch   # 2.1.0 → 2.1.1  (bug fixes)
+   npm run release:minor   # 2.1.0 → 2.2.0  (new features)
+   npm run release:major   # 2.1.0 → 3.0.0  (breaking changes)
+   ```
 
-   - Builds for macOS (Intel and Apple Silicon)
-   - Builds for Windows (x64)
-   - Builds for Linux (x64)
+   Each script bumps the version in `package.json`, commits `chore(release): vX.Y.Z`, creates the `vX.Y.Z` tag and pushes the commit and tag together (`git push --follow-tags`).
 
-4. **Release Process**:
-   - Triggered on pushes to main branch
-   - Creates GitHub releases with changelogs
-   - Uploads platform-specific binaries
-   - Includes SHA-256 checksums for verification
+3. Watch the **Release** workflow under the repository's **Actions** tab.
+
+4. When it finishes, go to **Releases** on GitHub, review the **draft** release and click **Publish**.
+
+> You can also tag manually: `git tag v2.1.1 && git push origin v2.1.1`. The build uses the tag as the version, so keep `package.json` in sync.
+
+### Pipeline Stages
+
+1. **Test**: builds the app and runs the Playwright end-to-end suite on Ubuntu with Node.js 22 (headless via `xvfb`). The Playwright report is uploaded as an artifact. **If any test fails, the release stops.**
+2. **Build** (in parallel, Node.js 22):
+   - macOS: x64 and arm64 zips, from one job
+   - Windows: x64 portable EXE
+   - Linux: x64 AppImage
+
+   Files are always named after the tag version, and electron-builder runs with `--publish never`.
+3. **Release**: collects the build files, generates release notes from commits since the previous tag and creates a **draft** GitHub release with SHA-256 checksums.
 
 ### Available Downloads
 
 Each release includes:
 
-- macOS: Universal DMG (Intel & Apple Silicon)
-- Windows: Portable EXE
-- Linux: AppImage
+| Platform              | File                                 |
+| --------------------- | ------------------------------------ |
+| Windows               | `ForgeTools-Portable-X.Y.Z.exe`      |
+| macOS (Intel)         | `ForgeTools-X.Y.Z-mac-x64.zip`       |
+| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip`     |
+| Linux                 | `ForgeTools-X.Y.Z.AppImage`          |
 
 ### Release Notes
 
-Release notes are automatically generated and include:
+Release notes are generated automatically from [Conventional Commit](https://www.conventionalcommits.org/) messages between the previous tag and the new one. Sections with no commits are left out:
 
-- ✨ New Features
-- 🐛 Bug Fixes
-- 📝 Documentation Updates
-- ⚡️ Performance Improvements
+- ✨ New Features (`feat:`)
+- 🐛 Bug Fixes (`fix:`)
+- ⚡️ Performance (`perf:`)
+- 📝 Documentation (`docs:`)
 
-### Release Cycles
-
-#### Automated Release Process
-
-1. **Trigger**:
-
-   - Pushes to the `main` branch
-   - Creation of version tags (e.g., `v1.2.3`)
-
-2. **Version Management**:
-
-   - Automatic version bumping using `phips28/gh-action-bump-version` based on commit types:
-     - `feat:` → Minor version (1.0.14 → 1.1.0)
-     - `fix:`, `docs:`, `perf:`, `chore:` → Patch version (1.0.14 → 1.0.15)
-     - `feat!:` or `BREAKING CHANGE` → Major version (1.0.14 → 2.0.0)
-
-3. **Build Pipeline**:
-
-   - Runs test suite on Ubuntu with Node.js 18
-   - Generates platform-specific builds in parallel:
-     - macOS (x64, arm64)
-     - Windows (x64)
-     - Linux (x64)
-
-4. **Release Artifacts**:
-   - Platform-specific binaries
-   - SHA-256 checksums
-   - Detailed changelog
-   - Installation instructions
-   - **Note**: Releases are created as **drafts** and must be manually published on GitHub
-
-#### Release Schedule
-
-- **Patch Releases**: As needed for bug fixes and minor improvements
-- **Feature Releases**: When new features are ready and tested
-- **Major Releases**: Planned for significant changes or breaking updates
-
-#### Quality Gates
+### Quality Gates
 
 Each release must pass:
 
-1. Automated test suite
-2. Build verification for all platforms
-3. Artifact generation and checksum verification
+1. The automated Playwright test suite
+2. Successful builds on all platforms (a build that produces no files fails the run)
+3. Checksum generation for all files
 
-#### Hotfix Process
+### Hotfix Process
 
-For critical issues:
-
-1. Fix is applied directly to `main`
-2. Triggers immediate patch release
-3. Release notes mark it as a hotfix
+1. Commit the fix to `main` (e.g. `fix: ...`)
+2. Run `npm run release:patch`
+3. Publish the draft release once the pipeline finishes
 
 ### Editing Release Notes
 
