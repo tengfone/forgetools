@@ -45,14 +45,10 @@ git clone https://github.com/tengfone/forgetools.git
 cd forgetools
 npm install
 npm run dev        # run with hot reload
-npm run build      # build (required before tests)
-npm test           # Playwright end-to-end tests
 npm run dist       # package for your platform into dist/
 ```
 
 To release, run `npm run release:patch` (or `release:minor` / `release:major`). It tags the version and CI builds a draft GitHub release.
-
-Contributions are welcome. Please use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, …), because release notes are generated from them.
 
 ## License
 
