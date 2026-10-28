@@ -141,3 +141,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .DS_Store
+docs-shots/
+
+# local AI/design tooling
+.opencode/
+.pi/
+.impeccable/

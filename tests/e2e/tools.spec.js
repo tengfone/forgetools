@@ -86,7 +86,7 @@ test("number base rejects invalid digits instead of ignoring them", async () => 
   await window.waitForSelector("#num-binary");
   await window.fill("#num-binary", "1012");
   await expect(window.locator("#num-binary")).toHaveAttribute("aria-invalid", "true");
-  await expect(window.locator("#statusMsg")).toContainText("base-2");
+  await expect(window.locator("#statusMsg")).toContainText(/base-2/i);
   await window.fill("#num-binary", "1010");
   await expect(window.locator("#num-decimal")).toHaveValue("10");
 });
@@ -121,4 +121,67 @@ test("help popover opens per tool with syntax table", async () => {
   await expect(window.locator("#helpPopover")).toBeVisible();
   await window.click('#toolsNav [data-tool-id="hash"]');
   await expect(window.locator("#helpPopover")).toBeHidden();
+});
+
+test("tool inputs survive switching tools within the session", async () => {
+  const token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl";
+  await window.click('#toolsNav [data-tool-id="jwt"]');
+  const ta = window.locator("#customInterface textarea").first();
+  await ta.waitFor();
+  await ta.fill(token);
+  await window.click('#toolsNav [data-tool-id="json"]');
+  await window.waitForTimeout(200);
+  await window.click('#toolsNav [data-tool-id="jwt"]');
+  await expect(window.locator("#customInterface textarea").first()).toHaveValue(token);
+  await expect(window.locator("#statusSession")).toHaveText("memory only");
+});
+
+test("url two-way: typing decoded encodes, swap flips direction", async () => {
+  await window.click('#toolsNav [data-tool-id="url"]');
+  await window.waitForSelector("#url-decoded");
+  await window.fill("#url-decoded", "");
+  await window.fill("#url-encoded", "");
+  await window.locator("#url-decoded").pressSequentially("a b&c");
+  await expect(window.locator("#url-encoded")).toHaveValue("a%20b%26c");
+  await expect(window.locator("#url-dir")).toContainText("Encode \u2192");
+  await window.click("#url-swap");
+  await expect(window.locator("#url-dir")).toContainText("Decode");
+  await expect(window.locator("#url-dir")).toHaveAttribute("data-direction", "backward");
+  await expect(window.locator("#url-encoded")).toHaveValue("a%20b%26c");
+  await expect(window.locator("#url-decoded")).toHaveValue("a b&c");
+});
+
+test("palette fuzzy search finds Base64 for 'b64'", async () => {
+  await window.keyboard.press("Control+K");
+  await window.keyboard.type("b64");
+  await expect(window.locator("#cmdResults")).toContainText("Base64");
+  await window.keyboard.press("Escape");
+});
+
+test("titlebar settings button opens the Settings sheet", async () => {
+  await window.click('button[aria-label="Settings"] >> nth=0');
+  await expect(window.locator("#settingsTitle")).toHaveText("Settings");
+  await expect(window.locator("#settingsOverlay")).toHaveClass(/visible/);
+  await window.keyboard.press("Escape");
+});
+
+test("editor mode segmented control switches mode", async () => {
+  await window.click('#toolsNav [data-tool-id="json"]');
+  const group = window.locator('#toolActions [role="radiogroup"]');
+  await group.waitFor();
+  const fmt = group.locator('[role="radio"][data-mode="format"]');
+  const min = group.locator('[role="radio"][data-mode="minify"]');
+  await expect(fmt).toHaveAttribute("aria-checked", "true");
+  await expect(min).toHaveAttribute("aria-checked", "false");
+  await min.click();
+  await expect(min).toHaveAttribute("aria-checked", "true");
+  await expect(fmt).toHaveAttribute("aria-checked", "false");
+  await min.press("ArrowLeft");
+  await expect(fmt).toHaveAttribute("aria-checked", "true");
+  await expect(fmt).toBeFocused();
+});
+
+test("opening JWT focuses its input", async () => {
+  await window.click('#toolsNav [data-tool-id="jwt"]');
+  await expect(window.locator("#jwt-input")).toBeFocused({ timeout: 5000 });
 });

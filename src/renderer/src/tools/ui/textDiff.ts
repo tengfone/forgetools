@@ -1,18 +1,19 @@
-import { $f, esc, reportError, clearWithUndo } from '../../ui';
+import { emptyState } from './common';
+import { $f, esc, reportError, resetStatus, clearWithUndo } from '../../ui';
 import { logger } from '../../logger';
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
             <!-- Options Bar -->
-            <div class="flex items-center gap-3 mb-4 p-3 rounded-sm bg-bg-card border border-border">
-                <label class="flex items-center gap-2 text-[13px] cursor-pointer">
+            <div class="tool-toolbar">
+                <label class="flex items-center gap-2 check-label">
                     <input class="cursor-pointer w-4 h-4" type="checkbox" id="diff-case-sensitive">
-                    <span class="font-medium text-text-primary">Case Sensitive</span>
+                    <span>Case sensitive</span>
                 </label>
                 <div class="w-px h-5 bg-border"></div>
-                <label class="flex items-center gap-2 text-[13px]">
-                    <span class="text-text-secondary">Compare Mode:</span>
+                <label class="flex items-center gap-2 text-[12px]">
+                    <span class="text-text-secondary">Compare</span>
                     <select id="diff-mode" class="toolbar-select cursor-pointer">
                         <option value="line">Line by Line</option>
                         <option value="word">Word by Word</option>
@@ -20,33 +21,36 @@ export function render(container: HTMLElement): void {
                     </select>
                 </label>
                 <div class="flex-1"></div>
-                <button class="btn-icon" id="diff-swap" title="Swap texts">
-                    <i class="material-icons">swap_horiz</i> Swap
+                <button type="button" class="btn-icon btn-sm" id="diff-sample">
+                    <i aria-hidden="true" class="material-icons icon-sm">science</i> Sample
                 </button>
-                <button class="btn-icon" id="diff-clear">
-                    <i class="material-icons">clear</i> Clear
+                <button class="btn-icon btn-sm" id="diff-swap" title="Swap texts">
+                    <i aria-hidden="true" class="material-icons icon-sm">swap_horiz</i> Swap
+                </button>
+                <button class="btn-icon btn-sm" id="diff-clear">
+                    <i aria-hidden="true" class="material-icons icon-sm">clear</i> Clear
                 </button>
             </div>
             
             <!-- Input Panels -->
-            <div class="grid-2 gap-4 mb-4">
+            <div class="grid-2">
                 <div class="tool-card relative">
                     <div class="card-head">
                         <h3>Original Text</h3>
-                        <button class="btn-icon btn-sm" data-paste="diff-original">
-                            <i class="material-icons icon-sm">content_paste</i> Paste
+                        <button class="btn-icon btn-sm" data-paste="diff-original" aria-label="Paste original text">
+                            <i aria-hidden="true" class="material-icons icon-sm">content_paste</i> Paste
                         </button>
                     </div>
-                    <textarea class="form-control" id="diff-original" rows="12" placeholder="Enter or paste original text..."></textarea>
+                    <textarea class="form-control" aria-label="Original text" id="diff-original" rows="12" placeholder="Enter or paste original text..."></textarea>
                 </div>
                 <div class="tool-card relative">
                     <div class="card-head">
                         <h3>Compared Text</h3>
-                        <button class="btn-icon btn-sm" data-paste="diff-compared">
-                            <i class="material-icons icon-sm">content_paste</i> Paste
+                        <button class="btn-icon btn-sm" data-paste="diff-compared" aria-label="Paste compared text">
+                            <i aria-hidden="true" class="material-icons icon-sm">content_paste</i> Paste
                         </button>
                     </div>
-                    <textarea class="form-control" id="diff-compared" rows="12" placeholder="Enter or paste compared text..."></textarea>
+                    <textarea class="form-control" aria-label="Compared text" id="diff-compared" rows="12" placeholder="Enter or paste compared text..."></textarea>
                 </div>
             </div>
             
@@ -57,7 +61,7 @@ export function render(container: HTMLElement): void {
                         <h3>Differences</h3>
                         <div class="text-xs text-text-secondary" id="diff-stats"></div>
                     </div>
-                    <div class="flex items-center gap-2 text-[11px]">
+                    <div class="flex items-center gap-3 text-[12px]">
                         <span class="text-success flex items-center gap-1">
                             <span class="legend-swatch is-add"></span>
                             Added
@@ -85,11 +89,18 @@ export function render(container: HTMLElement): void {
         let compared = comparedInput.value;
         
         if (!original && !compared) {
-            resultDiv.innerHTML = '<div class="tool-empty"><i class="material-icons empty-glyph">difference</i>Enter text in both panels to compare...</div>';
+            resultDiv.innerHTML = emptyState('Differences appear here once both sides have text.');
             statsDiv.textContent = '';
             return;
         }
         
+        const limit = diffMode.value === 'char' ? 50_000 : 500_000;
+        if (original.length > limit || compared.length > limit) {
+            reportError(`Input too large for ${diffMode.value} mode: limit is ${limit.toLocaleString()} characters per side`, 'previous result kept');
+            return;
+        }
+        resetStatus();
+
         // Case sensitivity
         const isCaseSensitive = caseSensitive.checked;
         const displayOriginal = original;
@@ -107,7 +118,7 @@ export function render(container: HTMLElement): void {
         let unchangedCount = 0;
         
         if (!window.Diff) {
-            resultDiv.innerHTML = '<div class="text-center text-error p-5">Diff library not available</div>';
+            reportError('Diff library not available');
             return;
         }
         
@@ -134,7 +145,7 @@ export function render(container: HTMLElement): void {
                 }).join('');
             }
             
-            resultDiv.innerHTML = result || '<div class="tool-empty"><i class="material-icons empty-glyph">check_circle</i>No differences found - texts are identical!</div>';
+            resultDiv.innerHTML = result || '<div class="tool-empty"><i aria-hidden="true" class="material-icons empty-glyph">check_circle</i>No differences. The texts are identical.</div>';
             
             // Update stats
             if (addedCount || removedCount) {
@@ -154,6 +165,12 @@ export function render(container: HTMLElement): void {
     diffMode.addEventListener('change', computeDiff);
     
     $f('diff-clear').onclick = () => clearWithUndo([originalInput.id, comparedInput.id], computeDiff);
+    
+    $f('diff-sample').onclick = () => {
+        originalInput.value = 'name: forge\nversion: 1.2.0\nfeatures:\n  - json\n  - jwt';
+        comparedInput.value = 'name: forge\nversion: 1.3.0\nfeatures:\n  - json\n  - jwt\n  - regex';
+        computeDiff();
+    };
     
     $f('diff-swap').onclick = () => {
         const temp = originalInput.value;

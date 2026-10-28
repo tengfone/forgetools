@@ -14,36 +14,49 @@ module.exports = {
         'bg-panel': 'var(--bg-panel)',
         'bg-card': 'var(--bg-card)',
         'bg-input': 'var(--bg-input)',
+        'bg-control-hover': 'var(--bg-control-hover)',
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',
         'text-tertiary': 'var(--text-tertiary)',
         accent: {
           DEFAULT: 'var(--accent-color)',
-          hover: 'var(--accent-hover)'
+          hover: 'var(--accent-hover)',
+          fill: 'var(--accent-fill)',
+          'fill-hover': 'var(--accent-fill-hover)',
+          text: 'var(--accent-text)',
+          on: 'var(--on-accent)'
         },
         border: {
           DEFAULT: 'var(--border-color)',
-          hover: 'var(--border-hover)'
+          hover: 'var(--border-hover)',
+          field: 'var(--field-border)'
         },
-        success: 'var(--success-color)',
-        error: 'var(--error-color)',
+        success: {
+          DEFAULT: 'var(--success-color)',
+          text: 'var(--success-text)'
+        },
+        error: {
+          DEFAULT: 'var(--error-color)',
+          text: 'var(--error-text)'
+        },
         warning: 'var(--warning-color)'
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
-        mono: ['"SF Mono"', '"Segoe UI Mono"', '"JetBrains Mono"', 'Menlo', 'monospace']
+        sans: ['"Inter Variable"', 'Inter', '"Segoe UI Variable Text"', '"Segoe UI"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono Variable"', '"JetBrains Mono"', '"Cascadia Mono"', '"SF Mono"', 'Consolas', 'monospace']
       },
       borderRadius: {
         sm: '6px',
-        md: '10px',
-        lg: '14px'
+        md: '8px',
+        lg: '10px'
       },
       spacing: {
-        'sidebar': '260px',
-        'header': '52px'
+        'sidebar': '232px',
+        'header': '36px'
       }
     }
   },
   plugins: []
 };
+
 

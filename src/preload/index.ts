@@ -12,14 +12,34 @@ import cronParser from 'cron-parser';
 import Papa from 'papaparse';
 import { htmlToJsx } from 'html-to-jsx-transform';
 import { serialize, unserialize } from 'php-serialize';
-import { optimize } from 'svgo';
-import sass from 'sass';
-import less from 'less';
-import Ajv from 'ajv';
 import type { ElectronAPI, CronParserAPI, DiffAPI } from '../types/electronAPI';
 import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions } from '../types/ipc';
 
-const ajv = new Ajv();
+// Heavy libraries (sass, less, svgo, ajv) are loaded on first use rather than at
+// preload time, so window startup does not pay for tools the user never opens.
+// The preload is emitted as CommonJS and these packages are externalized, so a
+// plain require() resolves them from node_modules.
+function lazy<T>(load: () => T): () => T {
+  let cached: T | undefined;
+  let loaded = false;
+  return () => {
+    if (!loaded) {
+      cached = load();
+      loaded = true;
+    }
+    return cached as T;
+  };
+}
+/* eslint-disable @typescript-eslint/no-require-imports */
+const getSass = lazy(() => require('sass') as typeof import('sass'));
+const getLess = lazy(() => require('less') as typeof import('less'));
+const getSvgo = lazy(() => require('svgo') as typeof import('svgo'));
+const getAjv = lazy(() => {
+  const mod = require('ajv') as typeof import('ajv') & { default?: typeof import('ajv').default };
+  const AjvCtor = (mod.default ?? mod) as unknown as typeof import('ajv').default;
+  return new AjvCtor();
+});
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 // Read the signatureAlgorithm OID from a DER-encoded X.509 certificate:
 // Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm SEQUENCE { OID, ... }, signature }
@@ -91,7 +111,7 @@ const electronAPI: ElectronAPI = {
   ajv: {
     validate: (schema: unknown, data: unknown) => {
       try {
-        const validate = ajv.compile(schema);
+        const validate = getAjv().compile(schema as object);
         const valid = validate(data);
         return {
           valid,
@@ -241,7 +261,7 @@ const electronAPI: ElectronAPI = {
     unserialize: (str: string) => unserialize(str),
   },
   svg: {
-    optimize: (svg: string) => optimize(svg).data,
+    optimize: (svg: string) => getSvgo().optimize(svg).data,
   },
   x509: {
     decode: (cert: string) => {
@@ -337,11 +357,11 @@ const electronAPI: ElectronAPI = {
   },
   preprocessors: {
     sass: {
-      compile: (scss: string): string => sass.compileString(scss).css,
+      compile: (scss: string): string => getSass().compileString(scss).css,
     },
     less: {
       compile: async (lessCode: string): Promise<string> => {
-        const output = await less.render(lessCode);
+        const output = await getLess().render(lessCode);
         return output.css;
       },
     },

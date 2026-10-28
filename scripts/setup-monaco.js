@@ -92,4 +92,19 @@ nlsPaths.forEach(nlsPath => {
     }
 });
 
+// Workers are mocked in index.html (MonacoEnvironment.getWorker), so the language
+// service workers and the worker bootstrap are never loaded. Keep the *Mode.js
+// files: jsonMode supplies JSON tokenization (there is no basic-languages/json).
+const deadWeight = [
+    'base/worker',
+    'language/json/jsonWorker.js',
+    'language/typescript/tsWorker.js',
+    'language/css/cssWorker.js',
+    'language/html/htmlWorker.js'
+];
+deadWeight.forEach(item => {
+    const p = path.join(monacoTargetPath, item);
+    if (fs.existsSync(p)) fs.removeSync(p);
+});
+
 console.log('Monaco Editor files (optimized) copied successfully!'); 

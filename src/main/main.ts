@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, session } from 'electron';
 import path from 'path';
 import QRCode from 'qrcode';
 import {
@@ -166,17 +166,15 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
       preload: path.join(__dirname, '../preload/index.js'),
       webSecurity: true,
       sandbox: false, // Allow access to node modules
     },
-    backgroundColor: '#ffffff',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0c' : '#f4f4f2', // match theme to avoid white flash
   });
 
   // Set proper CSP headers
   // Note: 'unsafe-eval' is required for Monaco Editor workers (AMD/RequireJS)
-  // 'unsafe-inline' is required for Tailwind CSS JIT mode
   // This warning will not appear in production builds (only in development)
   mainWindow.webContents.session.webRequest.onHeadersReceived(
     (details, callback) => {
@@ -186,8 +184,8 @@ function createWindow(): void {
           'Content-Security-Policy': [
             "default-src 'self';" +
               "img-src 'self' data: blob:;" +
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval';" + // unsafe-eval needed for Monaco workers
-              "style-src 'self' 'unsafe-inline';" + // unsafe-inline needed for Tailwind JIT
+              "script-src 'self' 'unsafe-eval';" + // unsafe-eval needed for Monaco AMD loader
+              "style-src 'self' 'unsafe-inline';" + // inline style attributes set at runtime (Monaco, tools)
               "worker-src 'self' blob:;" + // Allow web workers for Monaco Editor
               "connect-src 'self';" +
               "font-src 'self';" +
@@ -214,6 +212,15 @@ function createWindow(): void {
     });
   }
 
+  // Navigation hardening: never leave the app, never open new windows.
+  const devUrl = process.env.VITE_DEV_SERVER_URL;
+  const isAppUrl = (url: string): boolean =>
+    url.startsWith('file://') || (!!devUrl && url.startsWith(devUrl));
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isAppUrl(url)) event.preventDefault();
+  });
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
   // Electron-Vite automatically sets VITE_DEV_SERVER_URL in dev mode
   // In production/test, load from the built file
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -231,6 +238,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.setPermissionRequestHandler((_wc, _perm, callback) => callback(false));
   createWindow();
 
   app.on('activate', () => {

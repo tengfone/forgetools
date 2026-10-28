@@ -1,171 +1,145 @@
-import { $f, showToast, reportError, clearWithUndo, copyText } from '../../ui';
+import { $, $f, esc, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
+import { debounce, inputActions, copyButton, emptyState } from './common';
+
+const MAX = 100;
+
+const row = (label: string, value: string, last = false): string => `
+    <div class="result-item${last ? '' : ' mb-3'}">
+        <div class="ui-section">${label}</div>
+        <div class="copy-chip mt-1" data-copy-self>${esc(value)}</div>
+    </div>`;
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
             <div class="grid-2">
                 <div class="tool-card">
-                    <h3>Input</h3>
-                    <div class="flex gap-2 mb-3">
-                        <button class="btn-icon" id="uuid-clipboard-btn"><i class="material-icons">content_paste</i> Paste</button>
-                        <button class="btn-icon" id="uuid-sample-btn"><i class="material-icons">shuffle</i> Sample (v4)</button>
-                        <button class="btn-icon" id="uuid-clear-btn"><i class="material-icons">clear</i> Clear</button>
+                    <div class="card-head">
+                        <h3 id="uuid-input-label">Inspect</h3>
+                        ${inputActions({ paste: 'uuid-input', sample: 'uuid-sample-btn', clear: 'uuid-clear-btn' })}
                     </div>
-                    <input type="text" class="form-control mb-3" id="uuid-input" placeholder="Paste UUID or ULID here...">
-                    
-                    <h3 class="mt-6">Generate New IDs</h3>
-                    <div class="flex items-center gap-2 mb-3">
-                        <select id="uuid-type" class="toolbar-select flex-1">
-                            <option value="uuid-v4">UUID v4</option>
-                            <option value="ulid">ULID</option>
-                        </select>
-                        <span class="text-xs text-text-secondary">×</span>
-                        <input type="number" id="uuid-quantity" class="form-control w-20" value="10" min="1" max="100">
-                        <button class="btn-primary" id="uuid-generate-btn">Generate</button>
+                    <input type="text" class="form-control mb-3" id="uuid-input" aria-labelledby="uuid-input-label" placeholder="Paste UUID or ULID here...">
+
+                    <div class="card-head mt-6">
+                        <h3>Generate</h3>
+                        <div class="flex gap-1">
+                            ${copyButton('uuid-list')}
+                            <button type="button" class="btn-icon btn-sm" id="uuid-clear-list-btn"><i class="material-icons icon-sm" aria-hidden="true">clear</i> Clear</button>
+                        </div>
                     </div>
-                    <div class="flex gap-2 mb-3">
-                        <button class="btn-icon" id="uuid-copy-all-btn"><i class="material-icons">content_copy</i> Copy</button>
-                        <button class="btn-icon" id="uuid-clear-list-btn"><i class="material-icons">delete_outline</i> Clear</button>
-                        <label class="check-label ml-auto flex items-center gap-1.5">
-                            <input type="checkbox" id="uuid-lowercase">
-                            <span>lowercase</span>
-                        </label>
+                    <div class="flex items-end gap-2 mb-3">
+                        <div class="flex-1">
+                            <label class="ui-label" for="uuid-type">Type</label>
+                            <select id="uuid-type" class="toolbar-select w-full">
+                                <option value="uuid-v4">UUID v4</option>
+                                <option value="ulid">ULID</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="ui-label" for="uuid-quantity">Quantity (1-${MAX})</label>
+                            <input type="number" id="uuid-quantity" class="form-control w-24 !py-0 h-7" value="10" min="1" max="${MAX}">
+                        </div>
+                        <button type="button" class="btn-primary" id="uuid-generate-btn">Generate</button>
                     </div>
-                    <textarea id="uuid-list" class="form-control" rows="10" readonly placeholder="Generated IDs will appear here..."></textarea>
+                    <label class="check-label flex items-center gap-1.5 mb-3" for="uuid-lowercase">
+                        <input type="checkbox" id="uuid-lowercase">
+                        <span>lowercase</span>
+                    </label>
+                    <span class="field-label" id="uuid-list-label">Generated IDs</span>
+                    <textarea id="uuid-list" class="form-control" rows="10" readonly aria-labelledby="uuid-list-label"></textarea>
                 </div>
-                
+
                 <div class="tool-card">
                     <h3>Decoded Information</h3>
-                    <div class="text-[13px] text-text-secondary" id="uuid-breakdown">
-                        <p>Paste or generate a UUID/ULID to see details</p>
-                    </div>
+                    <div class="text-[13px] text-text-secondary" id="uuid-breakdown"></div>
                 </div>
             </div>
         </div>
     `;
-    
+
     const input = $f('uuid-input');
-    const breakdown = $f('uuid-breakdown');
-    const generateBtn = $f('uuid-generate-btn');
+    const breakdown = $('uuid-breakdown');
     const typeSelect = $f('uuid-type');
     const quantityInput = $f('uuid-quantity');
     const list = $f('uuid-list');
     const lowercaseCheckbox = $f('uuid-lowercase');
-    
-    // Parse and display UUID/ULID breakdown
-    const parseID = (id: string) => {
+    const EMPTY = emptyState('Version, timestamp and variant appear here once an ID is pasted.', 'uuid-sample-btn');
+
+    const parseID = (raw: string): void => {
+        const id = raw.trim();
         if (!id) {
-            breakdown.innerHTML = '<p>Paste or generate a UUID/ULID to see details</p>';
+            breakdown.innerHTML = EMPTY;
+            setFieldInvalid('uuid-input', false);
+            resetStatus();
             return;
         }
-        
-        const cleanId = id.trim().replace(/-/g, '');
-        
-        // Check if it's a ULID
-        if (cleanId.length === 26 && /^[0-9A-Z]+$/i.test(cleanId)) {
+        const clean = id.replace(/-/g, '');
+        if (clean.length === 26 && /^[0-9A-HJKMNP-TV-Z]+$/i.test(clean)) {
             try {
                 const decoded = window.electronAPI.ulid.decode(id);
-                breakdown.innerHTML = `
-                    <div class="result-item mb-3">
-                        <label class="font-semibold text-text-primary">Type</label>
-                        <div class="copy-chip mt-1">ULID</div>
-                    </div>
-                    <div class="result-item mb-3">
-                        <label class="font-semibold text-text-primary">Timestamp</label>
-                        <div class="copy-chip mt-1">${decoded.timestamp} ms</div>
-                    </div>
-                    <div class="result-item">
-                        <label class="font-semibold text-text-primary">Date</label>
-                        <div class="copy-chip mt-1">${decoded.date}</div>
-                    </div>
-                `;
-            } catch (e) {
-                breakdown.innerHTML = '';
-                reportError('Not a valid ULID');
+                breakdown.innerHTML = row('Type', 'ULID') + row('Timestamp', `${decoded.timestamp} ms`) + row('Date', String(decoded.date), true);
+                setFieldInvalid('uuid-input', false);
+                reportOk('Valid ULID');
+            } catch {
+                breakdown.innerHTML = EMPTY;
+                setFieldInvalid('uuid-input', true, 'Not a valid ULID: timestamp part is out of range');
+                reportError('Not a valid ULID: timestamp part is out of range');
             }
-        } else if ((cleanId.length === 32 && /^[0-9A-F]+$/i.test(cleanId)) || id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-            // UUID
-            const version = parseInt(cleanId[12], 16);
-            const variant = parseInt(cleanId[16], 16) >> 6;
-            breakdown.innerHTML = `
-                <div class="result-item mb-3">
-                    <label class="font-semibold text-text-primary">Type</label>
-                    <div class="copy-chip mt-1">UUID</div>
-                </div>
-                <div class="result-item mb-3">
-                    <label class="font-semibold text-text-primary">Standard String Format</label>
-                    <div class="copy-chip mt-1">${id.toLowerCase()}</div>
-                </div>
-                <div class="result-item mb-3">
-                    <label class="font-semibold text-text-primary">Raw Contents</label>
-                    <div class="copy-chip mt-1">${(cleanId.match(/.{1,2}/g) ?? []).join(':').toLowerCase()}</div>
-                </div>
-                <div class="result-item mb-3">
-                    <label class="font-semibold text-text-primary">Version</label>
-                    <div class="copy-chip mt-1">${version} (${version === 4 ? 'random' : version === 1 ? 'time-based' : 'unknown'})</div>
-                </div>
-                <div class="result-item">
-                    <label class="font-semibold text-text-primary">Variant</label>
-                    <div class="copy-chip mt-1">${variant === 2 ? 'RFC 4122' : 'Other'}</div>
-                </div>
-            `;
+        } else if (/^[0-9a-f]{32}$/i.test(clean) && (id.length === 32 || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
+            const version = parseInt(clean[12], 16);
+            const variant = parseInt(clean[16], 16) >> 2;
+            const std = clean.toLowerCase().replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+            breakdown.innerHTML = row('Type', 'UUID')
+                + row('Standard String Format', std)
+                + row('Raw Contents', (clean.match(/.{2}/g) ?? []).join(':').toLowerCase())
+                + row('Version', `${version} (${version === 4 ? 'random' : version === 1 ? 'time-based' : version === 7 ? 'Unix time' : 'other'})`)
+                + row('Variant', variant === 2 ? 'RFC 4122' : 'Other', true);
+            setFieldInvalid('uuid-input', false);
+            reportOk('Valid UUID', `v${version}`);
         } else {
-            breakdown.innerHTML = '';
-            reportError('Not a valid UUID or ULID');
+            breakdown.innerHTML = EMPTY;
+            setFieldInvalid('uuid-input', true, 'Not a valid UUID (32 hex digits, 8-4-4-4-12) or ULID (26 Crockford base32 chars)');
+            reportError('Not a valid UUID (32 hex digits, 8-4-4-4-12) or ULID (26 Crockford base32 chars)');
         }
     };
-    
-    input.addEventListener('input', (e) => parseID((e.target as HTMLInputElement).value));
-    
-    // Generate button
-    generateBtn.onclick = () => {
-        const type = typeSelect.value;
-        const count = parseInt(quantityInput.value) || 1;
-        const lowercase = lowercaseCheckbox.checked;
-        const ids = [];
-        
-        for (let i = 0; i < count; i++) {
-            let id;
-            if (type === 'uuid-v4') {
-                id = crypto.randomUUID();
-            } else {
-                id = window.electronAPI.ulid.generate();
-            }
-            ids.push(lowercase ? id.toLowerCase() : id.toUpperCase());
+
+    const readQuantity = (): number | null => {
+        const n = parseInt(quantityInput.value, 10);
+        if (!Number.isFinite(n) || n < 1 || n > MAX) {
+            setFieldInvalid('uuid-quantity', true, `Quantity must be between 1 and ${MAX}`);
+            reportError(`Quantity must be between 1 and ${MAX}`);
+            return null;
         }
-        
+        setFieldInvalid('uuid-quantity', false);
+        return n;
+    };
+
+    const generate = (): void => {
+        const count = readQuantity();
+        if (count === null) return;
+        const lower = lowercaseCheckbox.checked;
+        const ids = Array.from({ length: count }, () => {
+            const id = typeSelect.value === 'uuid-v4' ? crypto.randomUUID() : window.electronAPI.ulid.generate();
+            return lower ? id.toLowerCase() : id.toUpperCase();
+        });
         list.value = ids.join('\n');
-        if (ids.length > 0) {
-            input.value = ids[0];
-            parseID(ids[0]);
-        }
+        reportOk(`Generated ${count} ${typeSelect.value === 'ulid' ? 'ULID' : 'UUID'}${count > 1 ? 's' : ''}`);
     };
-    
-    // Toolbar buttons
-    $f('uuid-clipboard-btn').onclick = async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            input.value = text;
-            parseID(text);
-        } catch {
-            showToast('Clipboard is unavailable. Paste with Ctrl+V instead.', 'error');
-        }
-    };
-    
-    $f('uuid-sample-btn').onclick = () => {
-        const sample = crypto.randomUUID();
-        input.value = sample;
-        parseID(sample);
-    };
-    
-    $f('uuid-clear-btn').onclick = () => clearWithUndo([input.id], () => parseID(input.value));
-    
-    $f('uuid-copy-all-btn').onclick = () => {
-        void copyText(list.value);
-    };
-    
-    $f('uuid-clear-list-btn').onclick = () => clearWithUndo([list.id], () => {}, 'List cleared');
-    
-    // Generate initial UUIDs
-    generateBtn.click();
+
+    input.addEventListener('input', debounce(() => parseID(input.value)));
+    quantityInput.addEventListener('input', debounce(generate));
+    quantityInput.addEventListener('blur', () => {
+        const n = parseInt(quantityInput.value, 10);
+        if (Number.isFinite(n)) { quantityInput.value = String(Math.min(MAX, Math.max(1, n))); generate(); }
+    });
+    typeSelect.addEventListener('change', generate);
+    lowercaseCheckbox.addEventListener('change', generate);
+    $('uuid-generate-btn').onclick = generate;
+    $('uuid-sample-btn').onclick = () => { input.value = crypto.randomUUID(); parseID(input.value); };
+    $('uuid-clear-btn').onclick = () => clearWithUndo(['uuid-input'], () => parseID(input.value));
+    $('uuid-clear-list-btn').onclick = () => clearWithUndo(['uuid-list'], () => {}, 'List cleared');
+
+    breakdown.innerHTML = EMPTY;
+    generate();
+    resetStatus();
 }

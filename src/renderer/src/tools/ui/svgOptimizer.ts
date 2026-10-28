@@ -1,72 +1,69 @@
-import { $f, reportError, clearWithUndo, copyText } from '../../ui';
+import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
+import { debounce, inputActions, copyButton } from './common';
+
+const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sample icon -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <g>
+        <circle cx="12.000" cy="12.000" r="10.000" fill="#72cd42" />
+    </g>
+</svg>`;
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
                 <div class="card-head">
-                    <h3>SVG Input</h3>
-                    <div class="flex gap-1">
-                        <button class="btn-icon btn-sm" data-paste="svg-input">
-                            <i class="material-icons icon-sm">content_paste</i> Paste
-                        </button>
-                        <button class="btn-icon btn-sm" id="svg-clear">
-                            <i class="material-icons icon-sm">clear</i> Clear
-                        </button>
-                    </div>
+                    <h3 id="svg-input-label">SVG Input</h3>
+                    ${inputActions({ paste: 'svg-input', sample: 'svg-sample', clear: 'svg-clear' })}
                 </div>
-                <textarea class="form-control" id="svg-input" rows="12" placeholder="<svg>...</svg>"></textarea>
+                <textarea class="form-control font-mono" id="svg-input" rows="12" aria-labelledby="svg-input-label" placeholder="<svg>...</svg>"></textarea>
                 <div class="ui-meta mt-1.5" id="svg-input-size"></div>
             </div>
             <div class="tool-card">
                 <div class="card-head">
-                    <h3>Optimized Output</h3>
-                    <button class="btn-icon" id="svg-copy">
-                        <i class="material-icons">content_copy</i> Copy
-                    </button>
+                    <h3 id="svg-output-label">Optimized Output</h3>
+                    ${copyButton('svg-output')}
                 </div>
-                <textarea class="form-control" id="svg-output" rows="12" readonly></textarea>
+                <textarea class="form-control font-mono" id="svg-output" rows="12" readonly aria-labelledby="svg-output-label"></textarea>
                 <div class="ui-meta mt-1.5" id="svg-stats"></div>
             </div>
         </div>
     `;
-    
-    const optimizeSVG = (svg: string): string => window.electronAPI.svg.optimize(svg);
+    const inputEl = $f('svg-input');
+    const output = $f('svg-output');
 
-    const update = () => {
-        const input = $f('svg-input').value;
-        const output = $f('svg-output');
-        
+    const update = (): void => {
+        const input = inputEl.value;
         if (!input.trim()) {
             output.value = '';
-            $f('svg-input-size').textContent = '';
-            $f('svg-stats').textContent = '';
+            $('svg-input-size').textContent = '';
+            $('svg-stats').textContent = '';
+            setFieldInvalid('svg-input', false);
+            resetStatus();
             return;
         }
-        
         const inputSize = new Blob([input]).size;
-        $f('svg-input-size').textContent = `Size: ${(inputSize / 1024).toFixed(2)} KB`;
-        
-        let optimized: string;
+        $('svg-input-size').textContent = `Size: ${(inputSize / 1024).toFixed(2)} KB`;
         try {
-            optimized = optimizeSVG(input);
+            if (!/<svg[\s>]/i.test(input)) throw new Error('Input must contain an <svg> element');
+            const optimized = window.electronAPI.svg.optimize(input);
+            const outputSize = new Blob([optimized]).size;
+            const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);
+            output.value = optimized;
+            $('svg-stats').textContent = `Size: ${(outputSize / 1024).toFixed(2)} KB | Reduced by ${reduction}%`;
+            setFieldInvalid('svg-input', false);
+            reportOk('Optimized', `-${reduction}%`);
         } catch (e) {
             output.value = '';
-            $f('svg-stats').textContent = '';
+            $('svg-stats').textContent = '';
+            setFieldInvalid('svg-input', true, errorMessage(e));
             reportError(e);
-            return;
         }
-        const outputSize = new Blob([optimized]).size;
-        const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);
-        
-        output.value = optimized;
-        $f('svg-stats').textContent = `Size: ${(outputSize / 1024).toFixed(2)} KB | Reduced by ${reduction}%`;
-        $f('svg-stats').className = Number(reduction) > 0 ? 'ui-meta mt-1.5 text-success' : 'ui-meta mt-1.5';
     };
-    
-    $f('svg-input').addEventListener('input', update);
-    $f('svg-clear').onclick = () => clearWithUndo(['svg-input'], update);
-    $f('svg-copy').onclick = () => {
-        void copyText($f('svg-output').value);
-    };
+
+    inputEl.addEventListener('input', debounce(update));
+    $('svg-sample').onclick = () => { inputEl.value = SAMPLE; update(); };
+    $('svg-clear').onclick = () => clearWithUndo(['svg-input'], update);
+    resetStatus();
 }

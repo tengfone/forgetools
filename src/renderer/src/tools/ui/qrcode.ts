@@ -1,70 +1,85 @@
-import { $f, reportError, reportOk } from '../../ui';
+import { $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo, esc } from '../../ui';
+import { debounce, inputActions } from './common';
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
             <div class="grid-2">
                 <div class="tool-card">
-                    <h3>Input</h3>
+                    <div class="card-head">
+                        <h3>Input</h3>
+                        ${inputActions({ paste: 'qr-input', sample: 'qr-sample', clear: 'qr-clear' })}
+                    </div>
                     <div class="mb-3">
-                        <label class="ui-label">Text or URL</label>
+                        <label class="ui-label" for="qr-input">Text or URL</label>
                         <input type="text" class="form-control" id="qr-input" placeholder="https://example.com">
                     </div>
                     <div class="mb-3">
-                        <label class="ui-label">Size (px)</label>
+                        <label class="ui-label" for="qr-size">Size (px)</label>
                         <input type="number" class="form-control" id="qr-size" value="256" min="128" max="512" step="64">
                     </div>
-                    <button class="btn-primary btn-block" id="qr-generate"><i class="material-icons">qr_code</i> Generate</button>
+                    <button type="button" class="btn-primary self-start" id="qr-generate"><i class="material-icons" aria-hidden="true">qr_code</i> Generate</button>
                 </div>
                 <div class="tool-card">
-                    <h3>QR Code Preview</h3>
-                    <div class="qr-preview panel-well flex items-center justify-center min-h-[280px] mb-3" id="qr-preview">
-                        <div class="text-text-secondary">QR Code will appear here</div>
+                    <div class="card-head">
+                        <h3>Preview</h3>
+                        <button type="button" class="btn-icon btn-sm" id="qr-download" disabled>
+                            <i class="material-icons icon-sm" aria-hidden="true">download</i> Download
+                        </button>
                     </div>
-                    <button class="btn-icon w-full hidden" id="qr-download">
-                        <i class="material-icons">download</i> Download
-                    </button>
+                    <div class="qr-preview panel-well flex items-center justify-center min-h-[280px]" id="qr-preview">
+                        <div class="text-text-secondary">Enter text to generate a QR code</div>
+                    </div>
                 </div>
             </div>
         </div>
     `;
     const input = $f('qr-input');
     const sizeInput = $f('qr-size');
-    const preview = $f('qr-preview');
-    const downloadBtn = $f('qr-download');
+    const preview = $('qr-preview');
+    const downloadBtn = $<HTMLButtonElement>('qr-download');
     let currentDataUrl = '';
-    
-    const generate = async () => {
+
+    const empty = (msg: string): void => {
+        preview.innerHTML = `<div class="text-text-secondary">${esc(msg)}</div>`;
+        downloadBtn.disabled = true;
+        currentDataUrl = '';
+    };
+
+    const generate = async (): Promise<void> => {
         const text = input.value.trim();
-        if (!text) {
-            preview.innerHTML = '<div class="text-text-secondary">Enter text to generate QR code</div>';
-            downloadBtn.style.display = 'none';
+        const size = parseInt(sizeInput.value, 10);
+        if (!Number.isFinite(size) || size < 128 || size > 512) {
+            setFieldInvalid('qr-size', true, 'Size must be between 128 and 512 px');
+            reportError('Size must be between 128 and 512 px');
             return;
         }
-        const size = parseInt(sizeInput.value) || 256;
+        setFieldInvalid('qr-size', false);
+        if (!text) { empty('Enter text to generate a QR code'); resetStatus(); return; }
         try {
             currentDataUrl = await window.electronAPI.qrcode.generate(text, { width: size, margin: 2 });
-            preview.innerHTML = `<img class="max-w-full rounded-sm" src="${currentDataUrl}" alt="QR Code">`;
-            downloadBtn.style.display = 'block';
+            preview.innerHTML = `<img class="max-w-full rounded-sm" src="${currentDataUrl}" alt="QR code for the entered text">`;
+            downloadBtn.disabled = false;
             reportOk('QR code generated', `${size}px`);
         } catch (e) {
-            preview.innerHTML = '<div class="text-text-secondary">Could not generate a QR code</div>';
+            empty('Could not generate a QR code');
             reportError(e);
-            downloadBtn.style.display = 'none';
         }
     };
-    
-    $f('qr-generate').onclick = generate;
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') generate();
-    });
-    
+    const live = debounce(() => void generate());
+
+    input.addEventListener('input', live);
+    sizeInput.addEventListener('input', live);
+    $('qr-generate').onclick = () => void generate();
+    $('qr-sample').onclick = () => { input.value = 'https://example.com'; void generate(); };
+    $('qr-clear').onclick = () => clearWithUndo(['qr-input'], () => void generate());
+
     downloadBtn.onclick = () => {
-        if (currentDataUrl) {
-            const a = document.createElement('a');
-            a.href = currentDataUrl;
-            a.download = 'qrcode.png';
-            a.click();
-        }
+        if (!currentDataUrl) return;
+        const a = document.createElement('a');
+        a.href = currentDataUrl;
+        a.download = 'qrcode.png';
+        a.click();
     };
+    resetStatus();
 }

@@ -33,11 +33,18 @@ export function showToast(msg: string, type: 'success' | 'error' = 'success', ac
   clearTimeout(toastTimer);
   toastAction = null;
 
+  // #toastContainer is a persistent polite live region; errors are announced via the
+  // persistent assertive #toastAlert region instead (visual text hidden to avoid double reads).
+  const alertRegion = document.getElementById('toastAlert');
+  if (alertRegion) alertRegion.textContent = '';
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
   const text = document.createElement('span');
   text.textContent = msg;
+  if (type === 'error' && alertRegion) {
+    text.setAttribute('aria-hidden', 'true');
+    requestAnimationFrame(() => { alertRegion.textContent = msg; });
+  }
   toast.appendChild(text);
 
   if (action) {
@@ -91,6 +98,52 @@ export function clearWithUndo(ids: string[], after: () => void = () => {}, label
   });
 }
 
+// ---- Per-tool session state: in memory only, never persisted ----
+export type FieldSnapshot = Record<string, string | boolean>;
+const MAX_FIELD_CHARS = 1024 * 1024; // ~1 MB per field; larger values are skipped
+
+function snapshotFields(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('input[id],textarea[id],select[id]')).filter(el => {
+    const f = el as HTMLInputElement;
+    if (f.type === 'file' || f.type === 'button' || f.type === 'submit' || f.type === 'password') return false;
+    return !f.readOnly && !f.disabled && !el.hasAttribute('data-output');
+  });
+}
+
+/** Capture values of editable fields under `root`, keyed by id. */
+export function captureFields(root: HTMLElement): FieldSnapshot {
+  const snap: FieldSnapshot = {};
+  let total = 0;
+  for (const el of snapshotFields(root)) {
+    const f = el as HTMLInputElement;
+    if (f.type === 'checkbox' || f.type === 'radio') { snap[el.id] = f.checked; continue; }
+    if (f.value.length > MAX_FIELD_CHARS || total + f.value.length > MAX_FIELD_CHARS) continue;
+    total += f.value.length;
+    snap[el.id] = f.value;
+  }
+  return snap;
+}
+
+/** Restore a snapshot, firing input/change so live tools recompute. */
+export function restoreFields(root: HTMLElement, snap: FieldSnapshot): void {
+  for (const [id, v] of Object.entries(snap)) {
+    const el = root.querySelector<HTMLInputElement>(`#${CSS.escape(id)}`);
+    if (!el) continue;
+    if (typeof v === 'boolean') { if (el.checked === v) continue; el.checked = v; }
+    else { if (el.value === v) continue; el.value = v; if (el.value !== v) continue; }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+/** Ids of text-like editable fields under `root` (for clearWithUndo). */
+export function clearableFieldIds(root: HTMLElement): string[] {
+  return snapshotFields(root).filter(el => {
+    const t = (el as HTMLInputElement).type;
+    return el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'color', 'number', 'date', 'datetime-local', 'time'].includes(t));
+  }).map(el => el.id);
+}
+
 export async function copyText(text: string): Promise<void> {
   if (!text) { showToast('Nothing to copy yet', 'error'); return; }
   try {
@@ -106,7 +159,8 @@ export async function pasteInto(id: string): Promise<void> {
   if (!field) return;
   try {
     field.value = await navigator.clipboard.readText();
-    field.dispatchEvent(new Event('input', { bubbles: true }));
+    // Flag as a user edit so two-way tools treat the pasted pane as the source.
+    field.dispatchEvent(Object.assign(new Event('input', { bubbles: true }), { fromPaste: true }));
   } catch {
     showToast('Clipboard is unavailable. Paste with Ctrl+V instead.', 'error');
   }
@@ -144,17 +198,143 @@ export function setStatus(kind: 'ok' | 'error' | 'idle', msg: string, meta = '')
   msgEl.textContent = msg;
   msgEl.title = msg;
   metaEl.textContent = meta || 'offline';
+  // Announce only on state transitions (ok <-> error), not on every keystroke.
+  const live = document.getElementById('statusLive');
+  const state = kind === 'error' ? 'error' : 'ok';
+  if (live && state !== lastStatusState) {
+    const wasError = lastStatusState === 'error';
+    lastStatusState = state;
+    if (state === 'error') live.textContent = `Error: ${msg}`;
+    else if (wasError) live.textContent = 'Error resolved';
+  }
 }
+let lastStatusState: 'ok' | 'error' = 'ok';
+
+// ---- Indentation preference (shared by editor tools) ----
+export type IndentChoice = 2 | 4 | 'tab';
+const INDENT_KEY = 'editor-indent';
+/** Current indent choice: 2, 4 or 'tab'. */
+export function getIndentChoice(): IndentChoice {
+  const v = localStorage.getItem(INDENT_KEY);
+  return v === '4' ? 4 : v === 'tab' ? 'tab' : 2;
+}
+/** Indent width in spaces for formatters (tab => 4; app.ts converts leading spaces to tabs afterwards). */
+export function getIndent(): number {
+  const c = getIndentChoice();
+  return c === 'tab' ? 4 : c;
+}
+export function getIndentString(): string {
+  const c = getIndentChoice();
+  return c === 'tab' ? '\t' : ' '.repeat(c);
+}
+export function setIndentChoice(c: IndentChoice): void {
+  localStorage.setItem(INDENT_KEY, String(c));
+}
+
+// ---- Modal helpers: focus trap, inert background, focus restore ----
+interface ModalState { el: HTMLElement; opener: HTMLElement | null; onKey: (e: KeyboardEvent) => void; }
+const modalStack: ModalState[] = [];
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+function setBackgroundInert(on: boolean): void {
+  ['appBody', 'mainContent'].forEach(id => {
+    const el = document.getElementById(id) as (HTMLElement & { inert: boolean }) | null;
+    if (el) el.inert = on;
+  });
+  const tb = document.querySelector<HTMLElement & { inert: boolean }>('.titlebar');
+  if (tb) tb.inert = on;
+}
+
+/** Open a modal: traps Tab inside `el`, makes the app inert, remembers the opener. */
+export function openModal(el: HTMLElement, opts: { opener?: HTMLElement | null; initialFocus?: HTMLElement | null; onEscape?: () => void } = {}): void {
+  if (modalStack.some(m => m.el === el)) return;
+  const opener = opts.opener ?? (document.activeElement as HTMLElement | null);
+  const onKey = (e: KeyboardEvent): void => {
+    if (modalStack[modalStack.length - 1]?.el !== el) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); (opts.onEscape ?? (() => closeModal(el)))(); return; }
+    if (e.key !== 'Tab') return;
+    const items = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(n => n.offsetParent !== null);
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !el.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !el.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+  };
+  document.addEventListener('keydown', onKey, true);
+  modalStack.push({ el, opener, onKey });
+  setBackgroundInert(true);
+  (opts.initialFocus ?? el.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+}
+
+/** Close a modal opened with openModal; restores focus to the opener unless `restoreFocus` is false. */
+export function closeModal(el: HTMLElement, restoreFocus = true): void {
+  const i = modalStack.findIndex(m => m.el === el);
+  if (i < 0) return;
+  const [m] = modalStack.splice(i, 1);
+  document.removeEventListener('keydown', m.onKey, true);
+  if (!modalStack.length) setBackgroundInert(false);
+  if (restoreFocus && m.opener && document.contains(m.opener)) m.opener.focus();
+}
+
+// ---- Safety net: decorative icon fonts are never announced ----
+function hideIcons(root: ParentNode): void {
+  root.querySelectorAll('.material-icons:not([aria-hidden]),.material-icons-outlined:not([aria-hidden])')
+    .forEach(n => n.setAttribute('aria-hidden', 'true'));
+}
+function startIconObserver(): void {
+  hideIcons(document.body);
+  new MutationObserver(records => {
+    for (const r of records) {
+      r.addedNodes.forEach(n => {
+        if (n.nodeType !== 1) return;
+        const el = n as Element;
+        if ((el.classList.contains('material-icons') || el.classList.contains('material-icons-outlined')) && !el.hasAttribute('aria-hidden')) {
+          el.setAttribute('aria-hidden', 'true');
+        }
+        if (el.firstElementChild) hideIcons(el);
+      });
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+}
+if (document.body) startIconObserver();
+else document.addEventListener('DOMContentLoaded', startIconObserver, { once: true });
 
 /** Report a tool error in the status bar (single error surface). */
 export const reportError = (e: unknown, meta = ''): void => setStatus('error', errorMessage(e).replace(/^Error:\s*/, ''), meta);
 export const reportOk = (msg = 'Done', meta = ''): void => setStatus('ok', msg, meta);
 export const resetStatus = (): void => setStatus('idle', 'Ready');
 
-/** Mark a form field invalid (red border + aria-invalid) without replacing its value. */
-export function setFieldInvalid(id: string, invalid: boolean): void {
+/**
+ * Mark a form field invalid (red border + aria-invalid) without replacing its value.
+ * With `message`, also shows an inline `<p class="field-error">` right after the field
+ * (or after its input wrapper) and links it via aria-describedby. Cleared when valid.
+ */
+export function setFieldInvalid(id: string, invalid: boolean, message?: string): void {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.toggle('is-invalid', invalid);
   el.setAttribute('aria-invalid', String(invalid));
+  const errId = `${id}-error`;
+  let err = document.getElementById(errId);
+  const described = (el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(x => x && x !== errId);
+  if (invalid && message) {
+    if (!err) {
+      err = document.createElement('p');
+      err.className = 'field-error';
+      err.id = errId;
+      const wrap = el.parentElement;
+      const anchor = wrap && wrap.matches('.input-group, .input-wrap, .relative') ? wrap : el;
+      anchor.insertAdjacentElement('afterend', err);
+    }
+    err.innerHTML = '<i class="material-icons" aria-hidden="true">error</i><span></span>';
+    err.querySelector('span')!.textContent = message.replace(/^Error:\s*/, '');
+    described.push(errId);
+  } else {
+    err?.remove();
+  }
+  if (described.length) el.setAttribute('aria-describedby', described.join(' '));
+  else el.removeAttribute('aria-describedby');
 }
+/** Incremented on every tool switch; deferred tool work scheduled under an older epoch is dropped. */
+export let toolEpoch = 0;
+export const bumpToolEpoch = (): number => ++toolEpoch;
+

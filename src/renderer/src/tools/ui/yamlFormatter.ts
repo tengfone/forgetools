@@ -1,78 +1,55 @@
-import { $f, reportError, reportOk, resetStatus, clearWithUndo, copyText } from '../../ui';
+import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
+import { debounce, inputActions, copyButton } from './common';
+
+const SAMPLE = `name: John Doe
+age: 30
+email: john@example.com
+address:
+  street: 123 Main St
+  city: San Francisco
+  state: CA
+skills:
+  - JavaScript
+  - Python
+  - Go
+active: true`;
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
                 <div class="card-head">
-                    <h3>YAML Input</h3>
-                    <div class="flex gap-1">
-                        <button class="btn-icon btn-sm" data-paste="yaml-input">
-                            <i class="material-icons icon-sm">content_paste</i> Paste
-                        </button>
-                        <button class="btn-icon btn-sm" id="yaml-sample">
-                            <i class="material-icons icon-sm">data_object</i> Sample
-                        </button>
-                        <button class="btn-icon btn-sm" id="yaml-clear">
-                            <i class="material-icons icon-sm">clear</i> Clear
-                        </button>
-                    </div>
+                    <h3 id="yaml-input-label">YAML Input</h3>
+                    ${inputActions({ paste: 'yaml-input', sample: 'yaml-sample', clear: 'yaml-clear' })}
                 </div>
-                <textarea class="form-control" id="yaml-input" rows="12" placeholder="name: John
-age: 30
-hobbies:
-- coding
-- music"></textarea>
+                <textarea class="form-control font-mono" id="yaml-input" rows="12" aria-labelledby="yaml-input-label" placeholder="name: John&#10;age: 30"></textarea>
             </div>
             <div class="tool-card">
                 <div class="card-head">
-                    <h3>JSON Output</h3>
-                    <button class="btn-icon" id="yaml-copy">
-                        <i class="material-icons">content_copy</i> Copy
-                    </button>
+                    <h3 id="yaml-output-label">JSON Output</h3>
+                    ${copyButton('yaml-output')}
                 </div>
-                <textarea class="form-control" id="yaml-output" rows="12" readonly></textarea>
+                <textarea class="form-control font-mono" id="yaml-output" rows="12" readonly aria-labelledby="yaml-output-label"></textarea>
             </div>
         </div>
     `;
-    
-    const update = () => {
+    const input = $f('yaml-input');
+    const output = $f('yaml-output');
+
+    const update = (): void => {
+        if (!input.value.trim()) { output.value = ''; setFieldInvalid('yaml-input', false); resetStatus(); return; }
         try {
-            const input = $f('yaml-input').value;
-            const output = $f('yaml-output');
-            
-            if (!input.trim()) {
-                output.value = '';
-                resetStatus();
-                return;
-            }
-            
-            const parsed = window.electronAPI.yaml.parse(input);
-            output.value = JSON.stringify(parsed, null, 2);
+            output.value = JSON.stringify(window.electronAPI.yaml.parse(input.value), null, 2);
+            setFieldInvalid('yaml-input', false);
             reportOk('Valid YAML');
         } catch (e) {
+            setFieldInvalid('yaml-input', true, errorMessage(e));
             reportError(e, 'check indentation and colons');
         }
     };
-    
-    $f('yaml-input').addEventListener('input', update);
-    $f('yaml-sample').onclick = () => {
-        $f('yaml-input').value = `name: John Doe
-age: 30
-email: john@example.com
-address:
-street: 123 Main St
-city: San Francisco
-state: CA
-skills:
-- JavaScript
-- Python
-- Go
-active: true`;
-        update();
-    };
-    $f('yaml-clear').onclick = () => clearWithUndo(['yaml-input'], update);
-    $f('yaml-copy').onclick = () => {
-        void copyText($f('yaml-output').value);
-    };
+
+    input.addEventListener('input', debounce(update));
+    $('yaml-sample').onclick = () => { input.value = SAMPLE; update(); };
+    $('yaml-clear').onclick = () => clearWithUndo(['yaml-input'], update);
+    resetStatus();
 }

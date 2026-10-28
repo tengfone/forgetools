@@ -4,6 +4,20 @@ import type { Plugin } from 'vite';
 import { existsSync } from 'fs';
 import fsExtra from 'fs-extra';
 
+// Monaco web workers are mocked in index.html (getWorker returns a no-op), so the
+// language-service workers (ts/css/html/json *Worker.js), the worker bootstrap and
+// non-English NLS bundles are never loaded. Skip them; keep loader.js, editor.main.*
+// (incl. the English editor.main.nls.js), codicon font and basic-languages.
+function isNeededMonacoFile(src: string): boolean {
+  const p = src.replace(/\\/g, '/');
+  // Keep *Mode.js (jsonMode provides JSON tokenization); drop the heavy *Worker.js.
+  if (/\/vs\/language\/[^/]+\/\w+Worker\.js$/.test(p)) return false;
+  if (/\/vs\/base\/worker(\/|$)/.test(p)) return false;
+  if (/\/vs\/base\/common\/worker(\/|$)/.test(p)) return false;
+  if (/\.nls\.[a-z-]+\.js$/.test(p)) return false;
+  return true;
+}
+
 // Plugin to copy Monaco Editor files to build output
 function copyMonacoFiles(): Plugin {
   return {
@@ -15,7 +29,7 @@ function copyMonacoFiles(): Plugin {
       
       if (existsSync(sourcePath)) {
         try {
-          fsExtra.copySync(sourcePath, targetPath, { overwrite: true });
+          fsExtra.copySync(sourcePath, targetPath, { overwrite: true, filter: isNeededMonacoFile });
           console.log('Monaco Editor files copied to build output');
         } catch (error) {
           console.error('Failed to copy Monaco files:', error);
@@ -168,13 +182,13 @@ export default defineConfig({
       assetsInlineLimit: 4096, // Inline assets smaller than 4kb
       // Target modern browsers for better optimization
       target: 'esnext',
-      // Enable tree-shaking
-      treeshake: {
-        moduleSideEffects: false,
-        preset: 'smallest',
-        propertyReadSideEffects: false
-      },
       rollupOptions: {
+        // Enable tree-shaking
+        treeshake: {
+          moduleSideEffects: true, // app relies on side-effect imports (./tools, ./monacoEnv)
+          preset: 'smallest',
+          propertyReadSideEffects: false
+        },
         output: {
           manualChunks: (id) => {
             // Split Monaco Editor into its own chunk (loaded separately via script tag)

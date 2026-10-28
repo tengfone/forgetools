@@ -1,96 +1,62 @@
-import { $f, reportError, resetStatus, setFieldInvalid } from '../../ui';
+import { $f, clearWithUndo, reportError, reportOk, resetStatus, setFieldInvalid } from '../../ui';
+import { debounce, copyIconButton, inputActions } from './common';
+
+const FIELDS: [id: string, base: number, label: string, short: string, ph: string][] = [
+    ['num-binary', 2, 'Binary (Base 2)', 'binary', '1010'],
+    ['num-octal', 8, 'Octal (Base 8)', 'octal', '12'],
+    ['num-decimal', 10, 'Decimal (Base 10)', 'decimal', '10'],
+    ['num-hex', 16, 'Hexadecimal (Base 16)', 'hexadecimal', 'A'],
+];
+const ALLOWED: Record<number, string> = { 2: '0 and 1', 8: '0-7', 10: '0-9', 16: '0-9 and A-F' };
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
                 <div class="card-head">
-                    <h3>Number Bases</h3>
-                    <div class="ui-meta flex items-center gap-1">
-                        <i class="material-icons icon-sm">info</i>
-                        Type in any field to convert
-                    </div>
+                    <h3>Number Bases <span class="ui-meta font-normal">type in any field</span></h3>
+                    ${inputActions({ paste: 'num-decimal', sample: 'num-sample', clear: 'num-clear' })}
                 </div>
                 <div class="result-grid">
+                    ${FIELDS.map(([id, , label, short, ph]) => `
                     <div class="result-item">
-                        <label class="field-label">
-                            <span>Binary (Base 2)</span>
-                            <button class="btn-icon btn-sm" data-copy="num-binary">
-                                <i class="material-icons icon-sm">content_copy</i>
-                            </button>
-                        </label>
-                        <input type="text" class="form-control" id="num-binary" placeholder="1010">
-                    </div>
-                    <div class="result-item">
-                        <label class="field-label">
-                            <span>Octal (Base 8)</span>
-                            <button class="btn-icon btn-sm" data-copy="num-octal">
-                                <i class="material-icons icon-sm">content_copy</i>
-                            </button>
-                        </label>
-                        <input type="text" class="form-control" id="num-octal" placeholder="12">
-                    </div>
-                    <div class="result-item">
-                        <label class="field-label">
-                            <span>Decimal (Base 10)</span>
-                            <button class="btn-icon btn-sm" data-copy="num-decimal">
-                                <i class="material-icons icon-sm">content_copy</i>
-                            </button>
-                        </label>
-                        <input type="text" class="form-control" id="num-decimal" placeholder="10">
-                    </div>
-                    <div class="result-item">
-                        <label class="field-label">
-                            <span>Hexadecimal (Base 16)</span>
-                            <button class="btn-icon btn-sm" data-copy="num-hex">
-                                <i class="material-icons icon-sm">content_copy</i>
-                            </button>
-                        </label>
-                        <input type="text" class="form-control" id="num-hex" placeholder="A">
-                    </div>
+                        <div class="field-label">
+                            <label for="${id}">${label}</label>
+                            ${copyIconButton(id, short)}
+                        </div>
+                        <input type="text" class="form-control font-mono" id="${id}" placeholder="${ph}" spellcheck="false">
+                    </div>`).join('')}
                 </div>
             </div>
         </div>
     `;
-    
-    let updating = false;
-    const update = (sourceBase: number, sourceId: string) => {
-        if (updating) return;
-        updating = true;
-        
-        try {
-            const value = $f(sourceId).value.trim();
-            if (!value) {
-                $f('num-binary').value = '';
-                $f('num-octal').value = '';
-                $f('num-decimal').value = '';
-                $f('num-hex').value = '';
-                resetStatus();
-                updating = false;
-                return;
-            }
-            
-            const digits = '0123456789abcdef'.slice(0, sourceBase);
-            if (!new RegExp(`^[${digits}]+$`, 'i').test(value)) throw new Error(`Not a valid base-${sourceBase} number`);
-            const decimal = parseInt(value, sourceBase);
-            
-            if (sourceId !== 'num-binary') $f('num-binary').value = decimal.toString(2);
-            if (sourceId !== 'num-octal') $f('num-octal').value = decimal.toString(8);
-            if (sourceId !== 'num-decimal') $f('num-decimal').value = decimal.toString(10);
-            if (sourceId !== 'num-hex') $f('num-hex').value = decimal.toString(16).toUpperCase();
-            setFieldInvalid(sourceId, false);
+
+    const update = (sourceBase: number, sourceId: string): void => {
+        const value = $f(sourceId).value.trim();
+        const others = FIELDS.filter(([id]) => id !== sourceId);
+        FIELDS.forEach(([id]) => setFieldInvalid(id, false));
+        if (!value) {
+            others.forEach(([id]) => { $f(id).value = ''; });
             resetStatus();
-        } catch (e) {
-            ['num-binary', 'num-octal', 'num-decimal', 'num-hex'].forEach(id => { if (id !== sourceId) $f(id).value = ''; });
-            setFieldInvalid(sourceId, true);
-            reportError(e);
+            return;
         }
-        
-        updating = false;
+        const digits = '0123456789abcdef'.slice(0, sourceBase);
+        if (!new RegExp(`^[${digits}]+$`, 'i').test(value)) {
+            others.forEach(([id]) => { $f(id).value = ''; });
+            setFieldInvalid(sourceId, true, `Base-${sourceBase} numbers may only contain ${ALLOWED[sourceBase]}`);
+            reportError(`Base-${sourceBase} numbers may only contain ${ALLOWED[sourceBase]}`);
+            return;
+        }
+        const n = BigInt(sourceBase === 10 ? value : `0${{ 2: 'b', 8: 'o', 16: 'x' }[sourceBase]}${value}`);
+        others.forEach(([id, base]) => {
+            const s = n.toString(base);
+            $f(id).value = base === 16 ? s.toUpperCase() : s;
+        });
+        reportOk('Converted', `base ${sourceBase}`);
     };
-    
-    $f('num-binary').addEventListener('input', () => update(2, 'num-binary'));
-    $f('num-octal').addEventListener('input', () => update(8, 'num-octal'));
-    $f('num-decimal').addEventListener('input', () => update(10, 'num-decimal'));
-    $f('num-hex').addEventListener('input', () => update(16, 'num-hex'));
+
+    FIELDS.forEach(([id, base]) => $f(id).addEventListener('input', debounce(() => update(base, id))));
+    $f('num-sample').onclick = () => { $f('num-decimal').value = '255'; update(10, 'num-decimal'); };
+    $f('num-clear').onclick = () => clearWithUndo(FIELDS.map(([id]) => id), () => FIELDS.forEach(([id]) => setFieldInvalid(id, false)));
+    resetStatus();
 }

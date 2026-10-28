@@ -1,26 +1,23 @@
-import { $f } from '../../ui';
+import { $, $f, errorMessage, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
+import { directionBar, twoWay, debounce, inputActions, copyButton } from './common';
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
-        <div class="custom-interface">
+        <div class="custom-interface">${directionBar('csv')}
             <div class="grid-2">
                 <div class="tool-card">
                     <div class="card-head">
-                        <h3>CSV</h3>
-                        <button class="btn-icon btn-sm" data-paste="csv-input">
-                            <i class="material-icons icon-sm">content_paste</i> Paste
-                        </button>
+                        <h3 id="csv-input-label">CSV</h3>
+                        ${inputActions({ paste: 'csv-input', sample: 'csv-sample', clear: 'csv-clear' })}
                     </div>
-                    <textarea class="form-control" id="csv-input" rows="12" placeholder="id,name\n1,John"></textarea>
+                    <textarea class="form-control" id="csv-input" rows="12" aria-labelledby="csv-input-label" placeholder="id,name&#10;1,John"></textarea>
                 </div>
                 <div class="tool-card">
                     <div class="card-head">
-                        <h3>JSON</h3>
-                        <button class="btn-icon btn-sm" data-copy="json-output">
-                            <i class="material-icons icon-sm">content_copy</i> Copy
-                        </button>
+                        <h3 id="json-output-label">JSON</h3>
+                        ${copyButton('json-output')}
                     </div>
-                    <textarea class="form-control" id="json-output" rows="12" placeholder="[\n  {\n    &quot;id&quot;: &quot;1&quot;,\n    &quot;name&quot;: &quot;John&quot;\n  }\n]"></textarea>
+                    <textarea class="form-control" id="json-output" rows="12" aria-labelledby="json-output-label" placeholder="[&#10;  { &quot;id&quot;: &quot;1&quot;, &quot;name&quot;: &quot;John&quot; }&#10;]"></textarea>
                 </div>
             </div>
         </div>
@@ -28,17 +25,39 @@ export function render(container: HTMLElement): void {
     const csv = $f('csv-input');
     const json = $f('json-output');
 
-    csv.addEventListener('input', () => {
+    const fromCsv = (): void => {
+        setFieldInvalid('json-output', false);
+        if (!csv.value.trim()) { json.value = ''; setFieldInvalid('csv-input', false); resetStatus(); return; }
         try {
             const result = window.electronAPI.csv.toJSON(csv.value);
             json.value = JSON.stringify(result.data, null, 2);
-        } catch (e) {}
-    });
+            setFieldInvalid('csv-input', false);
+            reportOk('Converted CSV to JSON');
+        } catch (e) {
+            setFieldInvalid('csv-input', true, errorMessage(e));
+            reportError(e);
+        }
+    };
 
-    json.addEventListener('input', () => {
+    const fromJson = (): void => {
+        setFieldInvalid('csv-input', false);
+        if (!json.value.trim()) { csv.value = ''; setFieldInvalid('json-output', false); resetStatus(); return; }
         try {
-            const data = JSON.parse(json.value);
+            const data: unknown = JSON.parse(json.value);
+            if (!Array.isArray(data)) throw new Error('JSON must be an array of objects to convert to CSV');
             csv.value = window.electronAPI.csv.fromJSON(data);
-        } catch (e) {}
-    });
+            setFieldInvalid('json-output', false);
+            reportOk('Converted JSON to CSV');
+        } catch (e) {
+            setFieldInvalid('json-output', true, errorMessage(e));
+            reportError(e);
+        }
+    };
+
+    csv.addEventListener('input', debounce(fromCsv));
+    json.addEventListener('input', debounce(fromJson));
+    const dir = twoWay({ prefix: 'csv', a: { field: 'csv-input', label: 'csv-input-label', run: fromCsv }, b: { field: 'json-output', label: 'json-output-label', run: fromJson }, forward: 'CSV \u2192 JSON', backward: 'JSON \u2192 CSV' });
+    $('csv-sample').onclick = () => { csv.value = 'id,name,role\n1,Ada,admin\n2,Linus,dev'; dir.set('a'); fromCsv(); };
+    $('csv-clear').onclick = () => clearWithUndo(['csv-input', 'json-output'], resetStatus);
+    resetStatus();
 }

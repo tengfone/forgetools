@@ -1,4 +1,11 @@
-import { $f, esc } from '../../ui';
+import { $, $f, esc, reportError, reportOk, resetStatus } from '../../ui';
+
+const SETS = [
+    ['rand-upper', 'Uppercase (A-Z)', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', true],
+    ['rand-lower', 'Lowercase (a-z)', 'abcdefghijklmnopqrstuvwxyz', true],
+    ['rand-numbers', 'Numbers (0-9)', '0123456789', true],
+    ['rand-symbols', 'Symbols (!@#$...)', '!@#$%^&*()_+-=[]{}|;:,.<>?', false],
+] as const;
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
@@ -7,18 +14,16 @@ export function render(container: HTMLElement): void {
                 <h3>Options</h3>
                 <div class="flex flex-col gap-3 mb-4">
                     <div>
-                        <label class="ui-label">Length: <span id="rand-length-val">16</span></label>
+                        <label class="ui-label" for="rand-length">Length: <span id="rand-length-val">16</span></label>
                         <input type="range" id="rand-length" min="4" max="128" value="16" class="form-control w-full">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="check-label"><input type="checkbox" id="rand-upper" checked> Uppercase (A-Z)</label>
-                        <label class="check-label"><input type="checkbox" id="rand-lower" checked> Lowercase (a-z)</label>
-                        <label class="check-label"><input type="checkbox" id="rand-numbers" checked> Numbers (0-9)</label>
-                        <label class="check-label"><input type="checkbox" id="rand-symbols"> Symbols (!@#$...)</label>
-                    </div>
+                    <fieldset class="grid grid-cols-2 gap-2" id="rand-sets">
+                        <legend class="sr-only">Character sets</legend>
+                        ${SETS.map(([id, label, , on]) => `<label class="check-label" for="${id}"><input type="checkbox" id="${id}"${on ? ' checked' : ''}> ${label}</label>`).join('')}
+                    </fieldset>
                 </div>
-                <button class="btn-primary btn-block" id="rand-generate">
-                    <i class="material-icons">refresh</i> Generate
+                <button type="button" class="btn-primary self-start" id="rand-generate">
+                    <i class="material-icons" aria-hidden="true">refresh</i> Generate
                 </button>
             </div>
             <div class="tool-card">
@@ -30,40 +35,28 @@ export function render(container: HTMLElement): void {
             </div>
         </div>
     `;
-    
-    const generate = () => {
-        const length = parseInt($f('rand-length').value);
-        const useUpper = $f('rand-upper').checked;
-        const useLower = $f('rand-lower').checked;
-        const useNumbers = $f('rand-numbers').checked;
-        const useSymbols = $f('rand-symbols').checked;
-        
-        let chars = '';
-        if (useUpper) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        if (useLower) chars += 'abcdefghijklmnopqrstuvwxyz';
-        if (useNumbers) chars += '0123456789';
-        if (useSymbols) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-        
+
+    const generate = (): void => {
+        const length = parseInt($f('rand-length').value, 10);
+        const chars = SETS.filter(([id]) => $f(id).checked).map(([, , c]) => c).join('');
         if (!chars) {
-            $f('rand-results').innerHTML = '<div class="text-center text-error p-5">Select at least one character set</div>';
+            reportError('Select at least one character set (uppercase, lowercase, numbers or symbols)');
             return;
         }
-        
         const results = Array.from({ length: 5 }, () => {
             const bytes = crypto.getRandomValues(new Uint32Array(length));
             return Array.from(bytes, n => chars[n % chars.length]).join('');
         });
-        
-        const html = results.map(r => `
-            <div class="copy-chip" data-copy-self>${esc(r)}</div>
-        `).join('');
-        
-        $f('rand-results').innerHTML = html;
+        $('rand-results').innerHTML = results.map(r => `<div class="copy-chip" data-copy-self>${esc(r)}</div>`).join('');
+        reportOk('Generated 5 strings', `${length} chars`);
     };
-    
-    $f('rand-length').addEventListener('input', (e) => {
-        $f('rand-length-val').textContent = (e.target as HTMLInputElement).value;
+
+    $f('rand-length').addEventListener('input', () => {
+        $('rand-length-val').textContent = $f('rand-length').value;
+        generate();
     });
-    $f('rand-generate').onclick = generate;
+    $('rand-sets').addEventListener('change', generate);
+    $('rand-generate').onclick = generate;
     generate();
+    resetStatus();
 }
