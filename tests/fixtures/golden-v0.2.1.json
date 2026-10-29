@@ -1,0 +1,183 @@
+{
+  "source": "ForgeTools v0.2.1 (cbcd8b9), captured through the running app",
+  "hash": [
+    {
+      "text": "The quick brown fox jumps over the lazy dog",
+      "md5": "9e107d9d372bb6826bd81d3542a419d6",
+      "sha1": "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
+      "sha256": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+      "sha512": "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6"
+    },
+    {
+      "text": "héllo wörld 🔥\nline2\r\n",
+      "md5": "bb1bc9e069f38b69fd229d3e03469531",
+      "sha1": "bb503aa701338056ccb54d7638d57dca548f7dac",
+      "sha256": "64496561f2fa0c32df422167fa65471d5ed41ca4e8e77342d2d45e5f24586c5c",
+      "sha512": "05eb56d3d0f1c8f5f32172f15fdcb2c07934b6ac92a0b8c8789574633cf572bc6bd5c1265266b59bccffc49a2716185ca708dae190c90aae87c89e23268f0fdc"
+    },
+    {
+      "text": " ",
+      "md5": "7215ee9c7d9dc229d2921a40e899ec5f",
+      "sha1": "b858cb282617fb0956d960215c8e84d1ccf909c6",
+      "sha256": "36a9e7f1c95b82ffb99743e0c5c4ce95d83c9a430aac59f84ef3cbfab6145068",
+      "sha512": "f90ddd77e400dfe6a3fcf479b00b1ee29e7015c5bb8cd70f5f15b4886cc339275ff553fc8a053f8ddc7324f45168cffaf81f8c3ac93996f6536eef38e5e40768"
+    },
+    {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "md5": "cabe45dcc9ae5b66ba86600cca6b8ba8",
+      "sha1": "291e9a6c66994949b57ba5e650361e98fc36b1ba",
+      "sha256": "41edece42d63e8d9bf515a9ba6932e1c20cbc9f5a5d134645adb5db1b9737ea3",
+      "sha512": "67ba5535a46e3f86dbfbed8cbbaf0125c76ed549ff8b0b9e03e0c88cf90fa634fa7b12b47d77b694de488ace8d9a65967dc96df599727d3292a8d9d447709c97"
+    }
+  ],
+  "x509": {
+    "sample": {
+      "pem": "-----BEGIN CERTIFICATE-----\nMIIBZjCCAQygAwIBAgIIEcBl3aNnzGMwCgYIKoZIzj0EAwIwOTEaMBgGA1UEChMR\nRm9yZ2VUb29scyBTYW1wbGUxGzAZBgNVBAMTEmZvcmdldG9vbHMuZXhhbXBsZTAe\nFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAwMDBaMDkxGjAYBgNVBAoTEUZvcmdl\nVG9vbHMgU2FtcGxlMRswGQYDVQQDExJmb3JnZXRvb2xzLmV4YW1wbGUwWTATBgcq\nhkjOPQIBBggqhkjOPQMBBwNCAAQMXZBm9vug99sUWouBXZ7COPT6TBRcm4jp9fL5\nv1O9UQwIWAVQ8Ej4lu/vm8b/i5LpS3UNmw5uXW4i3J6OAmpuMAoGCCqGSM49BAMC\nA0gAMEUCIQDiy7FOmMV/nRLm/gY6KIekXla7ooTHCGiKilb9I+HiJQIgWWPMBd1D\nmfKrnwgaLQWjaj+NRjocp3e7KHcHCtIc72s=\n-----END CERTIFICATE-----",
+      "decoded": {
+        "subject": "O=ForgeTools Sample, CN=forgetools.example",
+        "issuer": "O=ForgeTools Sample, CN=forgetools.example",
+        "notBefore": "2025-01-01T00:00:00.000Z",
+        "notAfter": "2035-01-01T00:00:00.000Z",
+        "serialNumber": "11c065dda367cc63",
+        "signatureAlgorithm": "1.2.840.10045.4.3.2",
+        "fingerprint": {
+          "sha1": "f1e00aa70c0dd4e29b2b8b11e3491641bbb0120f",
+          "sha256": "75f16570c4c1b98c1684e1b1490ba1d2e407ff3dcff866ecffb415f96dd650c7"
+        }
+      }
+    },
+    "ec-p384": {
+      "pem": "-----BEGIN CERTIFICATE-----\nMIIB2TCCAV+gAwIBAgIBATAKBggqhkjOPQQDAzAtMRMwEQYDVQQKDApBY21lLCBJ\nbmMuMRYwFAYDVQQDDA1lYzM4NC5leGFtcGxlMB4XDTI2MTAyOTEwMjM1MVoXDTI3\nMTAyOTEwMjM1MVowLTETMBEGA1UECgwKQWNtZSwgSW5jLjEWMBQGA1UEAwwNZWMz\nODQuZXhhbXBsZTB2MBAGByqGSM49AgEGBSuBBAAiA2IABG7jcka6KwqaEqRexrvf\nuSrb8W2qYLO2oa/XSgbkoQk5TulaPwQZVEhri0UskgC4Zv8awFRwnExz4Y3M9N1r\nq7hvkqCa5iK/Ybv4EKJVb9THC5Zer39N9cfQ+JPfG/cwIKNTMFEwHQYDVR0OBBYE\nFJqSq+CkftGDNx9xp1W6mcd19X/rMB8GA1UdIwQYMBaAFJqSq+CkftGDNx9xp1W6\nmcd19X/rMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwMDaAAwZQIxAJPCEIR4\nNnOmGj2npMwGhu3jnYMdYLdOb3kPSDpb2UUpeM6KbySpizuwhVN2tTxVdAIwbW0H\n7nuGvqALq87SFttdPCdEBD6jmN6msXgb/YbcF3ZWamLE4fMmz04gJJhi8qdK\n-----END CERTIFICATE-----",
+      "decoded": {
+        "subject": "O=Acme\\, Inc., CN=ec384.example",
+        "issuer": "O=Acme\\, Inc., CN=ec384.example",
+        "notBefore": "2026-10-29T10:23:51.000Z",
+        "notAfter": "2027-10-29T10:23:51.000Z",
+        "serialNumber": "01",
+        "signatureAlgorithm": "1.2.840.10045.4.3.3",
+        "fingerprint": {
+          "sha1": "64b5ef6670f9b6e5ad94a1f30c076e671282f5fc",
+          "sha256": "38bb238715bdf452f0d43759a676c1ecd7c98cab9a2d9b4b86624e08b89d2d11"
+        }
+      }
+    },
+    "ed25519": {
+      "pem": "-----BEGIN CERTIFICATE-----\nMIIBNjCB6aADAgECAgIA/zAFBgMrZXAwGjEYMBYGA1UEAwwPZWQyNTUxOS5leGFt\ncGxlMB4XDTI2MTAyOTEwMjM1MVoXDTI2MTEyODEwMjM1MVowGjEYMBYGA1UEAwwP\nZWQyNTUxOS5leGFtcGxlMCowBQYDK2VwAyEASjsWGxe3+xGJ2whUToJjK4ol+I7g\nMfZN7dZVuPbLKqijUzBRMB0GA1UdDgQWBBR799RQb7KbCfDRNKcMxgHb7o+DUDAf\nBgNVHSMEGDAWgBR799RQb7KbCfDRNKcMxgHb7o+DUDAPBgNVHRMBAf8EBTADAQH/\nMAUGAytlcANBAB9II/S/aCucLkiLBQWxaUKDrhVzAyfqCQoaHyOWa0Mj7eWD94wS\nXhOy9/INB3fmhzQ1AwHkRsqamh3IL/sUFgI=\n-----END CERTIFICATE-----",
+      "decoded": {
+        "subject": "CN=ed25519.example",
+        "issuer": "CN=ed25519.example",
+        "notBefore": "2026-10-29T10:23:51.000Z",
+        "notAfter": "2026-11-28T10:23:51.000Z",
+        "serialNumber": "ff",
+        "signatureAlgorithm": "1.3.101.112",
+        "fingerprint": {
+          "sha1": "31cc2d1467f56a2e111fe85d62130ce648deb363",
+          "sha256": "9f574394c1b539310f0ee75ca47a4a1fee89844eea235838bcfab74058dc0b7d"
+        }
+      }
+    },
+    "rsa2048": {
+      "pem": "-----BEGIN CERTIFICATE-----\nMIIEJTCCAw2gAwIBAgIQChssPU5fYHGCk6S1xtfo+TANBgkqhkiG9w0BAQsFADCB\nozELMAkGA1UEBhMCU0cxEjAQBgNVBAgMCVNpbmdhcG9yZTESMBAGA1UEBwwJU2lu\nZ2Fwb3JlMRgwFgYDVQQKDA9Gb3JnZVRvb2xzIFRlc3QxCzAJBgNVBAsMAlFBMR8w\nHQYDVQQDDBZyc2EuZm9yZ2V0b29scy5leGFtcGxlMSQwIgYJKoZIhvcNAQkBFhVx\nYUBmb3JnZXRvb2xzLmV4YW1wbGUwHhcNMjYxMDI5MTAyMzUxWhcNMzYxMDI2MTAy\nMzUxWjCBozELMAkGA1UEBhMCU0cxEjAQBgNVBAgMCVNpbmdhcG9yZTESMBAGA1UE\nBwwJU2luZ2Fwb3JlMRgwFgYDVQQKDA9Gb3JnZVRvb2xzIFRlc3QxCzAJBgNVBAsM\nAlFBMR8wHQYDVQQDDBZyc2EuZm9yZ2V0b29scy5leGFtcGxlMSQwIgYJKoZIhvcN\nAQkBFhVxYUBmb3JnZXRvb2xzLmV4YW1wbGUwggEiMA0GCSqGSIb3DQEBAQUAA4IB\nDwAwggEKAoIBAQC+DgNxmFDLoYLEdn8Srv86b+g5hr4CRWBe6oddI2BNhQuMyah/\nqTTTMdnkimLaW22UlNRLzwA2dpnJjdx4iSgqeXw+alPsCUbQAtfBxnpOLFrd8GsK\nCp2QeN9RWSVi+mg90Gj+53NrJVV+8AMMdInWahKho056qmuHBCJrXFLLY7lvqXnU\nn5fqaMMo6AtLsm37K5t1juEMj2wUMEfg4g8ZyAtKWDTZw1qzAm9eJZGxliLbc4wm\nyp1dh6kMWE2kf+pHeupuiaCupz/Kf2RIP1rdGhyAMsScMDZH3MeqFynXN8a8ZE8C\nQ7cVMl5hWf4cs8xOkhV2vrtIy6j19KFrSH9BAgMBAAGjUzBRMB0GA1UdDgQWBBSz\nCjWEMjAMBAeiQQLt9f2fi3gfUDAfBgNVHSMEGDAWgBSzCjWEMjAMBAeiQQLt9f2f\ni3gfUDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCT/OgF96Hq\n0lYNGWGBZsPrxfoF8Zfl2R2iKYjoi5dD05kywq3r5VqmP1xxSWTk3ZiCIqlN8fD6\n6/ttYUpag1h29sxM8M8LR3ZkfhGSI+5iLaiwAAM4NbvZvZJVD2O1lQdb5ZZWCTwX\nAbGU2PoS7lpwAcYmohl4vHkbFJ4aJ8dQw6h15bO1cMnWvP4EFAbPNhpKXX/MkZzm\n0qHIcEMnBC7JsqNQlQe4SPWHJtjw6G1YGKTgyvNNm80Om6Q7YwV1JMOSgH6NzTdU\nFBdqIxS9ViatKfjAkjBGYqukotlCdREaggzgSm3na4CDdgHwF59QOjsuIyFIVAY/\nVEZCkwefxIwr\n-----END CERTIFICATE-----",
+      "decoded": {
+        "subject": "C=SG, ST=Singapore, L=Singapore, O=ForgeTools Test, OU=QA, CN=rsa.forgetools.example, emailAddress=qa@forgetools.example",
+        "issuer": "C=SG, ST=Singapore, L=Singapore, O=ForgeTools Test, OU=QA, CN=rsa.forgetools.example, emailAddress=qa@forgetools.example",
+        "notBefore": "2026-10-29T10:23:51.000Z",
+        "notAfter": "2036-10-26T10:23:51.000Z",
+        "serialNumber": "0a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "signatureAlgorithm": "1.2.840.113549.1.1.11",
+        "fingerprint": {
+          "sha1": "aef0cb4df6d51980c799afe86e26dc07363ef6c7",
+          "sha256": "bf932962df62026af11177c2ef7240214a9f2a054e7b61bbf518e19f28e15899"
+        }
+      }
+    }
+  },
+  "qrcode": [
+    {
+      "text": "https://example.com",
+      "options": {
+        "width": 256,
+        "margin": 2
+      },
+      "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAAAklEQVR4AewaftIAAAXJSURBVO3BUQ7jVhIEwayG7n/l2vlfQA8waZqazoj0DyStNEhaa5C01iBprUHSWoOktQZJaw2S1hokrTVIWmuQtNYgaa1B0lqDpLUGSWsNktYaJK01SFrrw02SsFFb3iIJT2nLVUk4actJEjZqy1WDpLUGSWsNktYaJK01SFprkLTWIGmtQdJaHx7Ull+ShLdIwklb7pCEkyT8krb8kiQ8YZC01iBprUHSWoOktQZJaw2S1hokrTVIWuvDyyThCW15ShKuastJEk7actKWkySctOWXJOEJbXmLQdJag6S1BklrDZLWGiStNUhaa5C01iBprQ96hbZc1ZY7JOEOSfimLfpvDZLWGiStNUhaa5C01iBprUHSWoOktT7oFZJwVVue0parknDSFv17BklrDZLWGiStNUhaa5C01iBprUHSWoOktT68TFs2astVSThpy0lbTpJwVVvepC3bDJLWGiStNUhaa5C01iBprUHSWoOktQZJa314UBL0zyThpC0nSThpyx3a8k0STtpyhyTo/w2S1hokrTVIWmuQtNYgaa1B0lqDpLUGSWt9uElb9O9pyx3a8rdpi/6ZQdJag6S1BklrDZLWGiStNUhaa5C01iBprfQPbpCEk7acJOGXtOWXJOGkLb8kCb+kLW8xSFprkLTWIGmtQdJag6S1BklrDZLWGiSt9eEmbTlJwklbrkrCHdpyhySctOWbJNyhLSdJOGnLE5Jw0paTJJy05QlJOGnLEwZJaw2S1hokrTVIWmuQtNYgaa1B0lofbpKEOyThCW05ScJJW+6QhG/a8iZJeEJb3iQJ37TlDkk4actVg6S1BklrDZLWGiStNUhaa5C01iBprUHSWh9epi0nSbgqCSdteUpbvknCHdpyh7acJOEJSXhKW65qy0kSnjBIWmuQtNYgaa1B0lqDpLUGSWsNktYaJK2V/sFDkvCEttwhCSdteYsk3KEtJ0m4qi0nSbhDW06ScNKWb5LwlLZcNUhaa5C01iBprUHSWoOktQZJaw2S1hokrZX+wQ2S8Eva8pQknLTlmySctOWXJOGkLXdIwklbTpLwTVtOknDSlicMktYaJK01SFprkLTWIGmtQdJag6S1BklrfXhQW35JEu7Qlick4Q5tuUMSvmnLHZJwhyS8RRJO2nLVIGmtQdJag6S1BklrDZLWGiStNUhaa5C01ocflIRv2nKHtpwk4QltOUnCSVvukISrkvBr2nJVW06S8IRB0lqDpLUGSWsNktYaJK01SFprkLTWh5dJwklbrkrCHdpykoS/TVuuSsLfJgknbTlpyxMGSWsNktYaJK01SFprkLTWIGmtQdJag6S10j/QvyoJV7XlDkn4JW15ShKuassvGSStNUhaa5C01iBprUHSWoOktQZJaw2S1vpwkyRs1JaTtrxFW06ScIe2fJOEOyThpC13aMs3SXhKW64aJK01SFprkLTWIGmtQdJag6S1BklrDZLW+vCgtvySJNwhCVe15Q5JuENb3qItT0nCN205ScJJW54wSFprkLTWIGmtQdJag6S1BklrDZLWGiSt9eFlkvCEtvySJJy05Q5tOUnCE5LwJm35JgknbTlJwklbrhokrTVIWmuQtNYgaa1B0lqDpLUGSWsNktb6oFdoyxPacoe2nCThm7acJOEObTlJwkkSrkrCWwyS1hokrTVIWmuQtNYgaa1B0lqDpLU+6BWS8BZteYu2PKUtJ0m4qi0nSXjCIGmtQdJag6S1BklrDZLWGiStNUhaa5C01oeXacvfpi1PSMJJW+6QhJO2fJOEO7TlJAlPaMsvGSStNUhaa5C01iBprUHSWoOktQZJaw2S1vrwoCRslISr2vImbbmqLSdJOEnCWyThlwyS1hokrTVIWmuQtNYgaa1B0lqDpLUGSWulfyBppUHSWoOktQZJaw2S1hokrTVIWmuQtNYgaa1B0lqDpLUGSWsNktYaJK01SFprkLTWIGmt/wF5W5z4BeJxegAAAABJRU5ErkJggg=="
+    },
+    {
+      "text": "https://example.com",
+      "options": {
+        "width": 512,
+        "margin": 2
+      },
+      "dataUrl": "data:image/png;base64,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"
+    },
+    {
+      "text": "Hello, 世界! ünïcödé",
+      "options": {
+        "width": 128,
+        "margin": 2
+      },
+      "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAklEQVR4AewaftIAAAOtSURBVO3BQXIrOQwFwSpE3//Kb/6SwYXoliVrbCDT/MNoqxitFaO1YrRWjNaK0VoxWitGa8Vo7eILVD4lCScqqyTsVO5KwonKKgk7lU9JwiPFaK0YrRWjtWK0dvGkJLyDyl1JuCsJO5WVykkS7krCO6jcVYzWitFaMVq7eBGVu5LwDJVVElYqr5CEncpKZZWEZ6jclYTvKkZrxWitGK0Vo7WLP0BllYQTlV0SViq7JKxUfrNitFaM1orR2sUfkISVyi4JdyXhJAm/WTFaK0ZrxWjt4kWS8NuprJJworJKwjOS8AnFaK0YrRWjtWK0dvEklb8mCSuVXRK+S+X/ohitFaO1YrR28QVJ+O1UTlTuSsJJEv6vitFaMVorRmvFaO3iC1R2SVipvEMSdklYqZwkYaVykoSdyioJJyrvkITvKkZrxWitGK1dPElllYSdyioJr6CySsJKZafyDip3JWGnskrCSuUditFaMVorRmvmH56gskrCicoqCTuVVRJ2Kncl4UTlJAmPqJwk4URllYSdykkSHilGa8VorRitFaO1izdSuSsJdyVhpfKMJKxUdiqrJKyS8AyVVRJ+QjFaK0ZrxWjt4kVUTpKwUjlJwi4Jd6n8BJVdElYqJyo/oRitFaO1YrRWjNbMPxyonCThU1ROkrBS2SXhU1RWSVip7JLwXcVorRitFaO1iycl4S6Vd0jCXUnYqaySsFP5riTskrBSWSVhp3KShEeK0VoxWitGa8Vo7eKDknCicqKySsKJyonKSRJWKrskrFR2SVgl4SQJK5W7itFaMVorRmsXL6KyS8IjKidJ2KncpXKShJXKicqJyonKXUlYJeGuYrRWjNaK0drFFyThJAknSXiHJKxUXiEJO5VHkvAMlVUSVionKrskPFKM1orRWjFaK0ZrF1+g8ilJ2CVhpXJXEnYqqyTskrBSOVFZJeEVVL6rGK0Vo7VitHbxpCS8g8qJyiNJ2KmsVE5UXiEJd6mskvAOxWitGK0Vo7VitHbxIip3JeEVknCShJXKSRJ2Ko+ovIPKLgnfVYzWitFaMVq7+ANUVkk4ScKJykkSXkFllYSVyk7lJAmPFKO1YrRWjNYu/oAknKi8QhJWKu+gskrCicpdxWitGK0Vo7VitHbxIkn4KUlYqaySsEvCK6iskrBSOUnCicpPKEZrxWitGK1dPEnlU1QeUdklYaXyCio/QeUditFaMVorRmvFaM38w2irGK0Vo7VitFaM1orRWjFaK0Zr/wHCT4Uw5HgeTgAAAABJRU5ErkJggg=="
+    }
+  ],
+  "barcode": [
+    {
+      "text": "123456789012",
+      "options": {
+        "format": "EAN13",
+        "width": 2,
+        "height": 100,
+        "displayValue": true
+      },
+      "svg": "<svg width=\"234px\" height=\"142px\" x=\"0px\" y=\"0px\" viewBox=\"0 0 234 142\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" style=\"transform: translate(0,0)\"><rect x=\"0\" y=\"0\" width=\"234\" height=\"142\" style=\"fill:#ffffff;\"/><g transform=\"translate(10, 10)\" style=\"fill:#000000;\"><text style=\"font: 20px monospace\" text-anchor=\"start\" x=\"0\" y=\"122\">1</text></g><g transform=\"translate(34, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"4\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"3\" y=\"134\"></text></g><g transform=\"translate(40, 10)\" style=\"fill:#000000;\"><rect x=\"4\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"10\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"16\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"26\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"32\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"40\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"44\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"54\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"64\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"68\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"74\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"82\" y=\"0\" width=\"2\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"42\" y=\"122\">234567</text></g><g transform=\"translate(124, 10)\" style=\"fill:#000000;\"><rect x=\"2\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"6\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"5\" y=\"134\"></text></g><g transform=\"translate(134, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"6\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"14\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"22\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"28\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"38\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"42\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"50\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"56\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"62\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"70\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"76\" y=\"0\" width=\"2\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"42\" y=\"122\">890128</text></g><g transform=\"translate(218, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"4\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"3\" y=\"134\"></text></g></svg>"
+    },
+    {
+      "text": "1234567890128",
+      "options": {
+        "format": "EAN13",
+        "width": 2,
+        "height": 100,
+        "displayValue": true
+      },
+      "svg": "<svg width=\"234px\" height=\"142px\" x=\"0px\" y=\"0px\" viewBox=\"0 0 234 142\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" style=\"transform: translate(0,0)\"><rect x=\"0\" y=\"0\" width=\"234\" height=\"142\" style=\"fill:#ffffff;\"/><g transform=\"translate(10, 10)\" style=\"fill:#000000;\"><text style=\"font: 20px monospace\" text-anchor=\"start\" x=\"0\" y=\"122\">1</text></g><g transform=\"translate(34, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"4\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"3\" y=\"134\"></text></g><g transform=\"translate(40, 10)\" style=\"fill:#000000;\"><rect x=\"4\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"10\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"16\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"26\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"32\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"40\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"44\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"54\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"64\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"68\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"74\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"82\" y=\"0\" width=\"2\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"42\" y=\"122\">234567</text></g><g transform=\"translate(124, 10)\" style=\"fill:#000000;\"><rect x=\"2\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"6\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"5\" y=\"134\"></text></g><g transform=\"translate(134, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"6\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"14\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"22\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"28\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"38\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"42\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"50\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"56\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"62\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"70\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"76\" y=\"0\" width=\"2\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"42\" y=\"122\">890128</text></g><g transform=\"translate(218, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"4\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"3\" y=\"134\"></text></g></svg>"
+    },
+    {
+      "text": "12345678901",
+      "options": {
+        "format": "UPC",
+        "width": 2,
+        "height": 100,
+        "displayValue": true
+      },
+      "svg": "<svg width=\"242px\" height=\"142px\" x=\"0px\" y=\"0px\" viewBox=\"0 0 242 142\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" style=\"transform: translate(0,0)\"><rect x=\"0\" y=\"0\" width=\"242\" height=\"142\" style=\"fill:#ffffff;\"/><g transform=\"translate(10, 10)\" style=\"fill:#000000;\"><text style=\"font: 20px monospace\" text-anchor=\"start\" x=\"0\" y=\"122\">1</text></g><g transform=\"translate(26, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"4\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"10\" y=\"0\" width=\"4\" height=\"112\"/><rect x=\"18\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"10\" y=\"134\"></text></g><g transform=\"translate(46, 10)\" style=\"fill:#000000;\"><rect x=\"4\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"10\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"16\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"26\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"30\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"38\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"44\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"54\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"58\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"62\" y=\"0\" width=\"8\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"35\" y=\"122\">23456</text></g><g transform=\"translate(116, 10)\" style=\"fill:#000000;\"><rect x=\"2\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"6\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"5\" y=\"134\"></text></g><g transform=\"translate(126, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"8\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"14\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"20\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"28\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"36\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"42\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"52\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"56\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"64\" y=\"0\" width=\"4\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"35\" y=\"122\">78901</text></g><g transform=\"translate(196, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"4\" height=\"112\"/><rect x=\"6\" y=\"0\" width=\"4\" height=\"112\"/><rect x=\"14\" y=\"0\" width=\"2\" height=\"112\"/><rect x=\"18\" y=\"0\" width=\"2\" height=\"112\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"10\" y=\"134\"></text></g><g transform=\"translate(216, 10)\" style=\"fill:#000000;\"><text style=\"font: 20px monospace\" text-anchor=\"end\" x=\"15\" y=\"122\">2</text></g></svg>"
+    },
+    {
+      "text": "FORGE-123",
+      "options": {
+        "format": "CODE39",
+        "width": 2,
+        "height": 100,
+        "displayValue": true
+      },
+      "svg": "<svg width=\"372px\" height=\"142px\" x=\"0px\" y=\"0px\" viewBox=\"0 0 372 142\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" style=\"transform: translate(0,0)\"><rect x=\"0\" y=\"0\" width=\"372\" height=\"142\" style=\"fill:#ffffff;\"/><g transform=\"translate(10, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"8\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"12\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"20\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"28\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"32\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"36\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"44\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"56\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"60\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"64\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"72\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"76\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"84\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"92\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"96\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"104\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"108\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"112\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"124\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"128\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"132\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"136\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"144\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"152\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"160\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"168\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"172\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"184\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"188\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"192\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"200\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"204\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"208\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"216\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"224\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"232\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"240\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"244\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"248\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"256\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"260\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"272\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"276\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"280\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"288\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"296\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"308\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"312\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"316\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"320\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"328\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"332\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"340\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"348\" y=\"0\" width=\"2\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"176\" y=\"122\">FORGE-123</text></g></svg>"
+    },
+    {
+      "text": "ForgeTools 128",
+      "options": {
+        "format": "CODE128",
+        "width": 2,
+        "height": 100,
+        "displayValue": true
+      },
+      "svg": "<svg width=\"398px\" height=\"142px\" x=\"0px\" y=\"0px\" viewBox=\"0 0 398 142\" xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" style=\"transform: translate(0,0)\"><rect x=\"0\" y=\"0\" width=\"398\" height=\"142\" style=\"fill:#ffffff;\"/><g transform=\"translate(10, 10)\" style=\"fill:#000000;\"><rect x=\"0\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"6\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"12\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"22\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"30\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"40\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"44\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"52\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"62\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"66\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"72\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"78\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"88\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"94\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"100\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"110\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"114\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"122\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"132\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"138\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"150\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"154\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"162\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"172\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"176\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"184\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"194\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"198\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"206\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"210\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"220\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"224\" y=\"0\" width=\"8\" height=\"100\"/><rect x=\"236\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"242\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"248\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"256\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"264\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"270\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"280\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"286\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"294\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"304\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"308\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"316\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"322\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"330\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"336\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"344\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"352\" y=\"0\" width=\"4\" height=\"100\"/><rect x=\"362\" y=\"0\" width=\"6\" height=\"100\"/><rect x=\"370\" y=\"0\" width=\"2\" height=\"100\"/><rect x=\"374\" y=\"0\" width=\"4\" height=\"100\"/><text style=\"font: 20px monospace\" text-anchor=\"middle\" x=\"189\" y=\"122\">ForgeTools 128</text></g></svg>"
+    }
+  ],
+  "svg": [
+    {
+      "input": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!-- Sample icon -->\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\">\n    <g>\n        <circle cx=\"12.000\" cy=\"12.000\" r=\"10.000\" fill=\"#72cd42\" />\n    </g>\n</svg>",
+      "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"#72cd42\"/></svg>"
+    },
+    {
+      "input": "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 100 100\">\n  <defs><linearGradient id=\"g1\"><stop offset=\"0%\" stop-color=\"#ff0000\"/><stop offset=\"100%\" stop-color=\"#0000ff\"/></linearGradient></defs>\n  <title>Test</title>\n  <rect x=\"10.00000\" y=\"10.0000\" width=\"80\" height=\"80\" fill=\"url(#g1)\" style=\"stroke: #000000; stroke-width: 2px\"/>\n  <path d=\"M 10 10 L 20 20 L 30 10 Z\" fill=\"none\" stroke=\"black\"/>\n  <g transform=\"translate(0,0)\"><g><text x=\"50\" y=\"50\">Hi &amp; bye</text></g></g>\n</svg>",
+      "output": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><linearGradient id=\"a\"><stop offset=\"0%\" stop-color=\"red\"/><stop offset=\"100%\" stop-color=\"#00f\"/></linearGradient></defs><path fill=\"url(#a)\" d=\"M10 10h80v80H10z\" style=\"stroke:#000;stroke-width:2px\"/><path fill=\"none\" stroke=\"#000\" d=\"m10 10 10 10 10-10Z\"/><text x=\"50\" y=\"50\">Hi &amp; bye</text></svg>"
+    }
+  ]
+}
