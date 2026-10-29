@@ -74,6 +74,12 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Initialization
+// E2E builds only (`npm run build:wdio`): WebdriverIO's execute/mock bridge.
+// Dead-code-eliminated from normal builds because the flag is a compile-time constant.
+if (import.meta.env.VITE_WDIO === '1') {
+  void import('@wdio/tauri-plugin');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Set theme immediately on load
   setTheme(getTheme());

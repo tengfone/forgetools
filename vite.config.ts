@@ -103,6 +103,8 @@ export default defineConfig({
   // Keep Tauri's Rust errors visible in the terminal.
   clearScreen: false,
   envPrefix: ['VITE_', 'TAURI_ENV_'],
+  // .env.<mode> files live at the repo root, not in `root` (src/renderer).
+  envDir: __dirname,
   plugins: [copyMonacoFiles(), suppressMonacoSourceMapWarnings()],
   resolve: {
     alias: {
