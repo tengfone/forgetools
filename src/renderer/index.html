@@ -82,6 +82,7 @@
                         <span class="crumb-desc" id="currentToolDesc">Tool description goes here</span>
                     </div>
                     <div class="tool-header-actions">
+                        <select id="toolHistory" class="toolbar-select cursor-pointer" aria-label="Recent inputs" title="Recent inputs (saved locally)" hidden></select>
                         <div class="tool-actions" id="toolActions"></div>
                         <div class="relative">
                             <button class="btn-icon btn-ghost btn-sm" id="helpBtn" title="Tool help (F1)" aria-label="Tool help" aria-expanded="false" aria-controls="helpPopover"><i class="material-icons" aria-hidden="true">help_outline</i></button>
@@ -165,6 +166,12 @@
                     <label class="flex items-center gap-2 text-[13px] cursor-pointer" title="Inputs are kept in memory while the app is open and cleared on quit">
                         <input type="checkbox" id="setting-remember" class="cursor-pointer">
                         <span>Remember inputs while switching tools</span>
+                    </label>
+                </div>
+                <div class="setting-item mb-3">
+                    <label class="flex items-center gap-2 text-[13px] cursor-pointer" title="Stores the last 10 inputs per tool in local storage on this machine. Turning it off deletes them.">
+                        <input type="checkbox" id="setting-history" class="cursor-pointer">
+                        <span>Keep input history per tool (saved locally)</span>
                     </label>
                 </div>
                 <div class="setting-item mb-4">

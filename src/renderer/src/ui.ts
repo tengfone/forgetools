@@ -52,7 +52,9 @@ export function showToast(msg: string, type: 'success' | 'error' = 'success', ac
     btn.className = 'toast-action';
     btn.type = 'button';
     btn.textContent = action.label;
-    toastAction = () => { action.run(); dismiss(); };
+    // Undo belongs to the tool that showed it; after a tool switch it would act on removed DOM.
+    const epoch = toolEpoch;
+    toastAction = () => { if (epoch === toolEpoch) action.run(); dismiss(); };
     btn.onclick = toastAction;
     toast.appendChild(btn);
   }
@@ -105,7 +107,7 @@ const MAX_FIELD_CHARS = 1024 * 1024; // ~1 MB per field; larger values are skipp
 function snapshotFields(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>('input[id],textarea[id],select[id]')).filter(el => {
     const f = el as HTMLInputElement;
-    if (f.type === 'file' || f.type === 'button' || f.type === 'submit' || f.type === 'password') return false;
+    if (f.type === 'file' || f.type === 'button' || f.type === 'submit' || f.type === 'password' || el.hasAttribute('data-secret')) return false;
     return !f.readOnly && !f.disabled && !el.hasAttribute('data-output');
   });
 }
@@ -357,5 +359,14 @@ export function setFieldInvalid(id: string, invalid: boolean, message?: string):
 }
 /** Incremented on every tool switch; deferred tool work scheduled under an older epoch is dropped. */
 export let toolEpoch = 0;
-export const bumpToolEpoch = (): number => ++toolEpoch;
+export const bumpToolEpoch = (): number => {
+  // An Undo toast belongs to the tool that showed it; don't leave it offering a dead action
+  if (toastAction) {
+    toastAction = null;
+    clearTimeout(toastTimer);
+    const c = document.getElementById('toastContainer');
+    if (c) c.textContent = '';
+  }
+  return ++toolEpoch;
+};
 

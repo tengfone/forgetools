@@ -1,5 +1,7 @@
 // Local, synchronous heuristics that guess which tool fits a pasted string. Nothing leaves the machine.
-import { decodeBase64UrlText } from './tools/ui/common';
+import { base64ToBytes } from './tools/lib/bytes';
+
+const decodeBase64UrlText = (s: string): string => new TextDecoder('utf-8', { fatal: true }).decode(base64ToBytes(s));
 
 const MAX_ANALYSE = 64 * 1024;
 
@@ -74,6 +76,30 @@ export function detect(raw: string): Candidate[] {
         const kv = lines.filter(l => /^\s*(- )?[\w"'.-]+\s*:(\s|$)/.test(l) || /^\s*- /.test(l)).length;
         if (lines.length >= 2 && kv >= 2 && kv / lines.length >= 0.6) add('yamlFormatter', 'YAML', 0.8);
     }
+    if (/^curl\s/i.test(s)) add('curlConverter', 'a cURL command', 0.97);
+    if (/^(docker|podman)\s+(container\s+)?run\s/i.test(s)) add('dockerCompose', 'a docker run command', 0.95);
+    if (/-----BEGIN (NEW )?CERTIFICATE REQUEST-----/.test(s)) add('csrDecoder', 'a certificate signing request', 0.97);
+    if (/-----BEGIN (RSA |EC )?(PUBLIC|PRIVATE) KEY-----/.test(s)) add('pemJwk', 'a PEM key', 0.93);
+    if (/^\{[\s\S]*"kty"\s*:/.test(s) && json) add('pemJwk', 'a JWK', 0.96);
+    if (oneLine && /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(s) && s.split(/[./]/).slice(0, 4).every(n => +n <= 255) && (!s.includes('/') || +s.split('/')[1] <= 32)) add('cidr', s.includes('/') ? 'a CIDR range' : 'an IP address', 0.92);
+    if (oneLine && /^[0-9a-f:]*::?[0-9a-f:]*\/\d{1,3}$/i.test(s) && (s.match(/:/g) ?? []).length >= 2 && +s.split('/')[1]! <= 128) add('cidr', 'an IPv6 CIDR range', 0.9);
+    if (/SAMLRequest=|SAMLResponse=/.test(s)) add('samlDecoder', 'a SAML message', 0.95);
+    if (/^PHNhbWxwO|^PHNhbWw6|^PD94bWwg[\s\S]*c2FtbD/.test(s.replace(/\s+/g, ''))) add('samlDecoder', 'a SAML message', 0.9);
+    if (/^H4sI/.test(s) || (oneLine && /^(eJ|eAE|eF4|eNo)[A-Za-z0-9+/_-]+=*$/.test(s))) add('decompress', 'compressed data (gzip/zlib)', 0.85);
+    if (oneLine && /^Mozilla\/\d|^(curl|Wget|python-requests|okhttp|Go-http-client)\/[\d.]/.test(s)) add('userAgent', 'a User-Agent string', 0.9);
+    if (oneLine && /^https?:\/\/\S+$/i.test(s)) add('urlParser', 'a URL', 0.85);
+    if (/^FROM\s+\S+/im.test(s) && /^(RUN|COPY|CMD|ENTRYPOINT|WORKDIR|ADD|ENV)\s/m.test(s)) add('dockerfileLint', 'a Dockerfile', 0.92);
+    if (/^services:\s*$/m.test(s)) add('dockerCompose', 'a compose file', 0.88);
+    if (!json && /^\s*\[[\w.-]+\]\s*$/m.test(s) && /^\s*[\w.-]+\s*=\s*\S/m.test(s)) add('tomlJson', 'TOML', 0.85);
+    if (!json && !oneLine) {
+        const envLines = s.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#'));
+        if (envLines.length >= 2 && envLines.every(l => /^(export\s+)?[A-Z_][A-Z0-9_]*=/.test(l.trim()))) add('envJson', 'a .env file', 0.9);
+    }
+    if (oneLine && (/^[0-7]{3}$/.test(s) || /^0[0-7]{3}$/.test(s))) add('chmod', 'Unix permissions', 0.6);
+    if (oneLine && /^-?[rwx-]{9,10}$/.test(s) && /[rwx]/.test(s)) add('chmod', 'Unix permissions', 0.9);
+    if (/^(query|mutation|subscription|fragment)\b[\s\S]*\{/.test(s) || /^type\s+\w+\s*\{/.test(s)) add('graphqlFormat', 'GraphQL', 0.88);
+    if (oneLine && /^\d+(\.\d+)?\s*(KB|MB|GB|TB|KiB|MiB|GiB|TiB)$/i.test(s)) add('dataSize', 'a data size', 0.85);
+    if (/[\u200B-\u200F\u2060\uFEFF\u202A-\u202E]/.test(s)) add('unicodeInspector', 'text with invisible characters', 0.8);
     const compact = s.replace(/\s+/g, '');
     if (compact.length >= 8 && /^[A-Za-z0-9+/_-]+={0,2}$/.test(compact) && compact.length % 4 !== 1 && !/^\d+$/.test(compact) && !jwt) {
         const txt = b64urlToText(compact);

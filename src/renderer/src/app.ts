@@ -15,6 +15,7 @@ import { captureFields, restoreFields, clearableFieldIds, clearWithUndo, type Fi
 import { showToast, copyText, readClipboardText, wireClipboardActions, setStatus, openModal, closeModal, getIndent, getIndentChoice, setIndentChoice, type IndentChoice } from './ui';
 import { getTheme, setTheme, syncThemeButton, isDarkActive, defineMonacoThemes } from './app/theme';
 import { setupBackgroundSettings } from './app/backgroundSettings';
+import { historyEnabled, HISTORY_FLAG, clearAllHistory, getHistory, pushHistory, historyLabel, MAX_ENTRY } from './tools/lib/history';
 import { resultCache, resultCacheKey, MAX_CACHEABLE_INPUT, debounce } from './app/cache';
 
 // Configure Monaco loader (using requirejs for Monaco)
@@ -179,6 +180,10 @@ function initMonaco(): void {
     }, 250);
 
     inputEditor.onDidChangeModelContent(debouncedProcessInput);
+    inputEditor.onDidChangeModelContent(e => {
+      // setValue() (restore, handoff, sample, history pick) is a flush: only real edits are recorded
+      if (!e.isFlush && !suppressHistory && currentTool && !currentTool.useCustomUI) recordHistorySoon();
+    });
   }
 
   if (outputContainer && window.monaco) {
@@ -386,6 +391,7 @@ function renderRail(): void {
 /** Back to the start screen: snapshot the open tool, deselect it. */
 function goHome(): void {
   snapshotSession();
+  syncHistory(null);
   currentTool = null;
   renderToken++;
   bumpToolEpoch();
@@ -446,6 +452,7 @@ function initApp(): void {
     focusHomeSearch();
   });
   wireClipboardActions();
+  setupHistory();
   setupHelp();
   setupEventListeners();
   setupCommandPalette();
@@ -707,6 +714,7 @@ function switchTool(toolId: string): void {
     bumpToolEpoch();
     setStatus('idle', 'Ready');
     closeHelp();
+    syncHistory(null);
     if (tool.useCustomUI) {
       // Show Custom UI
       if (editorInterface) editorInterface.classList.add('hidden');
@@ -723,6 +731,7 @@ function switchTool(toolId: string): void {
               disableTextAssist(customInterface);
               restoreSession(tool);
               applyHandoff(tool);
+              syncHistory(tool);
               focusToolStart(tool);
             })
             .catch(err => {
@@ -760,6 +769,7 @@ function switchTool(toolId: string): void {
         clearMarkers();
         restoreSession(tool);
         applyHandoff(tool);
+        syncHistory(tool);
         if (document.activeElement === document.getElementById('currentToolTitle') || document.activeElement === document.body) inputEditor.focus();
         if (tool.autoRun) setTimeout(() => processInput(), 100);
       });
@@ -1031,6 +1041,104 @@ function buildModeControl(tool: Tool): HTMLElement {
   return group;
 }
 
+// ---- Opt-in input history (any tool with a text primary input; secrets opt out via noHistory) ----
+function historyField(tool: Tool): HTMLInputElement | HTMLTextAreaElement | null {
+  if (!tool.useCustomUI || !tool.primaryInput) return null;
+  const el = document.getElementById(tool.primaryInput) as HTMLInputElement | HTMLTextAreaElement | null;
+  if (!el || !(el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement)) return null;
+  // data-secret survives the reveal toggle (which flips type=password to text)
+  if (el.matches('[type=password],[data-secret]') || (el instanceof HTMLInputElement && !['text', 'search', 'url', ''].includes(el.type))) return null;
+  return el;
+}
+const historyAllowed = (tool: Tool | null): tool is Tool =>
+  !!tool && !tool.noHistory && historyEnabled(localStorage) && (!tool.useCustomUI || !!historyField(tool));
+/** Input text to record, or null when it's too long to keep (checked before copying a large editor model). */
+const historyInputOf = (tool: Tool): string | null => {
+  const limit = MAX_ENTRY + 64; // slack for trailing whitespace that pushHistory trims
+  if (tool.useCustomUI) { const v = historyField(tool)?.value ?? ''; return v.length > limit ? null : v; }
+  const model = inputEditor?.getModel();
+  if (!model || model.getValueLength() > limit) return null;
+  return model.getValue();
+};
+
+function fillHistorySelect(tool: Tool): void {
+  const sel = document.getElementById('toolHistory') as HTMLSelectElement | null;
+  if (!sel) return;
+  const items = getHistory(localStorage, tool.id);
+  sel.innerHTML = `<option value=""${items.length ? '' : ' disabled'}>${items.length ? 'Recent…' : 'No history yet'}</option>`
+    + items.map((h, i) => `<option value="${i}">${esc(historyLabel(h))}</option>`).join('');
+  sel.value = '';
+}
+
+/** Show/hide and refill the header history select for `tool` (null hides and empties it). */
+function syncHistory(tool: Tool | null): void {
+  flushHistory();
+  const sel = document.getElementById('toolHistory') as HTMLSelectElement | null;
+  if (!sel) return;
+  const on = historyAllowed(tool);
+  sel.hidden = !on;
+  if (on) fillHistorySelect(tool); else sel.innerHTML = '';
+}
+
+// Pending save: captured when the user edits, so a tool switch can't redirect it to another tool.
+let pendingHistory: { tool: Tool; text: string } | null = null;
+let historyTimer: ReturnType<typeof setTimeout> | undefined;
+function flushHistory(): void {
+  clearTimeout(historyTimer);
+  const p = pendingHistory;
+  pendingHistory = null;
+  if (!p || !historyAllowed(p.tool) || !p.text.trim()) return;
+  pushHistory(localStorage, p.tool.id, p.text);
+  // Don't rebuild the list under an open dropdown; it refills on focus instead
+  if (currentTool === p.tool && document.activeElement !== document.getElementById('toolHistory')) fillHistorySelect(p.tool);
+}
+/** Schedule recording the current tool's input (only call for real user edits). */
+function recordHistorySoon(): void {
+  const tool = currentTool;
+  if (!historyAllowed(tool)) return;
+  if (pendingHistory && pendingHistory.tool !== tool) flushHistory();
+  const text = historyInputOf(tool);
+  clearTimeout(historyTimer);
+  if (text === null) { pendingHistory = null; return; }
+  pendingHistory = { tool, text };
+  historyTimer = setTimeout(flushHistory, 1500);
+}
+/** Set while the app writes input programmatically (restore, handoff, history pick, samples). */
+let suppressHistory = false;
+function withoutHistory(fn: () => void): void {
+  suppressHistory = true;
+  try { fn(); } finally { suppressHistory = false; }
+}
+
+function setupHistory(): void {
+  const sel = document.getElementById('toolHistory') as HTMLSelectElement | null;
+  sel?.addEventListener('change', () => {
+    const tool = currentTool;
+    const h = tool ? getHistory(localStorage, tool.id)[Number(sel.value)] : undefined;
+    sel.value = '';
+    if (!tool || h === undefined) return;
+    withoutHistory(() => {
+      if (!tool.useCustomUI) { inputEditor?.setValue(h); inputEditor?.focus(); return; }
+      const el = historyField(tool);
+      if (!el) return;
+      el.value = h;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      el.focus();
+    });
+    // Like shell history: a reused entry moves to the top
+    pushHistory(localStorage, tool.id, h);
+    fillHistorySelect(tool);
+    showToast('Restored from history');
+  });
+  sel?.addEventListener('focus', () => { if (historyAllowed(currentTool)) fillHistorySelect(currentTool); });
+  document.getElementById('customInterface')?.addEventListener('input', e => {
+    const tool = currentTool;
+    const user = e.isTrusted || !!(e as Event & { fromPaste?: boolean }).fromPaste;
+    if (user && !suppressHistory && tool?.useCustomUI && (e.target as HTMLElement | null)?.id === tool.primaryInput) recordHistorySoon();
+  });
+}
+
 /** Land keyboard users in the tool's primary input and announce the tool politely. */
 function focusToolStart(tool: Tool): void {
   const live = document.getElementById('toolAnnounce');
@@ -1042,8 +1150,10 @@ function focusToolStart(tool: Tool): void {
     if (active && active.closest('#cmdPalette')) return;
     if (tool.useCustomUI) {
       const root = document.getElementById('customInterface');
-      const el = (tool.primaryInput ? document.getElementById(tool.primaryInput) : null)
-        ?? root?.querySelector<HTMLElement>('textarea, input:not([type=hidden]):not([type=checkbox]):not([type=radio])');
+      const usable = (x: HTMLElement | null): x is HTMLElement => !!x && x.offsetParent !== null && !(x as HTMLInputElement).readOnly && !(x as HTMLInputElement).disabled;
+      const primary = tool.primaryInput ? document.getElementById(tool.primaryInput) : null;
+      const el = usable(primary) ? primary
+        : Array.from(root?.querySelectorAll<HTMLElement>('textarea, select, input:not([type=hidden]):not([type=radio])') ?? []).find(usable);
       if (el) { el.focus({ preventScroll: true }); return; }
     } else if (inputEditor) {
       inputEditor.focus();
@@ -1188,6 +1298,7 @@ function setupEventListeners(): void {
       if (inputEditor) {
         inputEditor.setValue(text);
         inputEditor.focus();
+        recordHistorySoon(); // a user paste (setValue is otherwise ignored as programmatic)
       }
     } catch (e) {
       logger.error('Paste failed:', e);
@@ -1297,6 +1408,17 @@ function setupEventListeners(): void {
     rememberCheckbox.onchange = () => {
       localStorage.setItem(REMEMBER_KEY, String(rememberCheckbox.checked));
       if (!rememberCheckbox.checked) sessionState.clear();
+    };
+  }
+
+  const historyCheckbox = document.getElementById('setting-history') as HTMLInputElement | null;
+  if (historyCheckbox) {
+    historyCheckbox.checked = historyEnabled(localStorage);
+    historyCheckbox.onchange = () => {
+      localStorage.setItem(HISTORY_FLAG, String(historyCheckbox.checked));
+      if (!historyCheckbox.checked) clearAllHistory(localStorage);
+      if (currentTool) syncHistory(currentTool);
+      showToast(historyCheckbox.checked ? 'History on; recent inputs appear in each tool\'s header' : 'History off; saved inputs deleted');
     };
   }
 }
