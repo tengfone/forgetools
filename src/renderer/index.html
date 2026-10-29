@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
@@ -148,72 +148,102 @@
         </div>
     </div>
 
-    <!-- Settings Panel -->
-    <div class="settings-overlay fixed inset-x-0 bottom-0 top-10 z-[1000] hidden justify-end items-start" id="settingsOverlay">
+    <!-- Settings dialog: section nav on the left, one section visible at a time (app/settingsDialog.ts) -->
+    <div class="settings-overlay fixed inset-x-0 bottom-0 top-10 z-[1000] hidden justify-center items-start" id="settingsOverlay">
         <div class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-            <div class="h-11 px-4 border-b border-border flex justify-between items-center">
+            <div class="settings-head">
                 <h3 class="settings-title" id="settingsTitle">Settings</h3>
                 <button class="btn-icon btn-ghost btn-sm" id="settingsClose" aria-label="Close settings"><i class="material-icons icon-sm" aria-hidden="true">close</i></button>
             </div>
-            <div class="settings-content p-4 overflow-y-auto">
-                <div class="setting-item mb-3">
-                    <label class="flex items-center gap-2 text-[13px] cursor-pointer">
-                        <input type="checkbox" id="setting-wordwrap" class="cursor-pointer">
-                        <span>Word wrap</span>
+            <div class="settings-body">
+                <nav class="settings-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
+                    <button type="button" class="settings-tab" role="tab" id="stab-editor" data-section="editor" aria-controls="spane-editor"><i class="material-icons" aria-hidden="true">edit_note</i><span>Editor</span></button>
+                    <button type="button" class="settings-tab" role="tab" id="stab-privacy" data-section="privacy" aria-controls="spane-privacy"><i class="material-icons" aria-hidden="true">lock_outline</i><span>Privacy</span></button>
+                    <button type="button" class="settings-tab" role="tab" id="stab-background" data-section="background" aria-controls="spane-background"><i class="material-icons" aria-hidden="true">layers</i><span>Background</span></button>
+                    <button type="button" class="settings-tab" role="tab" id="stab-about" data-section="about" aria-controls="spane-about"><i class="material-icons" aria-hidden="true">info_outline</i><span>About</span><span class="settings-tab-dot" id="aboutTabDot" hidden></span></button>
+                    <span class="settings-nav-version" id="settingsNavVersion" aria-hidden="true"></span>
+                </nav>
+
+                <section class="settings-pane" role="tabpanel" id="spane-editor" aria-labelledby="stab-editor" tabindex="-1">
+                    <h4 class="settings-pane-title">Editor</h4>
+                    <label class="setting-row" for="setting-wordwrap">
+                        <span class="setting-text"><span class="setting-name">Word wrap</span><span class="setting-hint">Wrap long lines in editor panes instead of scrolling sideways.</span></span>
+                        <input type="checkbox" id="setting-wordwrap" class="setting-switch" role="switch">
                     </label>
-                </div>
-                <div class="setting-item mb-3">
-                    <label class="flex items-center gap-2 text-[13px] cursor-pointer" title="Inputs are kept in memory while the app is open and cleared on quit">
-                        <input type="checkbox" id="setting-remember" class="cursor-pointer">
-                        <span>Remember inputs while switching tools</span>
+                    <label class="setting-row" for="setting-minimap">
+                        <span class="setting-text"><span class="setting-name">Show minimap</span><span class="setting-hint">Code overview strip along the right edge of the editor.</span></span>
+                        <input type="checkbox" id="setting-minimap" class="setting-switch" role="switch">
                     </label>
-                </div>
-                <div class="setting-item mb-3">
-                    <label class="flex items-center gap-2 text-[13px] cursor-pointer" title="Stores the last 10 inputs per tool in local storage on this machine. Turning it off deletes them.">
-                        <input type="checkbox" id="setting-history" class="cursor-pointer">
-                        <span>Keep input history per tool (saved locally)</span>
-                    </label>
-                </div>
-                <div class="setting-item mb-4">
-                    <label class="flex items-center gap-2 text-[13px] cursor-pointer">
-                        <input type="checkbox" id="setting-minimap" class="cursor-pointer">
-                        <span>Show minimap</span>
-                    </label>
-                </div>
-                <div class="setting-item mb-4">
-                    <label class="ui-label" for="setting-fontsize">Font size</label>
-                    <select id="setting-fontsize" class="toolbar-select font-mono">
-                        <option value="12">12px</option>
-                        <option value="13" selected>13px</option>
-                        <option value="14">14px</option>
-                        <option value="16">16px</option>
-                        <option value="18">18px</option>
-                    </select>
-                </div>
-                <div class="settings-group" id="settingsBackground">
-                    <h4 class="welcome-section settings-group-title">Background</h4>
-                    <div class="setting-item mb-3">
-                        <label class="flex items-center gap-2 text-[13px] cursor-pointer">
-                            <input type="checkbox" id="setting-background" class="cursor-pointer">
-                            <span>Keep running in background (tray)</span>
-                        </label>
+                    <div class="setting-row">
+                        <span class="setting-text"><label class="setting-name" for="setting-fontsize">Font size</label><span class="setting-hint">Applies to every editor and code field.</span></span>
+                        <select id="setting-fontsize" class="toolbar-select font-mono">
+                            <option value="12">12px</option>
+                            <option value="13" selected>13px</option>
+                            <option value="14">14px</option>
+                            <option value="16">16px</option>
+                            <option value="18">18px</option>
+                        </select>
                     </div>
-                    <div class="setting-item mb-3">
-                        <label class="flex items-center gap-2 text-[13px] cursor-pointer">
-                            <input type="checkbox" id="setting-login" class="cursor-pointer">
-                            <span>Start at login</span>
+                </section>
+
+                <section class="settings-pane" role="tabpanel" id="spane-privacy" aria-labelledby="stab-privacy" tabindex="-1" hidden>
+                    <h4 class="settings-pane-title">Privacy</h4>
+                    <label class="setting-row" for="setting-remember">
+                        <span class="setting-text"><span class="setting-name">Remember inputs while switching tools</span><span class="setting-hint">Kept in memory only, and cleared when you quit.</span></span>
+                        <input type="checkbox" id="setting-remember" class="setting-switch" role="switch">
+                    </label>
+                    <label class="setting-row" for="setting-history">
+                        <span class="setting-text"><span class="setting-name">Keep input history per tool</span><span class="setting-hint">Last 10 inputs per tool, saved on this machine. Turning it off deletes them.</span></span>
+                        <input type="checkbox" id="setting-history" class="setting-switch" role="switch">
+                    </label>
+                </section>
+
+                <section class="settings-pane" role="tabpanel" id="spane-background" aria-labelledby="stab-background" tabindex="-1" hidden>
+                    <h4 class="settings-pane-title">Background</h4>
+                    <div id="settingsBackground">
+                        <label class="setting-row" for="setting-background">
+                            <span class="setting-text"><span class="setting-name">Keep running in background</span><span class="setting-hint">Closing the window hides ForgeTools to the tray instead of quitting.</span></span>
+                            <input type="checkbox" id="setting-background" class="setting-switch" role="switch">
                         </label>
-                    </div>
-                    <div class="setting-item">
-                        <span class="ui-label" id="shortcutLabel">Global shortcut</span>
-                        <div class="flex items-center gap-1.5">
-                            <button type="button" class="shortcut-rec" id="shortcutRec" aria-labelledby="shortcutLabel shortcutRec" aria-describedby="shortcutMsg">Not set</button>
-                            <button type="button" class="btn-icon btn-ghost btn-sm" id="shortcutClear">Clear</button>
+                        <label class="setting-row" for="setting-login">
+                            <span class="setting-text"><span class="setting-name">Start at login</span><span class="setting-hint">Starts hidden in the tray when you sign in.</span></span>
+                            <input type="checkbox" id="setting-login" class="setting-switch" role="switch">
+                        </label>
+                        <div class="setting-row setting-row-stack">
+                            <span class="setting-text"><span class="setting-name" id="shortcutLabel">Global shortcut</span><span class="setting-hint" id="shortcutMsg">Shows or hides ForgeTools from any app.</span></span>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" class="shortcut-rec" id="shortcutRec" aria-labelledby="shortcutLabel shortcutRec" aria-describedby="shortcutMsg">Not set</button>
+                                <button type="button" class="btn-icon btn-ghost btn-sm" id="shortcutClear">Clear</button>
+                            </div>
+                            <div class="shortcut-chips" id="shortcutChips" role="group" aria-label="Suggested shortcuts"></div>
                         </div>
-                        <div class="shortcut-chips" id="shortcutChips" role="group" aria-label="Suggested shortcuts"></div>
-                        <p class="shortcut-msg" id="shortcutMsg">Shows or hides ForgeTools from any app.</p>
                     </div>
-                </div>
+                </section>
+
+                <section class="settings-pane" role="tabpanel" id="spane-about" aria-labelledby="stab-about" tabindex="-1" hidden>
+                    <div id="settingsAbout">
+                        <div class="about-head">
+                            <img class="about-logo" src="./assets/favicon.png" alt="" draggable="false">
+                            <div class="min-w-0 flex-1">
+                                <div class="about-name">ForgeTools</div>
+                                <div class="about-version"><span id="aboutVersion">Version …</span><span class="about-update" id="aboutUpdate" role="status" aria-live="polite"></span></div>
+                            </div>
+                            <button type="button" class="btn-icon btn-sm" id="aboutCheck">Check for updates</button>
+                        </div>
+                        <p class="about-blurb">Offline developer utilities. Free and open source (MIT). Nothing you paste ever leaves your machine.</p>
+                        <label class="setting-row" for="setting-autoupdate">
+                            <span class="setting-text"><span class="setting-name">Check for updates automatically</span><span class="setting-hint">Asks api.github.com for the latest release at most once a day. Nothing else is sent.</span></span>
+                            <input type="checkbox" id="setting-autoupdate" class="setting-switch" role="switch">
+                        </label>
+                        <div class="about-links">
+                            <button type="button" class="about-link" data-link="github"><i class="material-icons" aria-hidden="true">code</i><span>Source on GitHub</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
+                            <button type="button" class="about-link" data-link="releases"><i class="material-icons" aria-hidden="true">new_releases</i><span>Release notes</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
+                            <button type="button" class="about-link" data-link="issues"><i class="material-icons" aria-hidden="true">bug_report</i><span>Report an issue</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
+                            <button type="button" class="about-link about-coffee" data-link="coffee"><i class="material-icons" aria-hidden="true">local_cafe</i><span>Buy me a coffee</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
+                        </div>
+                        <button type="button" class="about-meta" id="aboutMeta" title="Copy version details"></button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>

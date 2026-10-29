@@ -34,6 +34,17 @@ const electronAPI: ElectronAPI = {
     close: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.CLOSE),
     setTitleBarTheme: (theme: 'dark' | 'light') => ipcRenderer.send(IPC_CHANNELS.WINDOW.SET_THEME, theme === 'dark' ? 'dark' : 'light'),
   },
+  app: {
+    getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.APP.INFO),
+    openLink: (id) => ipcRenderer.invoke(IPC_CHANNELS.APP.OPEN_LINK, String(id)),
+  },
+  updates: {
+    check: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATES.CHECK),
+    auto: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATES.AUTO),
+    getPrefs: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_PREFS),
+    setPrefs: (patch) => ipcRenderer.invoke(IPC_CHANNELS.UPDATES.SET_PREFS,
+      typeof patch?.autoCheck === 'boolean' ? { autoCheck: patch.autoCheck } : {}),
+  },
   background: {
     getBackgroundSettings: () => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.GET),
     setBackgroundSettings: (patch: Partial<BackgroundSettings>) => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.SET, {

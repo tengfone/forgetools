@@ -1,6 +1,6 @@
 ---
 name: ForgeTools
-description: Offline developer utilities. Forge, instrument dark — precise, quiet, exact.
+description: Offline developer utilities. Forge, instrument dark ï¿½ precise, quiet, exact.
 colors:
   canvas-dark: "#0b0b0c"
   panel-dark: "#111113"
@@ -127,7 +127,7 @@ components:
 
 ## Overview
 
-**Creative North Star: "Forge — instrument dark"**
+**Creative North Star: "Forge ï¿½ instrument dark"**
 
 A precision instrument, not a native-app clone. Dark first (Linear/Raycast lineage): a near-black canvas, one inset tool panel, hairline structure, mono for everything measured, and a single molten-amber accent that only marks where you are and what you will do next. Light mode is a paired, equally careful theme selected by the System/Light/Dark switch (`.dark` class on `<html>`).
 
@@ -162,26 +162,26 @@ UI: `Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui` (no bundled webfont
 
 40px canvas-coloured titlebar (`-webkit-app-region: drag`; buttons/selects/inputs `no-drag`). The `forge` wordmark is a button (aria-label "Home"). Platform class on `<html>`: `platform-mac` reserves 78px left for traffic lights (`hiddenInset`); `platform-win`/`platform-linux` use `titleBarStyle: hidden` + `titleBarOverlay` (dark `#0b0b0c`/`#a1a1aa`, light `#f4f4f2`/`#52525b`, 40px) and reserve right padding from `env(titlebar-area-*)` (fallback 140px). The renderer syncs overlay colours via `electronAPI.window.setTitleBarTheme` on every theme change, including system changes. A hidden role-based menu keeps Ctrl+C/V/Z, reload and DevTools accelerators. Then a 56px **rail** (toolbar, arrow keys, roving tabindex): Home, Search (palette), hairline, pinned tool icons, recent tool icons, and an "All tools" toggle at the bottom. Rail buttons are 36px, 8px radius, with a title tooltip and aria-label; active = tint + 2px amber marker at the rail edge. "All tools" docks the 240px categorized list (`#toolsNav`, collapsible groups, persisted as `nav-expanded`) beside the rail; below 900px the same list opens as an overlay drawer beside the rail. Inset tool panel with a 44px header toolbar, then the 24px mono status bar.
 
-Inside tools, sections are flat (`.tool-card` = 20px×16px padding, 1px hairline between sections); side-by-side sections (`.grid-2`) are split by a vertical hairline. Editor tools split input/output panes with a 1px border and mono pane labels.
+Inside tools, sections are flat (`.tool-card` = 20pxï¿½16px padding, 1px hairline between sections); side-by-side sections (`.grid-2`) are split by a vertical hairline. Editor tools split input/output panes with a 1px border and mono pane labels.
 
 ## Elevation
 
-Flat. Only floating layers (command palette, help popover, settings sheet, toasts, drawer) get `--float-shadow` (offset, soft) plus a 1px border. Scrim `rgba(0,0,0,.5)`, no blur.
+Flat. Only floating layers (command palette, help popover, settings dialog, toasts, drawer) get `--float-shadow` (offset, soft) plus a 1px border. Scrim `rgba(0,0,0,.5)`, no blur.
 
 ## Components
 
-- **Nav row**: 28px, 6px radius, 16px secondary-ink icon; active = primary ink + tint + 2px amber marker inset at the left (nav and palette only — never on cards).
+- **Nav row**: 28px, 6px radius, 16px secondary-ink icon; active = primary ink + tint + 2px amber marker inset at the left (nav and palette only ï¿½ never on cards).
 - **Buttons**: secondary by default (control fill + border), `.btn-ghost` for toolbar actions, `.btn-sm` 26px, `.btn-primary` amber.
 - **Range sliders** use neutral ink (`--text-secondary`); checkboxes keep amber (selection). Placeholders use `--text-tertiary` (4.9:1 light / 5.2:1 dark on `--bg-input`). Radii are on the 4/6/8/10 scale (scrollbar thumbs and colour swatches 6px).
 - **Inputs**: control fill, 1px control border, 6px radius, mono for data; focus = amber border + 2px amber/25% ring. Read-only fields drop to transparent.
-- **Command palette**: 640px at 18vh, 48px borderless search with a hairline, results grouped (Recent, then categories) under mono labels, 36px rows `icon · title — Category`, footer kbd hints.
+- **Command palette**: 640px at 18vh, 48px borderless search with a hairline, results grouped (Recent, then categories) under mono labels, 36px rows `icon ï¿½ title ï¿½ Category`, footer kbd hints.
 - **Home (tool browser)**: wordmark, purpose line, palette button, Paste anything; then Pinned and Recent chip rows (28px, hairline-bordered); then "All tools" with a live filter (`scoreTool`) and every tool as a flat tile (icon, title, one-line description, hover pin) grouped by `CATEGORY_ORDER` in an auto-fill grid (min 260px). Tiles are not cards: no border or fill until hover. Reached from the logo, the rail Home button, or the palette command "Go home"; going home snapshots the open tool's session and deselects it.
 - **Kbd**: mono 11px, 1px border, 4px radius, control fill.
 - **JWT parts**: header rose `#f08a8a`/`#b4434a`, payload sage `#93bf9e`/`#3d7650`, signature steel `#8fadd6`/`#3a5d8c` (dark/light; all >=5.3:1 on panel, chosen to stay clear of the amber accent); flat sections with a coloured 6px dot + coloured mono label (`--part-*`), never a stripe.
 
 ## Motion
 
-120–160ms ease-out on colour, opacity and small translate only. `prefers-reduced-motion` collapses all durations.
+120ï¿½160ms ease-out on colour, opacity and small translate only. `prefers-reduced-motion` collapses all durations.
 
 ## Don'ts
 
@@ -208,7 +208,8 @@ Flat. Only floating layers (command palette, help popover, settings sheet, toast
 - **Secondary text contrast**: secondary ink is raised above the stock 60% system value so labels and descriptions pass AA (4.5:1) in both themes. Tertiary ink stays reserved for placeholders and disabled text.
 - **Sidebar categories** come from `CATEGORY_ORDER` in `tools/index.ts`, in this order: **Inspect & Decode**, **Format**, **Convert**, **Text & Utilities** (case, regex, string inspection, hashing, cron), **Generate**, **Compare**. Registry insertion order matches it, and every tool has a distinct Material Icons ligature.
 - **Copy output shortcut**: Ctrl/Cmd+Shift+C copies the current tool's output.
-- **Modals trap focus**: the command palette, settings sheet and help popover keep Tab inside, close on Esc, and restore focus to the element that opened them.
+- **Modals trap focus**: the command palette, settings dialog and help popover keep Tab inside, close on Esc, and restore focus to the element that opened them.
+- **Settings dialog**: 680Ã—460 centered float. Left section tabs (Editor, Privacy, Background, About) with the 2px amber active marker and the version at the foot; one pane at a time, so nothing hides below a fold. Rows are `.setting-row`: name (13px/500) + hint (12px secondary) on the left, control on the right, hairline between rows. Booleans use `.setting-switch` (amber when on). The titlebar âš™ opens it on the last-used section (`Ctrl+K` "about" opens About); an available update puts an amber dot on âš™ and the About tab.
 - **Live tools by default**: tools recompute as you type (debounced); explicit Generate buttons are only for random or expensive actions.
 - **Formatter indent**: editor tools expose `format(input, indent?)`; indent defaults to 2.
 

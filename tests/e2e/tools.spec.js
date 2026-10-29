@@ -183,10 +183,43 @@ test("palette fuzzy search finds Base64 for 'b64'", async () => {
   await window.keyboard.press("Escape");
 });
 
-test("titlebar settings button opens the Settings sheet", async () => {
+test("titlebar settings button opens the Settings dialog", async () => {
   await window.click('button[aria-label="Settings"] >> nth=0');
   await expect(window.locator("#settingsTitle")).toHaveText("Settings");
   await expect(window.locator("#settingsOverlay")).toHaveClass(/visible/);
+  await window.keyboard.press("Escape");
+});
+
+test("palette 'about' opens Settings on the About section", async () => {
+  const pkg = require("../../package.json");
+  await window.keyboard.press("Control+K");
+  await window.keyboard.type("about");
+  await window.locator(".cmd-item", { hasText: "About ForgeTools" }).first().click();
+  await expect(window.locator("#settingsOverlay")).toHaveClass(/visible/);
+  await expect(window.locator("#stab-about")).toHaveAttribute("aria-selected", "true");
+  await expect(window.locator("#aboutVersion")).toHaveText(`Version ${pkg.version}`);
+  await expect(window.locator('#settingsAbout [data-link]')).toHaveCount(4);
+  await expect(window.locator('#settingsAbout [data-link="coffee"]')).toBeVisible();
+  // Auto update check is opt-in
+  await expect(window.locator("#setting-autoupdate")).not.toBeChecked();
+  await window.keyboard.press("Escape");
+  await expect(window.locator("#settingsOverlay")).not.toHaveClass(/visible/);
+});
+
+test("settings sections switch with tabs and arrow keys, and fit the window", async () => {
+  await window.click('button[aria-label="Settings"] >> nth=0');
+  await window.click("#stab-editor");
+  await expect(window.locator("#spane-editor")).toBeVisible();
+  await expect(window.locator("#spane-privacy")).toBeHidden();
+  await window.keyboard.press("ArrowDown");
+  await expect(window.locator("#spane-privacy")).toBeVisible();
+  await expect(window.locator("#stab-privacy")).toBeFocused();
+  const fits = await window.evaluate(() => {
+    const p = document.querySelector('#settingsOverlay .settings-panel').getBoundingClientRect();
+    return p.bottom <= window.innerHeight;
+  });
+  expect(fits).toBe(true);
+  await window.click("#stab-editor");
   await window.keyboard.press("Escape");
 });
 

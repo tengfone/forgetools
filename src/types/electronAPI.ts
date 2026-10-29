@@ -1,4 +1,4 @@
-import { QRCodeGenerateOptions, BarcodeGenerateOptions, BackgroundSettings, ShortcutResult } from './ipc';
+import { QRCodeGenerateOptions, BarcodeGenerateOptions, BackgroundSettings, ShortcutResult, AppInfo, ExternalLinkId, UpdateCheckResult, UpdatePrefs } from './ipc';
 
 export interface ULIDDecoded {
   timestamp: number;
@@ -37,6 +37,19 @@ export interface ElectronAPI {
     close: () => void;
     /** Sync the native title bar overlay (Windows/Linux) with the app theme. */
     setTitleBarTheme: (theme: 'dark' | 'light') => void;
+  };
+  app: {
+    getInfo: () => Promise<AppInfo>;
+    /** Opens one of the allowlisted EXTERNAL_LINKS in the default browser. */
+    openLink: (id: ExternalLinkId) => Promise<void>;
+  };
+  updates: {
+    /** Manual check: always asks GitHub, rejects on failure. */
+    check: () => Promise<UpdateCheckResult>;
+    /** Startup check: only hits the network when opted in and >24h since the last check. */
+    auto: () => Promise<UpdateCheckResult | null>;
+    getPrefs: () => Promise<UpdatePrefs>;
+    setPrefs: (patch: Partial<UpdatePrefs>) => Promise<UpdatePrefs>;
   };
   background: {
     getBackgroundSettings: () => Promise<BackgroundSettings>;

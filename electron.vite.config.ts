@@ -101,6 +101,8 @@ function suppressMonacoSourceMapWarnings(): Plugin {
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    // App version baked in at build time (app.getVersion() reports Electron's version when run unpackaged)
+    define: { __APP_VERSION__: JSON.stringify(JSON.parse(fsExtra.readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version) },
     build: {
       outDir: 'out/main',
       sourcemap: false, // Disable source maps in production

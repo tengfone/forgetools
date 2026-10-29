@@ -35,7 +35,8 @@ Always run `npm run build && npm test` before saying a change works.
 
 ## Conventions
 
-- **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled.
+- **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled. The single exception is the update check (`src/main/updates.ts`): one GET to `api.github.com/repos/tengfone/forgetools/releases/latest`, run from the main process only when the user clicks "Check for updates" or has turned on the opt-in daily check (off by default, skipped under `FORGE_E2E`). External links open in the OS browser through the allowlist in `EXTERNAL_LINKS` (`src/types/ipc.ts`).
+- **Settings** is one dialog with sections (Editor, Privacy, Background, About; `app/settingsDialog.ts`). Add new options as `.setting-row`s in an existing section, or add a section. Don't make one section scroll.
 - Errors go to the shared status bar (`reportError` / `reportOk` / `resetStatus`), not `alert()` or console-only.
 - No inline styles or inline event handlers in tool markup (a test enforces this). Use Tailwind/CSS classes and `addEventListener`.
 - Prefix element ids with the tool's own prefix (e.g. `b64-plain`, `jwt-input`).

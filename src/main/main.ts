@@ -1,11 +1,12 @@
-import { app, BrowserWindow, clipboard, Menu, nativeTheme, session, type MenuItemConstructorOptions } from 'electron';
+import { app, BrowserWindow, clipboard, Menu, nativeTheme, session, shell, type MenuItemConstructorOptions } from 'electron';
 import crypto from 'crypto';
 import path from 'path';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { optimize as svgoOptimize } from 'svgo';
 import { DOMImplementation, XMLSerializer } from '@xmldom/xmldom';
-import { IPC_CHANNELS } from '../types/ipc';
+import { IPC_CHANNELS, EXTERNAL_LINKS, type AppInfo } from '../types/ipc';
+import { initUpdates, releaseUrl } from './updates';
 import type { X509Decoded } from '../types/electronAPI';
 import { attachWindow, claimSingleInstance, initBackground, showWindow, startHidden } from './background';
 import { DEV_SERVER_URL, handle, isAppUrl, on } from './ipcGuard';
@@ -65,6 +66,27 @@ on(IPC_CHANNELS.WINDOW.SET_THEME, (event, theme: unknown) => {
   } catch {
     // Overlay not supported on this platform/window: nothing to sync
   }
+});
+
+// ── About: version info and allowlisted external links ───────────────────────
+declare const __APP_VERSION__: string;
+handle(IPC_CHANNELS.APP.INFO, (): AppInfo => ({
+  name: 'ForgeTools',
+  version: __APP_VERSION__,
+  electron: process.versions.electron,
+  chrome: process.versions.chrome,
+  node: process.versions.node,
+  platform: process.platform,
+  arch: process.arch,
+}));
+
+handle(IPC_CHANNELS.APP.OPEN_LINK, async (_event, id: unknown) => {
+  // Only fixed, known URLs: the renderer can never open an arbitrary address.
+  if (id === 'latestRelease') { await shell.openExternal(releaseUrl()); return; }
+  if (typeof id !== 'string' || !Object.prototype.hasOwnProperty.call(EXTERNAL_LINKS, id)) {
+    throw new Error('Unknown link');
+  }
+  await shell.openExternal(EXTERNAL_LINKS[id as keyof typeof EXTERNAL_LINKS]);
 });
 
 // Minimal hidden menu on Windows/Linux: no visible menu bar, but the role
@@ -315,6 +337,7 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   installMenu();
+  initUpdates();
   createWindow();
   initBackground(() => mainWindow);
 

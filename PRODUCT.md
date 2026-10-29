@@ -21,7 +21,7 @@ Desktop app (Electron) used alongside an editor, terminal, and browser. Input is
 ## Capabilities and Constraints
 - Stack: Electron-Vite, TypeScript, Tailwind CSS, Monaco Editor, Playwright tests.
 - Tool categories (see README.md): Formatters (JSON, XML, SQL, HTML, HTML→JSX, Markdown→HTML, Markdown preview, YAML, SVG optimizer); Encoders/Decoders (Base64, URL, JWT, backslash escape, HEX↔ASCII, X.509 certificate, hashes); Converters (YAML↔JSON, CSV↔JSON, timestamp, color, number base, image→Base64); Generators (UUID/ULID, QR, barcode, Lorem Ipsum, random string); Text tools (diff viewer). Also: HMAC, JWT signing, key pairs, CSR/SAML/PEM↔JWK, bcrypt/Argon2, password strength, JSON↔YAML/TOML/.env, JSON→types, JSONPath, JSON diff, cURL→code, docker run↔compose, Dockerfile lint, CSS/JS/GraphQL formatting, CIDR, URL/User-Agent parsing, gzip, protobuf/MessagePack, Unicode inspector, chmod, data sizes, time zones, HTTP status, cheat sheets, fake data, cron builder, .gitignore, favicons, a tool pipeline, and opt-in local per-tool history.
-- Hard constraints: must work entirely offline; no telemetry or network calls with user data.
+- Hard constraints: must work entirely offline; no telemetry or network calls with user data. The only network request is an opt-in update check (manual button, or a daily check that is off by default) that asks GitHub for the latest release version; it sends nothing about the user.
 - Undecided: target OSes, distribution, brand identity, accessibility standard.
 
 ## Brand Commitments

@@ -15,6 +15,8 @@ import { captureFields, restoreFields, clearableFieldIds, clearWithUndo, type Fi
 import { showToast, copyText, readClipboardText, wireClipboardActions, setStatus, openModal, closeModal, getIndent, getIndentChoice, setIndentChoice, type IndentChoice } from './ui';
 import { getTheme, setTheme, syncThemeButton, isDarkActive, defineMonacoThemes } from './app/theme';
 import { setupBackgroundSettings } from './app/backgroundSettings';
+import { setupAbout } from './app/about';
+import { setupSettingsTabs, type SettingsSection } from './app/settingsDialog';
 import { historyEnabled, HISTORY_FLAG, clearAllHistory, getHistory, pushHistory, historyLabel, MAX_ENTRY } from './tools/lib/history';
 import { resultCache, resultCacheKey, MAX_CACHEABLE_INPUT, debounce } from './app/cache';
 
@@ -247,6 +249,7 @@ function setupHelp(): void {
 }
 
 let openSettingsSheet: (opener?: HTMLElement | null) => void = () => {};
+let openAboutSheet: (opener?: HTMLElement | null) => void = () => {};
 
 function setupTitlebar(): void {
   const isMac = window.platform?.isMac ?? (navigator.platform.toUpperCase().indexOf('MAC') >= 0);
@@ -270,7 +273,8 @@ function setupTitlebar(): void {
     setTheme(order[(order.indexOf(getTheme()) + 1) % order.length]!);
   };
   controls.append(themeBtn);
-  syncThemeButton();  const settings = document.createElement('button');
+  syncThemeButton();
+  const settings = document.createElement('button');
   settings.type = 'button';
   settings.id = 'titlebarSettings';
   settings.className = 'tb-btn';
@@ -447,6 +451,7 @@ function initApp(): void {
   renderWelcome();
   setupHomeSearch();
   setupBackgroundSettings();
+  setupAbout();
   window.electronAPI?.background?.onGoHome(() => {
     if (currentTool) goHome();
     focusHomeSearch();
@@ -1339,33 +1344,34 @@ function setupEventListeners(): void {
     }
   };
 
-  // Settings sheet (opened from the titlebar button and the palette)
+  // Settings dialog (titlebar ⚙ -> last-used section; palette "About ForgeTools" -> About)
+  const selectSection = setupSettingsTabs();
   const settingsOverlay = document.getElementById('settingsOverlay');
-  const settingsClose = document.getElementById('settingsClose');
-  
   if (settingsOverlay) {
     const panel = settingsOverlay.querySelector<HTMLElement>('[role="dialog"]') ?? settingsOverlay;
-    const closeSettings = (): void => {
+    const closeBtn = document.getElementById('settingsClose');
+    const close = (): void => {
       if (!settingsOverlay.classList.contains('visible')) return;
       settingsOverlay.classList.remove('visible');
       settingsOverlay.classList.add('hidden');
       closeModal(panel);
     };
-    openSettingsSheet = (opener?: HTMLElement | null) => {
+    const open = (section?: SettingsSection, opener?: HTMLElement | null): void => {
+      const s = selectSection(section);
       settingsOverlay.classList.remove('hidden');
       settingsOverlay.classList.add('visible');
       openModal(panel, {
         opener: opener ?? (document.activeElement as HTMLElement | null) ?? undefined,
-        initialFocus: document.getElementById('setting-wordwrap'),
-        onEscape: closeSettings
+        initialFocus: document.getElementById(`stab-${s}`),
+        onEscape: close
       });
     };
-    if (settingsClose) settingsClose.onclick = closeSettings;
-    const overlayClickHandler = (e: Event) => {
-      if (e.target === settingsOverlay) closeSettings();
-    };
+    if (closeBtn) closeBtn.onclick = close;
+    const overlayClickHandler = (e: Event) => { if (e.target === settingsOverlay) close(); };
     settingsOverlay.addEventListener('click', overlayClickHandler);
     eventListeners.push({ element: settingsOverlay, event: 'click', handler: overlayClickHandler });
+    openSettingsSheet = (opener?: HTMLElement | null) => open(undefined, opener);
+    openAboutSheet = (opener?: HTMLElement | null) => open('about', opener);
   }
   
   // Settings Controls
@@ -1547,6 +1553,9 @@ function setupCommandPalette(): void {
     }
     if (t && ('open settings'.includes(t) || 'settings'.startsWith(t) || t.startsWith('sett'))) {
       cmds.push({ id: '__open-settings', title: 'Open settings', category: 'Commands', description: '', icon: 'tune', run: () => openSettingsSheet() } as unknown as Tool);
+    }
+    if (t && ('about forgetools'.includes(t) || 'version'.startsWith(t) || 'support'.startsWith(t) || 'github'.startsWith(t) || 'coffee'.startsWith(t) || 'donate'.startsWith(t))) {
+      cmds.push({ id: '__about', title: 'About ForgeTools', category: 'Commands', description: '', icon: 'info', run: () => openAboutSheet() } as unknown as Tool);
     }
     // "pin json" / "unpin jwt": a pin command per matching tool
     const pinMatch = /^(un)?pin(?:\s+(.*))?$/.exec(t);

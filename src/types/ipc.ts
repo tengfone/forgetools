@@ -12,6 +12,16 @@ export const IPC_CHANNELS = {
     SET_SHORTCUT: 'background:set-shortcut',
     GO_HOME: 'background:go-home'
   },
+  APP: {
+    INFO: 'app:info',
+    OPEN_LINK: 'app:open-link'
+  },
+  UPDATES: {
+    CHECK: 'updates:check',
+    AUTO: 'updates:auto',
+    GET_PREFS: 'updates:get-prefs',
+    SET_PREFS: 'updates:set-prefs'
+  },
   CLIPBOARD: {
     WRITE: 'clipboard:write',
     READ: 'clipboard:read'
@@ -69,6 +79,34 @@ export interface BackgroundSettings {
   keepInBackground: boolean;
   openAtLogin: boolean;
   globalShortcut: string | null;
+}
+
+/** External links the renderer may ask the OS browser to open (allowlisted in main). */
+export const EXTERNAL_LINKS = {
+  github: 'https://github.com/tengfone/forgetools',
+  releases: 'https://github.com/tengfone/forgetools/releases',
+  issues: 'https://github.com/tengfone/forgetools/issues',
+  coffee: 'https://www.buymeacoffee.com/tengfone'
+} as const;
+export type ExternalLinkId = keyof typeof EXTERNAL_LINKS | 'latestRelease';
+
+export interface UpdatePrefs { autoCheck: boolean }
+export interface UpdateCheckResult {
+  current: string;
+  /** Latest published version without the "v" (null when never checked). */
+  latest: string | null;
+  available: boolean;
+  checkedAt: number;
+}
+
+export interface AppInfo {
+  name: string;
+  version: string;
+  electron: string;
+  chrome: string;
+  node: string;
+  platform: string;
+  arch: string;
 }
 
 export interface ShortcutResult { ok: boolean; error?: string; accelerator: string | null }

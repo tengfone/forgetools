@@ -17,7 +17,7 @@ Offline developer utilities in one desktop app. Format, decode, convert and gene
 - **Opt-in input history**: off by default; when on, recent inputs are kept per tool. Tools that handle secrets never record, and secret-looking text is skipped.
 - **Light and dark themes** that follow your system.
 - **Lives in the tray**: closing the window keeps it running, with an optional global shortcut and start at login (see [Background mode](#background-mode)).
-- **Locked down**: sandboxed renderer, strict Content Security Policy, sanitized Markdown preview, and no network access.
+- **Locked down**: sandboxed renderer, strict Content Security Policy, sanitized Markdown preview, and no network access. The one exception is an opt-in update check (a button in Settings → About, plus an optional daily check that is off by default) that only asks GitHub for the latest release number.
 - Runs on **Windows, macOS (Intel & Apple Silicon) and Linux**.
 
 ## Tools
