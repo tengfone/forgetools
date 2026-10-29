@@ -1,5 +1,4 @@
-import '@fontsource-variable/inter/wght.css';
-import '@fontsource-variable/jetbrains-mono/wght.css';
+import './fonts.css';
 import './monacoEnv'; // must run before Monaco's AMD loader requests editor.main
 import type { Tool } from '../../types/tools';
 import type { editor } from 'monaco-editor';
@@ -29,11 +28,6 @@ declare global {
       (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void, errback?: (err: Error) => void): void;
     };
   }
-  
-  const require: {
-    config: (config: { paths: Record<string, string> }) => void;
-    (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void, errback?: (err: Error) => void): void;
-  } | undefined;
 }
 
 // Global State
@@ -94,7 +88,7 @@ function ensureMonaco(): Promise<void> {
   setStatus('idle', 'Loading editor\u2026');
   monacoPromise = new Promise<void>((resolve, reject) => {
     const attempt = (retryCount: number): void => {
-      const req = window.require || (typeof require !== 'undefined' ? require : undefined);
+      const req = window.require;
       if (window.monacoPath && req) {
         try {
           req.config({ paths: { vs: window.monacoPath } });

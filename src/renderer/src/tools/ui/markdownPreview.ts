@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import { $f, clearWithUndo, reportError, resetStatus } from '../../ui';
 import { debounce, inputActions } from './common';
 
@@ -62,7 +63,7 @@ Write your **markdown** here and see the preview!</textarea>
 
     const update = (): void => {
         try {
-            const html = window.electronAPI.marked.parse(source.value);
+            const html = marked.parse(source.value, { async: false }) as string;
             preview.replaceChildren(sanitizeHtml(html));
             resetStatus();
         } catch (e) {

@@ -1,5 +1,6 @@
 import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
 import { debounce, inputActions, copyButton } from './common';
+import yaml from 'js-yaml';
 
 const SAMPLE = `name: John Doe
 age: 30
@@ -39,7 +40,7 @@ export function render(container: HTMLElement): void {
     const update = (): void => {
         if (!input.value.trim()) { output.value = ''; setFieldInvalid('yaml-input', false); resetStatus(); return; }
         try {
-            output.value = JSON.stringify(window.electronAPI.yaml.parse(input.value), null, 2);
+            output.value = JSON.stringify(yaml.load(input.value), null, 2);
             setFieldInvalid('yaml-input', false);
             reportOk('Valid YAML');
         } catch (e) {

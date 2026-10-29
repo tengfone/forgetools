@@ -1,5 +1,6 @@
 import { $, $f, errorMessage, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
 import { directionBar, twoWay, debounce, inputActions, copyButton } from './common';
+import Papa from 'papaparse';
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
@@ -29,7 +30,7 @@ export function render(container: HTMLElement): void {
         setFieldInvalid('json-output', false);
         if (!csv.value.trim()) { json.value = ''; setFieldInvalid('csv-input', false); resetStatus(); return; }
         try {
-            const result = window.electronAPI.csv.toJSON(csv.value);
+            const result = Papa.parse<Record<string, unknown>>(csv.value, { header: true });
             json.value = JSON.stringify(result.data, null, 2);
             setFieldInvalid('csv-input', false);
             reportOk('Converted CSV to JSON');
@@ -47,7 +48,7 @@ export function render(container: HTMLElement): void {
             if (!Array.isArray(data) || data.some(r => r === null || typeof r !== 'object' || Array.isArray(r))) {
                 throw new Error('JSON must be an array of objects to convert to CSV');
             }
-            csv.value = window.electronAPI.csv.fromJSON(data);
+            csv.value = Papa.unparse(data as Record<string, unknown>[]);
             setFieldInvalid('json-output', false);
             reportOk('Converted JSON to CSV');
         } catch (e) {

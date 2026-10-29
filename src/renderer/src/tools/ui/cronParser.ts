@@ -1,5 +1,6 @@
 import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo, copyText } from '../../ui';
 import { debounce, inputActions } from './common';
+import { getNextOccurrences } from '../lib/cron';
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
@@ -37,7 +38,7 @@ export function render(container: HTMLElement): void {
             return;
         }
         try {
-            const runs = window.cronParser.getNextOccurrences(val, 5);
+            const runs = getNextOccurrences(val, 5);
             cronDesc.textContent = 'Valid expression: next 5 runs listed below';
             runs.forEach(dateStr => {
                 const li = document.createElement('li');

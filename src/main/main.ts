@@ -1,10 +1,8 @@
 import { app, BrowserWindow, clipboard, Menu, nativeTheme, session, shell, type MenuItemConstructorOptions } from 'electron';
 import crypto from 'crypto';
 import path from 'path';
-import QRCode from 'qrcode';
-import JsBarcode from 'jsbarcode';
-import { optimize as svgoOptimize } from 'svgo';
-import { DOMImplementation, XMLSerializer } from '@xmldom/xmldom';
+// qrcode, jsbarcode, svgo and xmldom are loaded on first use (dynamic import) so they
+// don't slow down app startup; the bundler splits them into their own chunks.
 import { IPC_CHANNELS, EXTERNAL_LINKS, type AppInfo } from '../types/ipc';
 import { initUpdates, releaseUrl } from './updates';
 import type { X509Decoded } from '../types/electronAPI';
@@ -126,6 +124,7 @@ handle(IPC_CHANNELS.QRCODE.GENERATE, async (_event, text: unknown, options: unkn
   const t = requireString(text, 'QR text', QR_MAX_TEXT);
   const o = asObject(options);
   const c = asObject(o.color);
+  const QRCode = (await import('qrcode')).default;
   return await QRCode.toDataURL(t, {
     errorCorrectionLevel: oneOf(o.errorCorrectionLevel, ['L', 'M', 'Q', 'H'] as const) ?? 'M',
     margin: clampNum(o.margin, 0, 16) ?? 4,
@@ -145,6 +144,7 @@ const BARCODE_FORMATS = [
 handle(IPC_CHANNELS.BARCODE.GENERATE, async (_event, text: unknown, options: unknown): Promise<string> => {
   const t = requireString(text, 'Barcode text', 512);
   const o = asObject(options);
+  const [{ default: JsBarcode }, { DOMImplementation, XMLSerializer }] = await Promise.all([import('jsbarcode'), import('@xmldom/xmldom')]);
   try {
     const xmlSerializer = new XMLSerializer();
     const document = new DOMImplementation().createDocument('http://www.w3.org/1999/xhtml', 'html', null);
@@ -243,8 +243,11 @@ handle(IPC_CHANNELS.X509.DECODE, (_event, cert: unknown): X509Decoded => {
 });
 
 // ── SVG optimisation ─────────────────────────────────────────────────────────
-handle(IPC_CHANNELS.SVG.OPTIMIZE, (_event, svg: unknown): string =>
-  svgoOptimize(requireString(svg, 'SVG', 20 * 1024 * 1024)).data);
+handle(IPC_CHANNELS.SVG.OPTIMIZE, async (_event, svg: unknown): Promise<string> => {
+  const input = requireString(svg, 'SVG', 20 * 1024 * 1024);
+  const { optimize } = await import('svgo');
+  return optimize(input).data;
+});
 
 // Must match the <meta http-equiv="Content-Security-Policy"> in src/renderer/index.html.
 const CSP = [

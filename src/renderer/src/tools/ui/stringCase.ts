@@ -1,11 +1,12 @@
 import { $, $f, clearWithUndo, reportOk, resetStatus } from '../../ui';
 import { debounce, inputActions, readonlyField } from './common';
+import { toCamelCase, toPascalCase, toSnakeCase, toKebabCase } from '../lib/text';
 
 const CASES: [id: string, label: string, fn: (s: string) => string][] = [
-    ['case-camel', 'camelCase', s => window.electronAPI.string.cases.toCamelCase(s)],
-    ['case-pascal', 'PascalCase', s => window.electronAPI.string.cases.toPascalCase(s)],
-    ['case-snake', 'snake_case', s => window.electronAPI.string.cases.toSnakeCase(s)],
-    ['case-kebab', 'kebab-case', s => window.electronAPI.string.cases.toKebabCase(s)],
+    ['case-camel', 'camelCase', toCamelCase],
+    ['case-pascal', 'PascalCase', toPascalCase],
+    ['case-snake', 'snake_case', toSnakeCase],
+    ['case-kebab', 'kebab-case', toKebabCase],
     ['case-upper', 'UPPER CASE', s => s.toUpperCase()],
     ['case-lower', 'lower case', s => s.toLowerCase()],
 ];

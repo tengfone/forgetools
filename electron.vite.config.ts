@@ -127,9 +127,6 @@ export default defineConfig({
     // bundle every dependency into out/preload/index.js instead of externalizing it.
     plugins: [],
     build: {
-      // Leave these require() calls in place (unhoisted): cron-parser's parseFile (fs) and
-      // ulid's Node fallback (crypto, inside try/catch) are never reached in the renderer.
-      commonjsOptions: { ignore: ['fs', 'crypto'] },
       outDir: 'out/preload',
       sourcemap: false, // Disable source maps in production
       minify: process.env.NODE_ENV === 'production' ? 'terser' : false,
@@ -178,20 +175,9 @@ export default defineConfig({
           propertyReadSideEffects: false
         },
         output: {
-          manualChunks: (id) => {
-            // Split Monaco Editor into its own chunk (loaded separately via script tag)
-            if (id.includes('monaco-editor') || id.includes('/vs/')) {
-              return 'monaco-editor';
-            }
-            // Split node_modules into vendor chunks for better caching
-            if (id.includes('node_modules')) {
-              // Keep large dependencies separate for better caching
-              if (id.includes('marked')) return 'vendor-marked';
-              if (id.includes('js-beautify')) return 'vendor-beautify';
-              // Group smaller dependencies together
-              return 'vendor';
-            }
-          },
+          // No manualChunks: a catch-all 'vendor' chunk made the entry import every library
+          // (graphql, hash-wasm, js-beautify, DOMPurify...) at startup. Letting Rollup split
+          // along the lazy tool imports keeps each library with the tool that needs it.
           // Optimize chunk size
           chunkFileNames: 'chunks/[name]-[hash].js',
           entryFileNames: 'assets/[name]-[hash].js',

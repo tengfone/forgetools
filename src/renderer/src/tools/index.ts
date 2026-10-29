@@ -247,13 +247,14 @@ const tools: ToolsRegistry = {
         icon: 'memory',
         language: 'plaintext',
         // Non-UI fallback (the custom UI is what users see): auto-detect direction.
-        format: (input: string): string => {
+        format: async (input: string): Promise<string> => {
             if (!input.trim()) return '';
+            const { hexToText, textToHex } = await import('./lib/text');
             const compact = input.replace(/0x/gi, '').replace(/[\s,]/g, '');
             if (/^[0-9a-f]+$/i.test(compact) && compact.length % 2 === 0) {
-                return window.electronAPI.string.toAscii(compact);
+                return hexToText(compact);
             }
-            return window.electronAPI.string.toHex(input);
+            return textToHex(input);
         },
         useCustomUI: true,
         load: () => import('./ui/hexAscii'),
@@ -406,7 +407,7 @@ const tools: ToolsRegistry = {
         category: 'Format',
         icon: 'code',
         language: 'xml',
-        format: (input: string, indent?: number) => window.electronAPI.beautify.html(input, { indent_size: clampIndent(indent) }),
+        format: async (input: string, indent?: number) => (await import('js-beautify')).default.html(input, { indent_size: clampIndent(indent) }),
         placeholder: '<root><child>value</child></root>',
         sampleData: '<?xml version="1.0" encoding="UTF-8"?>\n<note>\n  <to>Tove</to>\n  <from>Jani</from>\n  <heading>Reminder</heading>\n  <body>Don\'t forget me this weekend!</body>\n</note>'
     },
@@ -430,7 +431,7 @@ const tools: ToolsRegistry = {
         category: 'Format',
         icon: 'web',
         language: 'html',
-        format: (input: string, indent?: number) => window.electronAPI.beautify.html(input, { indent_size: clampIndent(indent) }),
+        format: async (input: string, indent?: number) => (await import('js-beautify')).default.html(input, { indent_size: clampIndent(indent) }),
         placeholder: '<div><p>Hello</p></div>',
         sampleData: '<!DOCTYPE html>\n<html>\n<head>\n<title>Page Title</title>\n</head>\n<body>\n<h1>My First Heading</h1>\n<p>My first paragraph.</p>\n</body>\n</html>'
     },
@@ -464,7 +465,7 @@ const tools: ToolsRegistry = {
         category: 'Format',
         icon: 'javascript',
         language: 'javascript',
-        format: (input: string): string => window.electronAPI.htmlToJsx.convert(input),
+        format: async (input: string): Promise<string> => (await import('html-to-jsx-transform')).htmlToJsx(input),
         placeholder: '<div class="foo">Hello</div>',
         sampleData: '<div class="container">\n  <h1 style="color: red;">Hello World</h1>\n  <button onclick="alert(\'Click\')">Click Me</button>\n</div>'
     },
@@ -476,7 +477,7 @@ const tools: ToolsRegistry = {
         category: 'Format',
         icon: 'article',
         language: 'html',
-        format: (input: string): string => window.electronAPI.marked.parse(input),
+        format: async (input: string): Promise<string> => (await import('marked')).marked.parse(input, { async: false }) as string,
         placeholder: '# Hello\n\n- Item 1\n- Item 2',
         sampleData: '# Welcome to Markdown\n\n## Features\n\n- **Bold text**\n- *Italic text*\n- `Code blocks`\n\n```javascript\nconst greeting = "Hello World";\n```\n\n[Link to Google](https://google.com)'
     },

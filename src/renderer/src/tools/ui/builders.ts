@@ -6,6 +6,7 @@ import { generateKeyPair, type KeyType } from '../lib/crypto';
 import { fakeRecords, formatFake, buildCron, buildGitignore, GITIGNORE, CHEATSHEETS, type FakeField, type FakeFormat, type CronFreq } from '../lib/generate';
 import { searchHttpStatus } from '../lib/inspect';
 import { CHAIN_OPS, CHAIN_RECIPES, runChain } from '../lib/chain';
+import { getNextOccurrences } from '../lib/cron';
 
 const icon = (name: string): string => `<i class="material-icons icon-sm" aria-hidden="true">${name}</i>`;
 const slug = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -279,7 +280,7 @@ export function cronBuilder(container: HTMLElement): void {
             if (uses.includes('month')) spec.month = Number($f('cronb-month').value);
             const r = buildCron(spec);
             if (r.error) { setFieldInvalid('cronb-dom', true, r.error); throw new Error(r.error); }
-            const runs = window.cronParser.getNextOccurrences(r.expression, 3); // throws if it can never run
+            const runs = getNextOccurrences(r.expression, 3); // throws if it can never run
             $f('cronb-output').value = r.expression;
             $('cronb-desc').textContent = r.description + (r.note ? ` (${r.note})` : '');
             next.innerHTML = '';

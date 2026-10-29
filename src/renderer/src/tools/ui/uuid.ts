@@ -1,5 +1,6 @@
 import { $, $f, esc, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
 import { debounce, inputActions, copyButton, emptyState } from './common';
+import { ulid, decodeTime } from 'ulid';
 
 const MAX = 100;
 
@@ -76,7 +77,8 @@ export function render(container: HTMLElement): void {
         const clean = id.replace(/-/g, '');
         if (clean.length === 26 && /^[0-9A-HJKMNP-TV-Z]+$/i.test(clean)) {
             try {
-                const decoded = window.electronAPI.ulid.decode(clean.toUpperCase());
+                const ts = decodeTime(clean.toUpperCase());
+                const decoded = { timestamp: ts, date: new Date(ts).toISOString() };
                 breakdown.innerHTML = row('Type', 'ULID') + row('Timestamp', `${decoded.timestamp} ms`) + row('Date', String(decoded.date), true);
                 setFieldInvalid('uuid-input', false);
                 reportOk('Valid ULID');
@@ -136,7 +138,7 @@ export function render(container: HTMLElement): void {
         if (count === null) return;
         const lower = lowercaseCheckbox.checked;
         const ids = Array.from({ length: count }, () => {
-            const id = typeSelect.value === 'uuid-v4' ? crypto.randomUUID() : window.electronAPI.ulid.generate();
+            const id = typeSelect.value === 'uuid-v4' ? crypto.randomUUID() : ulid();
             return lower ? id.toLowerCase() : id.toUpperCase();
         });
         list.value = ids.join('\n');

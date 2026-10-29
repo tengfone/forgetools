@@ -3,6 +3,7 @@ import { debounce, emptyState } from './common';
 type DiffFn = (a: string, b: string, opts?: { ignoreCase?: boolean }) => { value: string; added?: boolean; removed?: boolean }[];
 import { $f, esc, reportError, resetStatus, clearWithUndo } from '../../ui';
 import { logger } from '../../logger';
+import { diffLines, diffWords, diffChars } from 'diff';
 
 export function render(container: HTMLElement): void {
     container.innerHTML = `
@@ -105,16 +106,11 @@ export function render(container: HTMLElement): void {
 
         // Case-insensitive compare via jsdiff ignoreCase keeps the original casing in the output.
         const opts = { ignoreCase: !caseSensitive.checked };
-        const D = window.Diff as unknown as { diffLines: DiffFn; diffWords: DiffFn; diffChars: DiffFn };
+        const D = { diffLines, diffWords, diffChars } as unknown as { diffLines: DiffFn; diffWords: DiffFn; diffChars: DiffFn };
         const mode = diffMode.value;
         let result = '';
         let addedCount = 0;
         let removedCount = 0;
-        
-        if (!window.Diff) {
-            reportError('Diff library not available');
-            return;
-        }
         
         try {
             const kind = (p: { added?: boolean; removed?: boolean }) => (p.added ? 'is-add' : p.removed ? 'is-del' : '');
