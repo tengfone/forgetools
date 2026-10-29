@@ -56,7 +56,7 @@ Get the latest build from [Releases](https://github.com/tengfone/forgetools/rele
 
 ## Development
 
-Requires Node.js 22+.
+Requires Node.js 26 (see `.nvmrc`).
 
 ```bash
 git clone https://github.com/tengfone/forgetools.git
@@ -70,7 +70,7 @@ npm run dist       # package for your platform into dist/
 
 To re-record the demo GIF above, run `npm run build && node scripts/record-demo.js` (needs ffmpeg on PATH).
 
-To release, run `npm run release:patch` (or `release:minor` / `release:major`). It tags the version and CI builds a draft GitHub release.
+To release, run `npm run release:patch` (or `release:minor` / `release:major`). It tags the version, and once tests and all platform builds pass, CI publishes the GitHub release automatically. Only the 10 newest releases are kept; older ones are deleted (their git tags stay).
 
 ## License
 

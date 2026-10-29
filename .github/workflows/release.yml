@@ -144,7 +144,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
           pattern: forgetools-*
@@ -206,5 +206,17 @@ jobs:
             --verify-tag \
             --title "ForgeTools ${GITHUB_REF_NAME#v}" \
             --notes-file release-notes.md \
-            --draft \
+            --latest \
             release/*
+
+      # Keep only the 10 newest releases. Git tags are kept, so any version can be rebuilt.
+      - name: Prune old releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release list --limit 1000 --exclude-drafts --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
+          while read -r tag; do
+            echo "Deleting release $tag"
+            gh release delete "$tag" --yes
+          done
