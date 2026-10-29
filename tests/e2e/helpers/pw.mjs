@@ -348,7 +348,7 @@ export async function captureErrors() {
 export const pageErrors = () => browser.execute(() => (window.__e2e ? window.__e2e.pageErrors : []));
 export const consoleErrors = () => browser.execute(() => (window.__e2e ? window.__e2e.consoleErrors : []));
 
-/** System clipboard via the clipboard plugin (replaces Electron's clipboard in app.evaluate). */
+/** System clipboard via the clipboard plugin (Playwright specs read it via app.evaluate). */
 export const clipboard = {
   readText: () => browser.tauri.execute(({ core }) => core.invoke('plugin:clipboard-manager|read_text')),
   writeText: text => browser.tauri.execute(({ core }, t) => core.invoke('plugin:clipboard-manager|write_text', { text: t }), text),

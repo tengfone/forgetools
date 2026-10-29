@@ -83,6 +83,11 @@ jobs:
       - name: Build Tauri app
         run: npx tauri build
 
+      - name: Report sizes (informational)
+        if: always()
+        continue-on-error: true
+        run: node scripts/report-size.cjs
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:

@@ -7,6 +7,7 @@ import pkg from './package.json';
 
 // Tauri dev host (set by 	auri dev for mobile/remote targets); falls back to localhost.
 const host = process.env.TAURI_DEV_HOST;
+const MONACO_TOKENIZERS = new Set(['xml', 'sql', 'html', 'javascript', 'typescript', 'css']);
 function isNeededMonacoFile(src: string): boolean {
   const p = src.replace(/\\/g, '/');
   // Keep *Mode.js (jsonMode provides JSON tokenization); drop the heavy *Worker.js.
@@ -14,6 +15,10 @@ function isNeededMonacoFile(src: string): boolean {
   if (/\/vs\/base\/worker(\/|$)/.test(p)) return false;
   if (/\/vs\/base\/common\/worker(\/|$)/.test(p)) return false;
   if (/\.nls\.[a-z-]+\.js$/.test(p)) return false;
+  // Tokenizers only for the languages tools use (index.ts `language:`): xml, sql, html, javascript,
+  // plus their embeds (html -> css/javascript, javascript -> typescript). json lives in language/json.
+  const lang = /\/vs\/basic-languages\/([^/]+)(\/|$)/.exec(p);
+  if (lang && !MONACO_TOKENIZERS.has(lang[1])) return false;
   return true;
 }
 

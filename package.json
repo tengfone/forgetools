@@ -23,7 +23,8 @@
     "build:e2e": "node scripts/build-e2e.cjs",
     "test:e2e": "npm run build:e2e && wdio run wdio.conf.mjs",
     "test:smoke": "node scripts/smoke-release.cjs",
-    "lint:gate": "node scripts/grep-gate.cjs"
+    "lint:gate": "node scripts/grep-gate.cjs",
+    "report:size": "node scripts/report-size.cjs"
   },
   "keywords": [
     "developer-tools",
