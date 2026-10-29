@@ -1,4 +1,6 @@
-import { emptyState } from './common';
+import { debounce, emptyState } from './common';
+
+type DiffFn = (a: string, b: string, opts?: { ignoreCase?: boolean }) => { value: string; added?: boolean; removed?: boolean }[];
 import { $f, esc, reportError, resetStatus, clearWithUndo } from '../../ui';
 import { logger } from '../../logger';
 
@@ -24,10 +26,10 @@ export function render(container: HTMLElement): void {
                 <button type="button" class="btn-icon btn-sm" id="diff-sample">
                     <i aria-hidden="true" class="material-icons icon-sm">science</i> Sample
                 </button>
-                <button class="btn-icon btn-sm" id="diff-swap" title="Swap texts">
+                <button type="button" class="btn-icon btn-sm" id="diff-swap" title="Swap texts">
                     <i aria-hidden="true" class="material-icons icon-sm">swap_horiz</i> Swap
                 </button>
-                <button class="btn-icon btn-sm" id="diff-clear">
+                <button type="button" class="btn-icon btn-sm" id="diff-clear">
                     <i aria-hidden="true" class="material-icons icon-sm">clear</i> Clear
                 </button>
             </div>
@@ -37,7 +39,7 @@ export function render(container: HTMLElement): void {
                 <div class="tool-card relative">
                     <div class="card-head">
                         <h3>Original Text</h3>
-                        <button class="btn-icon btn-sm" data-paste="diff-original" aria-label="Paste original text">
+                        <button type="button" class="btn-icon btn-sm" data-paste="diff-original" aria-label="Paste original text">
                             <i aria-hidden="true" class="material-icons icon-sm">content_paste</i> Paste
                         </button>
                     </div>
@@ -46,7 +48,7 @@ export function render(container: HTMLElement): void {
                 <div class="tool-card relative">
                     <div class="card-head">
                         <h3>Compared Text</h3>
-                        <button class="btn-icon btn-sm" data-paste="diff-compared" aria-label="Paste compared text">
+                        <button type="button" class="btn-icon btn-sm" data-paste="diff-compared" aria-label="Paste compared text">
                             <i aria-hidden="true" class="material-icons icon-sm">content_paste</i> Paste
                         </button>
                     </div>
@@ -85,8 +87,8 @@ export function render(container: HTMLElement): void {
     const diffMode = $f('diff-mode');
     
     const computeDiff = () => {
-        let original = originalInput.value;
-        let compared = comparedInput.value;
+        const original = originalInput.value;
+        const compared = comparedInput.value;
         
         if (!original && !compared) {
             resultDiv.innerHTML = emptyState('Differences appear here once both sides have text.');
@@ -101,21 +103,13 @@ export function render(container: HTMLElement): void {
         }
         resetStatus();
 
-        // Case sensitivity
-        const isCaseSensitive = caseSensitive.checked;
-        const displayOriginal = original;
-        const displayCompared = compared;
-        
-        if (!isCaseSensitive) {
-            original = original.toLowerCase();
-            compared = compared.toLowerCase();
-        }
-        
+        // Case-insensitive compare via jsdiff ignoreCase keeps the original casing in the output.
+        const opts = { ignoreCase: !caseSensitive.checked };
+        const D = window.Diff as unknown as { diffLines: DiffFn; diffWords: DiffFn; diffChars: DiffFn };
         const mode = diffMode.value;
         let result = '';
         let addedCount = 0;
         let removedCount = 0;
-        let unchangedCount = 0;
         
         if (!window.Diff) {
             reportError('Diff library not available');
@@ -125,22 +119,21 @@ export function render(container: HTMLElement): void {
         try {
             const kind = (p: { added?: boolean; removed?: boolean }) => (p.added ? 'is-add' : p.removed ? 'is-del' : '');
             if (mode === 'line') {
-                result = window.Diff.diffLines(original, compared).map(part => {
+                result = D.diffLines(original, compared, opts).map(part => {
                     const lines = part.value.split('\n');
                     if (lines[lines.length - 1] === '') lines.pop();
                     if (part.added) addedCount += lines.length;
                     else if (part.removed) removedCount += lines.length;
-                    else unchangedCount += lines.length;
                     const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
                     return lines.map(line => `<div class="diff-line ${kind(part)}">${prefix}${esc(line) || ' '}</div>`).join('');
                 }).join('');
             } else {
-                const diff = mode === 'word' ? window.Diff.diffWords(original, compared) : window.Diff.diffChars(original, compared);
+                const diff = mode === 'word' ? D.diffWords(original, compared, opts) : D.diffChars(original, compared, opts);
                 result = diff.map(part => {
                     const n = mode === 'word' ? part.value.split(/\s+/).filter(Boolean).length : part.value.length;
                     if (part.added) addedCount += n;
                     else if (part.removed) removedCount += n;
-                    const text = mode === 'char' ? part.value.replace(/\n/g, '↵\n') : part.value;
+                    const text = mode === 'char' ? part.value.replace(/\n/g, '\u21B5\n') : part.value;
                     return `<span class="diff-inline ${kind(part)}">${esc(text)}</span>`;
                 }).join('');
             }
@@ -159,8 +152,9 @@ export function render(container: HTMLElement): void {
         }
     };
     
-    originalInput.addEventListener('input', computeDiff);
-    comparedInput.addEventListener('input', computeDiff);
+    const scheduleDiff = debounce(computeDiff, 250);
+    originalInput.addEventListener('input', scheduleDiff);
+    comparedInput.addEventListener('input', scheduleDiff);
     caseSensitive.addEventListener('change', computeDiff);
     diffMode.addEventListener('change', computeDiff);
     

@@ -40,14 +40,23 @@ export function render(container: HTMLElement): void {
             resetStatus();
             return;
         }
+        // Accept a leading sign, a base prefix matching this field (0x/0b/0o) and `_` separators.
+        const PREFIX: Record<number, string> = { 2: '0b', 8: '0o', 16: '0x' };
+        let body = value.replace(/_/g, '');
+        let neg = false;
+        if (/^[+-]/.test(body)) { neg = body[0] === '-'; body = body.slice(1); }
+        const pre = PREFIX[sourceBase];
+        if (pre && body.toLowerCase().startsWith(pre)) body = body.slice(2);
         const digits = '0123456789abcdef'.slice(0, sourceBase);
-        if (!new RegExp(`^[${digits}]+$`, 'i').test(value)) {
+        if (!new RegExp(`^[${digits}]+$`, 'i').test(body) || /^_|_$|__/.test(value.replace(/^[+-]?(0[xbo])?/i, ''))) {
             others.forEach(([id]) => { $f(id).value = ''; });
-            setFieldInvalid(sourceId, true, `Base-${sourceBase} numbers may only contain ${ALLOWED[sourceBase]}`);
-            reportError(`Base-${sourceBase} numbers may only contain ${ALLOWED[sourceBase]}`);
+            const msg = `Base-${sourceBase} numbers may only contain ${ALLOWED[sourceBase]}${pre ? ` (optional ${pre} prefix)` : ''}, single _ separators and a leading -`;
+            setFieldInvalid(sourceId, true, msg);
+            reportError(msg);
             return;
         }
-        const n = BigInt(sourceBase === 10 ? value : `0${{ 2: 'b', 8: 'o', 16: 'x' }[sourceBase]}${value}`);
+        let n = BigInt(sourceBase === 10 ? body : `${pre}${body}`);
+        if (neg) n = -n;
         others.forEach(([id, base]) => {
             const s = n.toString(base);
             $f(id).value = base === 16 ? s.toUpperCase() : s;

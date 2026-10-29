@@ -1,4 +1,4 @@
-import { directionBar, emptyState, inputActions, twoWay } from './common';
+import { copyButton, debounce, decodeBase64Url, directionBar, emptyState, inputActions, twoWay } from './common';
 import { $f, clearWithUndo, errorMessage, reportError, resetStatus, setFieldInvalid } from '../../ui';
 
 const encode = (text: string): string => {
@@ -11,12 +11,10 @@ const encode = (text: string): string => {
 };
 
 const decode = (input: string): string => {
-    let b = input.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b)) throw new Error('Invalid Base64: only A-Z, a-z, 0-9, +, /, -, _ and trailing = are allowed');
-    b = b.replace(/=+$/, '');
-    if (b.length % 4 === 1) throw new Error('Invalid Base64: length is not a valid encoding');
-    b += '='.repeat((4 - (b.length % 4)) % 4);
-    const bytes = Uint8Array.from(atob(b), c => c.charCodeAt(0));
+    let bytes: Uint8Array;
+    try { bytes = decodeBase64Url(input); } catch {
+        throw new Error('Invalid Base64: only A-Z, a-z, 0-9, +, /, -, _ and trailing = are allowed, with a valid length');
+    }
     try {
         return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
@@ -38,9 +36,7 @@ export function render(container: HTMLElement): void {
                 <div class="tool-card">
                     <div class="card-head">
                         <h3 id="b64-encoded-h"><label for="b64-encoded">Base64 Encoded</label></h3>
-                        <button class="btn-icon btn-sm" data-copy="b64-encoded" aria-label="Copy Base64">
-                            <i class="material-icons icon-sm" aria-hidden="true">content_copy</i> Copy
-                        </button>
+                        ${copyButton('b64-encoded')}
                     </div>
                     <textarea class="form-control" id="b64-encoded" rows="12" placeholder="Base64 output..."></textarea>
                 </div>
@@ -81,8 +77,8 @@ export function render(container: HTMLElement): void {
     const syncEmpty = (): void => { document.getElementById('b64-empty')?.classList.toggle('hidden', !!(plain.value || encoded.value)); };
     plain.addEventListener('input', syncEmpty);
     encoded.addEventListener('input', syncEmpty);
-    plain.addEventListener('input', runEncode);
-    encoded.addEventListener('input', runDecode);
+    plain.addEventListener('input', debounce(runEncode));
+    encoded.addEventListener('input', debounce(runDecode));
     const dir = twoWay({ prefix: 'b64', a: { field: 'b64-plain', label: 'b64-plain-h', run: runEncode }, b: { field: 'b64-encoded', label: 'b64-encoded-h', run: runDecode }, forward: 'Encode', backward: 'Decode' });
     document.getElementById('b64-sample')!.onclick = () => { plain.value = 'Hello, ForgeTools! \u2713'; dir.set('a'); runEncode(); syncEmpty(); };
     document.getElementById('b64-clear')!.onclick = () => clearWithUndo(['b64-plain', 'b64-encoded'], () => { ok(); syncEmpty(); });

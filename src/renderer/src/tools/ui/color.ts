@@ -15,6 +15,49 @@ const hexToRgb = (hex: string): RGBA | null => {
     } : null;
 };
 
+const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+    h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+    const k = (n: number): number => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number): number => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+};
+
+const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+const roundA = (a: number): number => Math.round(clamp(a, 0, 1) * 1000) / 1000;
+const parseAlpha = (s: string | undefined): number => {
+    if (s === undefined) return 1;
+    return s.endsWith('%') ? parseFloat(s) / 100 : parseFloat(s);
+};
+
+const NUM = '[+-]?(?:\\d+\\.?\\d*|\\.\\d+)';
+const RGB_RE = new RegExp(`^rgba?\\(\\s*(${NUM}%?)\\s*[,\\s]\\s*(${NUM}%?)\\s*[,\\s]\\s*(${NUM}%?)\\s*(?:[,/]\\s*(${NUM}%?)\\s*)?\\)$`, 'i');
+const HSL_RE = new RegExp(`^hsla?\\(\\s*(${NUM})(?:deg)?\\s*[,\\s]\\s*(${NUM})%\\s*[,\\s]\\s*(${NUM})%\\s*(?:[,/]\\s*(${NUM}%?)\\s*)?\\)$`, 'i');
+
+/** Parse #rgb, #rgba, #rrggbb, #rrggbbaa, rgb()/rgba() and hsl()/hsla() (comma or space syntax). */
+const parseColor = (input: string): RGBA | null => {
+    const v = input.trim();
+    const short = /^#?([a-f\d])([a-f\d])([a-f\d])([a-f\d])?$/i.exec(v);
+    if (short) return hexToRgb(short.slice(1).filter(Boolean).map(c => c + c).join(''));
+    const hex = hexToRgb(v);
+    if (hex) return { ...hex, a: roundA(hex.a) };
+    let m = RGB_RE.exec(v);
+    if (m) {
+        const ch = (s: string): number => Math.round(clamp(s.endsWith('%') ? parseFloat(s) * 2.55 : parseFloat(s), 0, 255));
+        const a = parseAlpha(m[4]);
+        if (isNaN(a)) return null;
+        return { r: ch(m[1]!), g: ch(m[2]!), b: ch(m[3]!), a: roundA(a) };
+    }
+    m = HSL_RE.exec(v);
+    if (m) {
+        const a = parseAlpha(m[4]);
+        if (isNaN(a)) return null;
+        const [r, g, b] = hslToRgb(parseFloat(m[1]!), clamp(parseFloat(m[2]!), 0, 100), clamp(parseFloat(m[3]!), 0, 100));
+        return { r, g, b, a: roundA(a) };
+    }
+    return null;
+};
+
 const hue = (r: number, g: number, b: number, max: number, d: number): number => {
     if (d === 0) return 0;
     switch (max) {
@@ -29,13 +72,13 @@ const rgbToHsl = (r: number, g: number, b: number) => {
     const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
     const l = (max + min) / 2;
     const s = d === 0 ? 0 : l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    return { h: Math.round(hue(r, g, b, max, d) * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+    return { h: Math.round(hue(r, g, b, max, d) * 360) % 360, s: Math.round(s * 100), l: Math.round(l * 100) };
 };
 
 const rgbToHsv = (r: number, g: number, b: number) => {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-    return { h: Math.round(hue(r, g, b, max, d) * 360), s: Math.round((max === 0 ? 0 : d / max) * 100), v: Math.round(max * 100) };
+    return { h: Math.round(hue(r, g, b, max, d) * 360) % 360, s: Math.round((max === 0 ? 0 : d / max) * 100), v: Math.round(max * 100) };
 };
 
 const outField = (id: string, label: string): string => `
@@ -69,7 +112,7 @@ export function render(container: HTMLElement): void {
                     </div>
                     <div class="input-group">
                         <div class="field-label"><label for="color-hex">HEX</label>${copyIconButton('color-hex', 'HEX')}</div>
-                        <input type="text" class="form-control font-mono" id="color-hex" placeholder="#RRGGBB or #RRGGBBAA">
+                        <input type="text" class="form-control font-mono" id="color-hex" placeholder="#RRGGBB, rgb(...) or hsl(...)">
                     </div>
                     ${outField('color-rgb', 'RGB')}
                     ${outField('color-hsl', 'HSL')}
@@ -155,10 +198,10 @@ export function render(container: HTMLElement): void {
     hexInput.addEventListener('input', debounce(() => {
         const val = hexInput.value.trim();
         if (!val) { setFieldInvalid('color-hex', false); resetStatus(); return; }
-        const rgb = hexToRgb(val);
+        const rgb = parseColor(val);
         if (!rgb) {
-            setFieldInvalid('color-hex', true, 'HEX must be #RRGGBB or #RRGGBBAA (hex digits 0-9, A-F)');
-            reportError('HEX must be #RRGGBB or #RRGGBBAA (hex digits 0-9, A-F)');
+            setFieldInvalid('color-hex', true, 'Enter #RGB, #RGBA, #RRGGBB, #RRGGBBAA, rgb()/rgba() or hsl()/hsla()');
+            reportError('Enter #RGB, #RGBA, #RRGGBB, #RRGGBBAA, rgb()/rgba() or hsl()/hsla()');
             return;
         }
         current = rgb;
@@ -167,7 +210,7 @@ export function render(container: HTMLElement): void {
     }));
 
     opacityInput.addEventListener('input', () => {
-        current.a = parseInt(opacityInput.value, 10) / 100;
+        current.a = roundA(parseInt(opacityInput.value, 10) / 100);
         updateAll();
     });
 

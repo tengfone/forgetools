@@ -21,6 +21,21 @@ function validateBarcode(input: string, format: string): string | null {
     return rule && !rule[0].test(input) ? rule[1] : null;
 }
 
+/** Safe download name: strip path/reserved/control chars and cap length. */
+const safeFileName = (s: string): string =>
+    s.replace(/[\/\\:*?"<>|\u0000-\u001f\u007f]/g, '').trim().slice(0, 64) || 'barcode';
+
+/** Parse generator output as SVG XML and return an imported <svg> element, or throw. */
+const parseSvg = (svgString: string): SVGSVGElement => {
+    const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+    const root = doc.documentElement;
+    if (doc.getElementsByTagName('parsererror').length || root.localName !== 'svg' || root.namespaceURI !== 'http://www.w3.org/2000/svg') {
+        throw new Error('Barcode generator returned invalid SVG');
+    }
+    root.querySelectorAll('script, foreignObject').forEach(n => n.remove());
+    return document.importNode(root, true) as unknown as SVGSVGElement;
+};
+
 const EMPTY = '<div>Enter text to generate a barcode</div>';
 
 export function render(container: HTMLElement): void {
@@ -63,7 +78,9 @@ export function render(container: HTMLElement): void {
     const preview = $('barcode-preview');
     const downloadBtn = $<HTMLButtonElement>('barcode-download');
 
+    let seq = 0;
     const generate = (): void => {
+        const my = ++seq;
         const input = inputEl.value;
         const format = formatEl.value;
         if (!input) {
@@ -83,12 +100,15 @@ export function render(container: HTMLElement): void {
         setFieldInvalid('barcode-input', false);
         window.electronAPI.barcode.generate(input, { format, width: 2, height: 100, displayValue: true })
             .then(svgString => {
-                preview.innerHTML = svgString;
-                preview.querySelector('svg')?.setAttribute('id', 'barcode');
+                if (my !== seq || !preview.isConnected) return; // stale result
+                const svg = parseSvg(svgString);
+                svg.setAttribute('id', 'barcode');
+                preview.replaceChildren(svg);
                 downloadBtn.disabled = false;
                 reportOk('Barcode generated', format);
             })
             .catch(e => {
+                if (my !== seq || !preview.isConnected) return;
                 logger.error('Barcode error:', e);
                 downloadBtn.disabled = true;
                 setFieldInvalid('barcode-input', true, errorMessage(e).replace('JsBarcode Error: ', ''));
@@ -98,7 +118,7 @@ export function render(container: HTMLElement): void {
     const live = debounce(generate);
 
     inputEl.addEventListener('input', live);
-    formatEl.addEventListener('change', generate);
+    formatEl.addEventListener('change', live);
     $('barcode-generate').onclick = generate;
     $('barcode-sample').onclick = () => { inputEl.value = SAMPLES[formatEl.value] ?? '123456789012'; generate(); };
     $('barcode-clear').onclick = () => clearWithUndo(['barcode-input'], generate);
@@ -111,7 +131,7 @@ export function render(container: HTMLElement): void {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `barcode-${inputEl.value}.svg`;
+        link.download = `barcode-${safeFileName(inputEl.value)}.svg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

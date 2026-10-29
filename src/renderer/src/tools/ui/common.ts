@@ -122,3 +122,23 @@ document.addEventListener('click', e => {
     const btn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-try-sample]');
     if (btn) document.getElementById(btn.dataset.trySample!)?.click();
 });
+
+/**
+ * Decode standard or URL-safe base64 (padding optional, whitespace ignored).
+ * Returns raw bytes, or throws Error on invalid input.
+ */
+export function decodeBase64Url(str: string): Uint8Array {
+    let s = str.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s)) throw new Error('Invalid base64 characters');
+    s = s.replace(/=+$/, '');
+    if (s.length % 4 === 1) throw new Error('Invalid base64 length');
+    s += '='.repeat((4 - (s.length % 4)) % 4);
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+}
+
+/** decodeBase64Url + strict UTF-8 decode. Throws on invalid base64 or invalid UTF-8. */
+export const decodeBase64UrlText = (str: string): string =>
+    new TextDecoder('utf-8', { fatal: true }).decode(decodeBase64Url(str));

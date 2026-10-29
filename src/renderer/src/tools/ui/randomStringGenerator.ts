@@ -7,6 +7,29 @@ const SETS = [
     ['rand-symbols', 'Symbols (!@#$...)', '!@#$%^&*()_+-=[]{}|;:,.<>?', false],
 ] as const;
 
+/** Unbiased random integer in [0, n) via rejection sampling on crypto bytes. */
+const randInt = (n: number): number => {
+    const limit = Math.floor(0x1_0000_0000 / n) * n;
+    const buf = new Uint32Array(1);
+    for (;;) {
+        crypto.getRandomValues(buf);
+        if (buf[0]! < limit) return buf[0]! % n;
+    }
+};
+
+/** One string: at least one char from each set (when length allows), Fisher-Yates shuffled. */
+const makeString = (sets: string[], length: number): string => {
+    const all = sets.join('');
+    const out: string[] = [];
+    if (length >= sets.length) for (const set of sets) out.push(set[randInt(set.length)]!);
+    while (out.length < length) out.push(all[randInt(all.length)]!);
+    for (let i = out.length - 1; i > 0; i--) {
+        const j = randInt(i + 1);
+        [out[i], out[j]] = [out[j]!, out[i]!];
+    }
+    return out.join('');
+};
+
 export function render(container: HTMLElement): void {
     container.innerHTML = `
         <div class="custom-interface">
@@ -38,15 +61,12 @@ export function render(container: HTMLElement): void {
 
     const generate = (): void => {
         const length = parseInt($f('rand-length').value, 10);
-        const chars = SETS.filter(([id]) => $f(id).checked).map(([, , c]) => c).join('');
-        if (!chars) {
+        const sets: string[] = SETS.filter(([id]) => $f(id).checked).map(([, , c]) => c);
+        if (!sets.length) {
             reportError('Select at least one character set (uppercase, lowercase, numbers or symbols)');
             return;
         }
-        const results = Array.from({ length: 5 }, () => {
-            const bytes = crypto.getRandomValues(new Uint32Array(length));
-            return Array.from(bytes, n => chars[n % chars.length]).join('');
-        });
+        const results = Array.from({ length: 5 }, () => makeString(sets, length));
         $('rand-results').innerHTML = results.map(r => `<div class="copy-chip" data-copy-self>${esc(r)}</div>`).join('');
         reportOk('Generated 5 strings', `${length} chars`);
     };

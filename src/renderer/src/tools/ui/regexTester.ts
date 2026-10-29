@@ -1,4 +1,4 @@
-import { emptyState, inputActions } from './common';
+import { debounce, emptyState, inputActions } from './common';
 import { $f, clearWithUndo, esc, reportError, resetStatus } from '../../ui';
 
 const MAX_INPUT = 200_000;
@@ -43,24 +43,86 @@ export function render(container: HTMLElement): void {
         </div>
     `;
 
-    const collect = (regex: RegExp, text: string): { matches: RegExpExecArray[]; capped: boolean } => {
-        const matches: RegExpExecArray[] = [];
-        if (!regex.global) {
-            const m = regex.exec(text);
-            if (m) matches.push(m);
-            return { matches, capped: false };
+    interface WMatch { index: number; groups: (string | null)[] }
+    interface WRes { seq: number; matches?: WMatch[]; capped?: boolean; error?: string }
+    const TIMEOUT_MS = 1500;
+    let worker: Worker | null = null;
+    let seq = 0;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const killWorker = (): void => {
+        clearTimeout(killTimer);
+        worker?.terminate();
+        worker = null;
+    };
+    const getWorker = (): Worker => {
+        if (!worker) {
+            worker = new Worker(new URL('./regexWorker.ts', import.meta.url), { type: 'module' });
+            worker.onmessage = (e: MessageEvent<WRes>) => handle(e.data);
         }
-        regex.lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = regex.exec(text)) !== null) {
-            if (matches.length >= MAX_MATCHES) return { matches, capped: true };
-            matches.push(m);
-            if (m[0].length === 0) regex.lastIndex++; // avoid infinite loop on zero-length matches
+        return worker;
+    };
+    const alive = (): boolean => container.isConnected && !!document.getElementById('regex-preview');
+
+    const showError = (msg: string): void => {
+        reportError(msg, 'previous matches kept');
+        $f('regex-count').textContent = 'Error';
+        $f('regex-preview').textContent = $f('regex-test').value.slice(0, MAX_INPUT);
+    };
+
+    let pendingText = '';
+    const handle = (res: WRes): void => {
+        if (res.seq !== seq) return; // stale
+        clearTimeout(killTimer);
+        if (!alive()) { killWorker(); return; }
+        if (res.error !== undefined) { showError(res.error); return; }
+        const testStr = pendingText;
+        const matches = res.matches ?? [];
+        const capped = !!res.capped;
+
+        let lastIndex = 0;
+        let previewHtml = '';
+        for (const match of matches) {
+            const m0 = match.groups[0] ?? '';
+            if (match.index < lastIndex) continue;
+            previewHtml += esc(testStr.substring(lastIndex, match.index));
+            const tip = match.groups.length > 1
+                ? match.groups.slice(1).map((g, gi) => `Group ${gi + 1}: ${g ?? ''}`).join('\n')
+                : 'Full Match';
+            previewHtml += `<span class="regex-match regex-hit" title="${esc(tip)}">${esc(m0)}</span>`;
+            lastIndex = match.index + m0.length;
         }
-        return { matches, capped: false };
+        previewHtml += esc(testStr.substring(lastIndex));
+        $f('regex-preview').innerHTML = previewHtml;
+
+        if (matches.length === 0) {
+            $f('regex-matches').innerHTML = emptyState('No matches for this pattern.');
+            $f('regex-count').textContent = '0 matches';
+        } else {
+            $f('regex-count').textContent = (capped ? `First ${MAX_MATCHES}` : String(matches.length)) +
+                ' match' + (matches.length > 1 ? 'es' : '') + (capped ? ' (more not shown)' : '');
+            let html = '<div class="flex flex-col gap-2">';
+            matches.forEach((match, i) => {
+                const groups = match.groups.slice(1);
+                html += `
+                    <div class="match-card">
+                        <div class="ui-meta mb-1">Match ${i + 1}</div>
+                        <div class="match-card-value mb-2">${esc(match.groups[0] ?? '')}</div>
+                        ${groups.length ? '<div class="ui-meta mb-1">Groups:</div>' : ''}
+                        ${groups.map((g, gi) => `<div class="font-mono text-xs ml-3">Group ${gi + 1}: ${g ? esc(g) : '<em>empty</em>'}</div>`).join('')}
+                    </div>
+                `;
+            });
+            if (capped) html += `<div class="ui-meta text-center p-2">Showing the first ${MAX_MATCHES} matches only.</div>`;
+            html += '</div>';
+            $f('regex-matches').innerHTML = html;
+        }
+        resetStatus();
     };
 
     const update = (): void => {
+        const my = ++seq;
+        clearTimeout(killTimer);
         try {
             const pattern = $f('regex-pattern').value;
             const testStr = $f('regex-test').value;
@@ -73,7 +135,6 @@ export function render(container: HTMLElement): void {
                 reportError(`Test string is too long (${testStr.length.toLocaleString()} chars). Limit is ${MAX_INPUT.toLocaleString()} characters.`);
                 return;
             }
-
             if (!pattern) {
                 $f('regex-matches').innerHTML = emptyState('Matches and capture groups appear here once a pattern is entered.');
                 $f('regex-count').textContent = '';
@@ -81,7 +142,6 @@ export function render(container: HTMLElement): void {
                 resetStatus();
                 return;
             }
-
             if (!testStr) {
                 $f('regex-matches').innerHTML = emptyState('Matches appear here once there is a test string.');
                 $f('regex-count').textContent = '';
@@ -89,60 +149,26 @@ export function render(container: HTMLElement): void {
                 resetStatus();
                 return;
             }
-
-            const regex = new RegExp(pattern, flags);
-            const { matches, capped } = collect(regex, testStr);
-
-            let lastIndex = 0;
-            let previewHtml = '';
-            for (const match of matches) {
-                if (match.index < lastIndex) continue;
-                previewHtml += esc(testStr.substring(lastIndex, match.index));
-                const tip = match.length > 1
-                    ? match.slice(1).map((g, gi) => `Group ${gi + 1}: ${g ?? ''}`).join('\n')
-                    : 'Full Match';
-                previewHtml += `<span class="regex-match regex-hit" title="${esc(tip)}">${esc(match[0])}</span>`;
-                lastIndex = match.index + match[0].length;
-            }
-            previewHtml += esc(testStr.substring(lastIndex));
-            $f('regex-preview').innerHTML = previewHtml;
-
-            if (matches.length === 0) {
-                $f('regex-matches').innerHTML = emptyState('No matches for this pattern.');
-                $f('regex-count').textContent = '0 matches';
-            } else {
-                $f('regex-count').textContent = (capped ? `First ${MAX_MATCHES}` : String(matches.length)) +
-                    ' match' + (matches.length > 1 ? 'es' : '') + (capped ? ' (more not shown)' : '');
-                let html = '<div class="flex flex-col gap-2">';
-                matches.forEach((match, i) => {
-                    html += `
-                        <div class="match-card">
-                            <div class="ui-meta mb-1">Match ${i + 1}</div>
-                            <div class="match-card-value mb-2">${esc(match[0])}</div>
-                            ${match.length > 1 ? '<div class="ui-meta mb-1">Groups:</div>' : ''}
-                            ${match.slice(1).map((g, gi) => `<div class="font-mono text-xs ml-3">Group ${gi + 1}: ${g ? esc(g) : '<em>empty</em>'}</div>`).join('')}
-                        </div>
-                    `;
-                });
-                if (capped) html += `<div class="ui-meta text-center p-2">Showing the first ${MAX_MATCHES} matches only.</div>`;
-                html += '</div>';
-                $f('regex-matches').innerHTML = html;
-            }
-            resetStatus();
+            new RegExp(pattern, flags); // syntax check on main thread (cheap, no matching)
+            pendingText = testStr;
+            getWorker().postMessage({ seq: my, pattern, flags, text: testStr, max: MAX_MATCHES });
+            killTimer = setTimeout(() => {
+                if (my !== seq) return;
+                killWorker(); // recreated on next run
+                if (alive()) showError('Pattern timed out (possible catastrophic backtracking)');
+            }, TIMEOUT_MS);
         } catch (e) {
-            reportError(e, 'previous matches kept');
-            $f('regex-count').textContent = 'Error';
-            $f('regex-preview').textContent = $f('regex-test').value.slice(0, MAX_INPUT);
+            showError(e instanceof Error ? e.message : String(e));
         }
     };
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const schedule = (): void => { clearTimeout(timer); timer = setTimeout(update, 150); };
+    const schedule = debounce(update, 150);
+    const scheduleNow = debounce(update, 0);
 
     $f('regex-pattern').addEventListener('input', schedule);
     $f('regex-test').addEventListener('input', schedule);
     for (const id of ['regex-global', 'regex-case', 'regex-multiline', 'regex-dotall']) {
-        $f(id).addEventListener('change', update);
+        $f(id).addEventListener('change', scheduleNow);
     }
     $f('regex-sample').onclick = () => {
         $f('regex-pattern').value = '(\\w+)@(\\w+)\\.com';

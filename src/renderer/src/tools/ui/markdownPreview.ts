@@ -1,34 +1,33 @@
+import DOMPurify from 'dompurify';
 import { $f, clearWithUndo, reportError, resetStatus } from '../../ui';
-import { inputActions } from './common';
+import { debounce, inputActions } from './common';
 
-const BLOCKED_TAGS = 'script,iframe,object,embed,style,link,meta,form,base,frame,frameset,noscript,template';
 const URL_ATTRS = ['href', 'src', 'xlink:href', 'action', 'formaction', 'poster', 'srcset', 'background'];
 
-const isSafeUrl = (raw: string): boolean => {
-    // Strip whitespace/control chars browsers ignore when parsing schemes
+/** Allow only http(s), mailto, in-page anchors and inline raster images. */
+const isSafeUrl = (name: string, raw: string): boolean => {
     const v = raw.replace(/[\u0000-\u0020\u007f-\u009f]/g, '').toLowerCase();
-    if (v.startsWith('javascript:') || v.startsWith('vbscript:')) return false;
-    if (v.startsWith('data:')) return /^data:image\/(png|gif|jpe?g|webp|bmp)[;,]/.test(v);
-    return true;
+    if (name === 'srcset') return false;
+    if (v.startsWith('#')) return true;
+    if (/^data:image\/(png|jpeg|gif|webp)[;,]/.test(v)) return true;
+    if (name === 'href' && v.startsWith('mailto:')) return true;
+    return /^https?:\/\//.test(v);
 };
 
-/** Minimal DOM-based sanitizer for marked output (no DOMPurify dependency). */
-export function sanitizeHtml(html: string): DocumentFragment {
-    const tpl = document.createElement('template');
-    tpl.innerHTML = html;
-    const frag = tpl.content;
-    frag.querySelectorAll(BLOCKED_TAGS).forEach(el => el.remove());
-    frag.querySelectorAll('*').forEach(el => {
-        for (const attr of [...el.attributes]) {
-            const name = attr.name.toLowerCase();
-            if (name.startsWith('on') || name === 'style' || name === 'srcdoc') {
-                el.removeAttribute(attr.name);
-            } else if (URL_ATTRS.includes(name) && !isSafeUrl(attr.value)) {
-                el.removeAttribute(attr.name);
-            }
-        }
+let hooked = false;
+const ensureHook = (): void => {
+    if (hooked) return;
+    hooked = true;
+    DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
+        const name = data.attrName.toLowerCase();
+        if (URL_ATTRS.includes(name) && !isSafeUrl(name, data.attrValue)) data.keepAttr = false;
     });
-    return frag;
+};
+
+/** Sanitize marked output with DOMPurify (HTML profile + strict URL scheme allowlist). */
+export function sanitizeHtml(html: string): DocumentFragment {
+    ensureHook();
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, RETURN_DOM_FRAGMENT: true });
 }
 
 export function render(container: HTMLElement): void {
@@ -71,7 +70,7 @@ Write your **markdown** here and see the preview!</textarea>
         }
     };
 
-    source.addEventListener('input', update);
+    source.addEventListener('input', debounce(update, 150));
     $f('md-sample').onclick = () => {
         source.value = '# Release notes\n\n## Added\n\n- **Fuzzy search** in the palette\n- Settings in the titlebar\n\n```js\nconst ok = true;\n```\n\n> Runs offline. [Docs](https://example.com)';
         update();

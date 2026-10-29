@@ -46,7 +46,9 @@ export function render(container: HTMLElement): void {
         currentDataUrl = '';
     };
 
+    let seq = 0;
     const generate = async (): Promise<void> => {
+        const my = ++seq;
         const text = input.value.trim();
         const size = parseInt(sizeInput.value, 10);
         if (!Number.isFinite(size) || size < 128 || size > 512) {
@@ -57,11 +59,18 @@ export function render(container: HTMLElement): void {
         setFieldInvalid('qr-size', false);
         if (!text) { empty('Enter text to generate a QR code'); resetStatus(); return; }
         try {
-            currentDataUrl = await window.electronAPI.qrcode.generate(text, { width: size, margin: 2 });
-            preview.innerHTML = `<img class="max-w-full rounded-sm" src="${currentDataUrl}" alt="QR code for the entered text">`;
+            const url = await window.electronAPI.qrcode.generate(text, { width: size, margin: 2 });
+            if (my !== seq || !preview.isConnected) return; // stale result
+            currentDataUrl = url;
+            const img = document.createElement('img');
+            img.className = 'max-w-full rounded-sm';
+            img.alt = 'QR code for the entered text';
+            img.src = url;
+            preview.replaceChildren(img);
             downloadBtn.disabled = false;
             reportOk('QR code generated', `${size}px`);
         } catch (e) {
+            if (my !== seq) return;
             empty('Could not generate a QR code');
             reportError(e);
         }

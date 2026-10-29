@@ -76,7 +76,7 @@ export function render(container: HTMLElement): void {
         const clean = id.replace(/-/g, '');
         if (clean.length === 26 && /^[0-9A-HJKMNP-TV-Z]+$/i.test(clean)) {
             try {
-                const decoded = window.electronAPI.ulid.decode(id);
+                const decoded = window.electronAPI.ulid.decode(clean.toUpperCase());
                 breakdown.innerHTML = row('Type', 'ULID') + row('Timestamp', `${decoded.timestamp} ms`) + row('Date', String(decoded.date), true);
                 setFieldInvalid('uuid-input', false);
                 reportOk('Valid ULID');
@@ -86,14 +86,31 @@ export function render(container: HTMLElement): void {
                 reportError('Not a valid ULID: timestamp part is out of range');
             }
         } else if (/^[0-9a-f]{32}$/i.test(clean) && (id.length === 32 || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
-            const version = parseInt(clean[12], 16);
-            const variant = parseInt(clean[16], 16) >> 2;
             const std = clean.toLowerCase().replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
-            breakdown.innerHTML = row('Type', 'UUID')
-                + row('Standard String Format', std)
-                + row('Raw Contents', (clean.match(/.{2}/g) ?? []).join(':').toLowerCase())
-                + row('Version', `${version} (${version === 4 ? 'random' : version === 1 ? 'time-based' : version === 7 ? 'Unix time' : 'other'})`)
-                + row('Variant', variant === 2 ? 'RFC 4122' : 'Other', true);
+            const head = row('Type', 'UUID') + row('Standard String Format', std)
+                + row('Raw Contents', (clean.match(/.{2}/g) ?? []).join(':').toLowerCase());
+            if (/^0{32}$/.test(clean) || /^f{32}$/i.test(clean)) {
+                const nil = clean[0] === '0';
+                breakdown.innerHTML = head + row('Special', nil ? 'Nil UUID (all zeros)' : 'Max UUID (all ones)', true);
+                setFieldInvalid('uuid-input', false);
+                reportOk(nil ? 'Nil UUID' : 'Max UUID');
+                return;
+            }
+            const version = parseInt(clean[12], 16);
+            const vn = parseInt(clean[16], 16);
+            const variant = vn < 8 ? 'NCS (reserved)' : vn < 12 ? 'RFC 9562 / 4122' : vn < 14 ? 'Microsoft (reserved)' : 'Future (reserved)';
+            const VERSIONS: Record<number, string> = {
+                1: 'Gregorian time-based', 2: 'DCE Security', 3: 'name-based, MD5', 4: 'random',
+                5: 'name-based, SHA-1', 6: 'reordered time-based', 7: 'Unix time-based', 8: 'custom',
+            };
+            const rfc = vn >= 8 && vn < 12;
+            const vLabel = rfc && VERSIONS[version] ? `${version} (${VERSIONS[version]})` : `${version} (unknown)`;
+            let extra = '';
+            if (rfc && version === 7) {
+                const ms = parseInt(clean.slice(0, 12), 16);
+                extra = row('Timestamp', `${ms} ms (${new Date(ms).toISOString()})`);
+            }
+            breakdown.innerHTML = head + row('Version', vLabel) + extra + row('Variant', variant, true);
             setFieldInvalid('uuid-input', false);
             reportOk('Valid UUID', `v${version}`);
         } else {

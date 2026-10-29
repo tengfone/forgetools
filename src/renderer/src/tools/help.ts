@@ -16,7 +16,7 @@ const HELP: Record<string, ToolHelp> = {
   markdownPreview: { tip: 'Live preview as you type. Rendering happens locally; images with remote URLs will not load offline.' },
   base64: { tip: 'Decoding accepts standard and URL-safe Base64 (- and _), with or without = padding.' },
   url: { tip: 'Uses encodeURIComponent, so / ? & = are escaped. Decode reverses any percent-encoding.' },
-  hexAscii: { tip: 'Type in either box; the other updates live. Spaces between bytes are fine and other non-hex characters are stripped, so remove 0x prefixes first. Each byte pair becomes one character.' },
+  hexAscii: { tip: 'Type in either box; the other updates live. Text is encoded as UTF-8 bytes. On the hex side, 0x prefixes, whitespace and , : - separators are ignored; any other non-hex character is an error. Each byte pair is one UTF-8 byte.' },
   certificate: { tip: 'Paste a PEM block including the BEGIN/END CERTIFICATE lines. Nothing is sent anywhere; decoding is local.' },
   csvJson: { tip: 'The first CSV row is treated as headers. JSON → CSV expects an array of flat objects.' },
   jwt: {
@@ -42,7 +42,7 @@ const HELP: Record<string, ToolHelp> = {
   },
   yamlFormatter: { tip: 'Validates YAML as you type and shows it as formatted JSON. Indentation must use spaces, never tabs.' },
   numberBaseConverter: { tip: 'Type in any field. Only digits valid for that base are accepted; hex is case-insensitive.' },
-  backslashEscape: { tip: 'Escape turns newlines, tabs and quotes into \\n, \\t, \\". Toggle the button to unescape.' },
+  backslashEscape: { tip: 'Escape turns newlines, tabs, quotes and other control characters into \\n, \\t, \\", \\xNN, \\uXXXX. Unescape also understands \\0, \\b, \\f, \\v and \\u{...}. Pick the mode in the Mode menu.' },
   randomStringGenerator: { tip: 'Uses the system cryptographic RNG, so output is safe for passwords and tokens. Click a string to copy it.' },
   imageToBase64: { tip: 'Drop an image or click to choose one. Large images make very long data URLs; prefer files over ~50 KB as assets.' },
   svgOptimizer: { tip: 'Runs SVGO locally: strips metadata, comments and redundant attributes without changing rendering.' },
