@@ -1,4 +1,7 @@
-# ForgeTools
+<h1>
+  <img src="build/icon256.png" alt="" width="40" height="40" align="absmiddle">
+  ForgeTools
+</h1>
 
 Offline developer utilities in one desktop app. Format, decode, convert and generate without anything you paste leaving your machine.
 
