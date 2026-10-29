@@ -12,12 +12,24 @@ export const IPC_CHANNELS = {
     SET_SHORTCUT: 'background:set-shortcut',
     GO_HOME: 'background:go-home'
   },
+  CLIPBOARD: {
+    WRITE: 'clipboard:write',
+    READ: 'clipboard:read'
+  },
   QRCODE: {
-    GENERATE: 'qrcode:generate',
-    READ: 'qrcode:read'
+    GENERATE: 'qrcode:generate'
   },
   BARCODE: {
     GENERATE: 'barcode:generate'
+  },
+  CRYPTO: {
+    HASH: 'crypto:hash'
+  },
+  X509: {
+    DECODE: 'x509:decode'
+  },
+  SVG: {
+    OPTIMIZE: 'svg:optimize'
   }
 } as const;
 

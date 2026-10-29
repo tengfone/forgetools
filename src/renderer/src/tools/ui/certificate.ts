@@ -33,7 +33,9 @@ export function render(container: HTMLElement): void {
     const input = $f('cert-input');
     const details = $('cert-details');
 
-    const update = (): void => {
+    let seq = 0;
+    const update = async (): Promise<void> => {
+        const mine = ++seq;
         const val = input.value.trim();
         if (!val) {
             details.classList.add('hidden'); $('cert-empty').classList.remove('hidden');
@@ -43,7 +45,8 @@ export function render(container: HTMLElement): void {
         }
         try {
             if (!val.includes('-----BEGIN CERTIFICATE-----')) throw new Error('PEM must start with -----BEGIN CERTIFICATE-----');
-            const decoded = window.electronAPI.x509.decode(val);
+            const decoded = await window.electronAPI.x509.decode(val);
+            if (mine !== seq) return;
             if (!decoded) throw new Error('Could not decode the certificate body');
             $f('cert-subject').value = decoded.subject || '';
             $f('cert-issuer').value = decoded.issuer || '';
@@ -55,14 +58,15 @@ export function render(container: HTMLElement): void {
             setFieldInvalid('cert-input', false);
             reportOk('Certificate decoded');
         } catch (e) {
+            if (mine !== seq) return;
             details.classList.add('hidden'); $('cert-empty').classList.remove('hidden');
             setFieldInvalid('cert-input', true, errorMessage(e));
             reportError(e);
         }
     };
 
-    input.addEventListener('input', debounce(update));
-    $('cert-sample').onclick = () => { input.value = SAMPLE_PEM; update(); };
-    $('cert-clear').onclick = () => clearWithUndo(['cert-input'], update);
+    input.addEventListener('input', debounce(() => void update()));
+    $('cert-sample').onclick = () => { input.value = SAMPLE_PEM; void update(); };
+    $('cert-clear').onclick = () => clearWithUndo(['cert-input'], () => void update());
     resetStatus();
 }

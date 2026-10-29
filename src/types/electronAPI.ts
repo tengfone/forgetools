@@ -1,33 +1,8 @@
 import { QRCodeGenerateOptions, BarcodeGenerateOptions, BackgroundSettings, ShortcutResult } from './ipc';
 
-export interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
-
-export interface HSL {
-  h: number;
-  s: number;
-  l: number;
-}
-
-export interface RandomStringOptions {
-  lowercase?: boolean;
-  uppercase?: boolean;
-  numbers?: boolean;
-  special?: boolean;
-}
-
 export interface ULIDDecoded {
   timestamp: number;
   date: string;
-}
-
-export interface CronParseResult {
-  next: string;
-  prev: string;
-  description: string;
 }
 
 export interface CSVParseResult {
@@ -47,17 +22,6 @@ export interface X509Decoded {
     sha1: string;
     sha256: string;
   };
-}
-
-export interface AjvValidationResult {
-  valid: boolean;
-  errors: unknown[] | null;
-}
-
-export interface JSONValidationResult {
-  valid: boolean;
-  parsed?: unknown;
-  error?: string;
 }
 
 export interface DiffPart {
@@ -83,16 +47,9 @@ export interface ElectronAPI {
   };
   beautify: {
     html: (html: string, options?: unknown) => string;
-    css: (css: string, options?: unknown) => string;
-    js: (js: string, options?: unknown) => string;
-    sql: (sql: string) => string;
   };
   yaml: {
     parse: (str: string) => unknown;
-    stringify: (obj: unknown) => string;
-  };
-  ajv: {
-    validate: (schema: unknown, data: unknown) => AjvValidationResult;
   };
   marked: {
     parse: (markdown: string) => string;
@@ -101,72 +58,39 @@ export interface ElectronAPI {
     writeText: (text: string) => Promise<void>;
     readText: () => Promise<string>;
   };
+  /** Hashes run in the main process (MD5 is not available in Web Crypto). */
   crypto: {
-    md5: (text: string) => string;
-    sha1: (text: string) => string;
-    sha256: (text: string) => string;
-    sha512: (text: string) => string;
-  };
-  color: {
-    convert: {
-      rgb: {
-        hex: (rgb: RGB | [number, number, number]) => string;
-        hsl: (rgb: RGB | [number, number, number]) => HSL;
-        hsv: (rgb: RGB | [number, number, number]) => unknown;
-        cmyk: (rgb: RGB | [number, number, number]) => unknown;
-        ansi256: (rgb: RGB | [number, number, number]) => number;
-        lab: (rgb: RGB | [number, number, number]) => unknown;
-      };
-      hex: {
-        rgb: (hex: string) => [number, number, number];
-      };
-      hsl: {
-        rgb: (hsl: HSL | [number, number, number]) => [number, number, number];
-      };
-    };
+    md5: (text: string) => Promise<string>;
+    sha1: (text: string) => Promise<string>;
+    sha256: (text: string) => Promise<string>;
+    sha512: (text: string) => Promise<string>;
   };
   qrcode: {
     generate: (text: string, options?: QRCodeGenerateOptions) => Promise<string>;
-    read: (dataUrl: string) => Promise<string>;
-  };
-  jwt: {
-    decode: (token: string) => unknown;
-  };
-  uuid: {
-    generate: () => string;
-    validate: (str: string) => boolean;
   };
   ulid: {
     generate: () => string;
     decode: (str: string) => ULIDDecoded;
   };
-  diff: {
-    create: (oldStr: string, newStr: string) => DiffPart[];
-  };
-  cron: {
-    parse: (expression: string) => CronParseResult;
-  };
   csv: {
     toJSON: (csv: string) => CSVParseResult;
+    /** Throws unless `json` is an array of plain objects. */
     fromJSON: (json: unknown) => string;
   };
   htmlToJsx: {
     convert: (html: string) => string;
   };
-  php: {
-    serialize: (data: unknown) => string;
-    unserialize: (str: string) => unknown;
-  };
   svg: {
-    optimize: (svg: string) => string;
+    optimize: (svg: string) => Promise<string>;
   };
   x509: {
-    decode: (cert: string) => X509Decoded;
+    decode: (cert: string) => Promise<X509Decoded>;
   };
   string: {
+    /** Hex bytes -> text, decoded as UTF-8. */
     toAscii: (hex: string) => string;
-    toHex: (ascii: string) => string;
-    generateRandom: (length: number, options?: RandomStringOptions) => string;
+    /** Text -> hex of its UTF-8 bytes. */
+    toHex: (text: string) => string;
     cases: {
       toCamelCase: (str: string) => string;
       toPascalCase: (str: string) => string;
@@ -175,19 +99,6 @@ export interface ElectronAPI {
       toConstantCase: (str: string) => string;
     };
   };
-  preprocessors: {
-    sass: {
-      compile: (scss: string) => string;
-    };
-    less: {
-      compile: (lessCode: string) => Promise<string>;
-    };
-  };
-  base64: {
-    encode: (str: string) => string;
-    decode: (b64: string) => string;
-  };
-  validateJson: (str: string) => JSONValidationResult;
   barcode: {
     generate: (text: string, options?: BarcodeGenerateOptions) => Promise<string>;
   };
@@ -195,7 +106,6 @@ export interface ElectronAPI {
 
 export interface CronParserAPI {
   getNextOccurrences: (expression: string, count?: number) => string[];
-  parseExpression: (expression: string) => { valid: boolean };
 }
 
 export interface DiffAPI {
@@ -217,4 +127,3 @@ declare global {
     };
   }
 }
-

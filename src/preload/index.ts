@@ -1,90 +1,39 @@
+// Sandboxed preload (webPreferences.sandbox: true): only `electron` may be required at
+// runtime. The pure-JS libraries below are bundled into this file by electron-vite
+// (see electron.vite.config.ts); anything that needs Node (crypto, X509, svgo) lives in
+// the main process behind validated ipcMain.handle channels.
 import { contextBridge, ipcRenderer } from 'electron';
 import beautify from 'js-beautify';
-import { jwtDecode } from 'jwt-decode';
 import yaml from 'js-yaml';
 import { marked } from 'marked';
-import crypto from 'crypto';
-import colorConvert from 'color-convert';
-import { v4 as uuidv4 } from 'uuid';
-import { ulid } from 'ulid';
+import { ulid, decodeTime } from 'ulid';
 import { diffLines, diffWords, diffChars } from 'diff';
 import cronParser from 'cron-parser';
 import Papa from 'papaparse';
 import { htmlToJsx } from 'html-to-jsx-transform';
-import { serialize, unserialize } from 'php-serialize';
 import type { ElectronAPI, CronParserAPI, DiffAPI } from '../types/electronAPI';
 import { IPC_CHANNELS, type QRCodeGenerateOptions, type BarcodeGenerateOptions, type BackgroundSettings } from '../types/ipc';
 
-// Heavy libraries (sass, less, svgo, ajv) are loaded on first use rather than at
-// preload time, so window startup does not pay for tools the user never opens.
-// The preload is emitted as CommonJS and these packages are externalized, so a
-// plain require() resolves them from node_modules.
-function lazy<T>(load: () => T): () => T {
-  let cached: T | undefined;
-  let loaded = false;
-  return () => {
-    if (!loaded) {
-      cached = load();
-      loaded = true;
-    }
-    return cached as T;
-  };
+/**
+ * Split an identifier/phrase into lower-case words: separators (space, _, -, ., /),
+ * camelCase boundaries, acronym boundaries (XMLHttp -> xml http); digits stay attached
+ * to the preceding word (version2Beta -> version2 beta).
+ */
+export function splitWords(str: string): string[] {
+  return (str.match(/[A-Z]+\d*(?![a-z])|[A-Z]?[a-z]+\d*|\d+/g) ?? [])
+    .map((w) => w.toLowerCase());
 }
-/* eslint-disable @typescript-eslint/no-require-imports */
-const getSass = lazy(() => require('sass') as typeof import('sass'));
-const getLess = lazy(() => require('less') as typeof import('less'));
-const getSvgo = lazy(() => require('svgo') as typeof import('svgo'));
-const getAjv = lazy(() => {
-  const mod = require('ajv') as typeof import('ajv') & { default?: typeof import('ajv').default };
-  const AjvCtor = (mod.default ?? mod) as unknown as typeof import('ajv').default;
-  return new AjvCtor();
-});
-/* eslint-enable @typescript-eslint/no-require-imports */
+const cap = (w: string): string => (w ? w[0]!.toUpperCase() + w.slice(1) : w);
 
-// Read the signatureAlgorithm OID from a DER-encoded X.509 certificate:
-// Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm SEQUENCE { OID, ... }, signature }
-function readSignatureAlgorithmOid(der: Buffer): string {
-  let pos = 0;
-  const readHeader = (tag: number): number => {
-    if (der[pos++] !== tag) throw new Error('Unexpected ASN.1 structure');
-    let len = der[pos++]!;
-    if (len & 0x80) {
-      const bytes = len & 0x7f;
-      len = 0;
-      for (let i = 0; i < bytes; i++) len = len * 256 + der[pos++]!;
-    }
-    return len;
-  };
-  readHeader(0x30); // Certificate
-  const tbsLength = readHeader(0x30); // tbsCertificate
-  pos += tbsLength;
-  readHeader(0x30); // signatureAlgorithm
-  const oidLength = readHeader(0x06);
-  const oidEnd = pos + oidLength;
-  const arcs: number[] = [];
-  let value = 0;
-  for (; pos < oidEnd; pos++) {
-    value = value * 128 + (der[pos]! & 0x7f);
-    if (!(der[pos]! & 0x80)) {
-      arcs.push(value);
-      value = 0;
-    }
-  }
-  const first = arcs.shift() ?? 0;
-  const head = first < 40 ? [0, first] : first < 80 ? [1, first - 40] : [2, first - 80];
-  return [...head, ...arcs].join('.');
-}
+const utf8Encoder = new TextEncoder();
 
-// Define the electronAPI object
 const electronAPI: ElectronAPI = {
-  // Window controls
   window: {
     minimize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.MINIMIZE),
     maximize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.MAXIMIZE),
     close: () => ipcRenderer.send(IPC_CHANNELS.WINDOW.CLOSE),
     setTitleBarTheme: (theme: 'dark' | 'light') => ipcRenderer.send(IPC_CHANNELS.WINDOW.SET_THEME, theme === 'dark' ? 'dark' : 'light'),
   },
-  // Background / tray mode
   background: {
     getBackgroundSettings: () => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.GET),
     setBackgroundSettings: (patch: Partial<BackgroundSettings>) => ipcRenderer.invoke(IPC_CHANNELS.BACKGROUND.SET, {
@@ -95,96 +44,23 @@ const electronAPI: ElectronAPI = {
     onGoHome: (cb: () => void) => { ipcRenderer.on(IPC_CHANNELS.BACKGROUND.GO_HOME, () => cb()); },
   },
   beautify: {
-    html: beautify.html,
-    css: beautify.css,
-    js: beautify.js,
-    sql: (str: string): string => {
-      // Basic SQL formatting since js-beautify doesn't include SQL
-      return str
-        .replace(/\s+/g, ' ')
-        .replace(/\s*([,()])\s*/g, '$1 ')
-        .replace(/\bSELECT\b/gi, '\nSELECT')
-        .replace(/\bFROM\b/gi, '\nFROM')
-        .replace(/\bWHERE\b/gi, '\nWHERE')
-        .replace(/\bAND\b/gi, '\n  AND')
-        .replace(/\bOR\b/gi, '\n  OR')
-        .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
-        .replace(/\bORDER BY\b/gi, '\nORDER BY')
-        .replace(/\bHAVING\b/gi, '\nHAVING')
-        .replace(/\bLIMIT\b/gi, '\nLIMIT')
-        .trim();
-    },
+    html: (html: string, options?: unknown) => beautify.html(html, options as Parameters<typeof beautify.html>[1]),
   },
   yaml: {
     parse: (str: string) => yaml.load(str),
-    stringify: (obj: unknown) => yaml.dump(obj),
-  },
-  ajv: {
-    validate: (schema: unknown, data: unknown) => {
-      try {
-        const validate = getAjv().compile(schema as object);
-        const valid = validate(data);
-        return {
-          valid,
-          errors: validate.errors || null
-        };
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        throw new Error('Schema validation error: ' + error.message);
-      }
-    }
   },
   marked: {
-    parse: marked.parse,
+    parse: (md: string) => marked.parse(md, { async: false }) as string,
   },
   clipboard: {
-    writeText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write', text),
-    readText: (): Promise<string> => ipcRenderer.invoke('clipboard:read'),
+    writeText: (text: string): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.CLIPBOARD.WRITE, text),
+    readText: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.CLIPBOARD.READ),
   },
   crypto: {
-    md5: (text: string) => crypto.createHash('md5').update(text).digest('hex'),
-    sha1: (text: string) => crypto.createHash('sha1').update(text).digest('hex'),
-    sha256: (text: string) => crypto.createHash('sha256').update(text).digest('hex'),
-    sha512: (text: string) => crypto.createHash('sha512').update(text).digest('hex'),
-  },
-  color: {
-    convert: {
-      rgb: {
-        hex: (rgb: [number, number, number] | { r: number; g: number; b: number }) => {
-          const arr = Array.isArray(rgb) ? rgb : [rgb.r, rgb.g, rgb.b];
-          return colorConvert.rgb.hex(arr as [number, number, number]);
-        },
-        hsl: (rgb: [number, number, number] | { r: number; g: number; b: number }) => {
-          const arr = Array.isArray(rgb) ? rgb : [rgb.r, rgb.g, rgb.b];
-          return colorConvert.rgb.hsl(arr as [number, number, number]);
-        },
-        hsv: (rgb: [number, number, number] | { r: number; g: number; b: number }) => {
-          const arr = Array.isArray(rgb) ? rgb : [rgb.r, rgb.g, rgb.b];
-          return colorConvert.rgb.hsv(arr as [number, number, number]);
-        },
-        cmyk: (rgb: [number, number, number] | { r: number; g: number; b: number }) => {
-          const arr = Array.isArray(rgb) ? rgb : [rgb.r, rgb.g, rgb.b];
-          return colorConvert.rgb.cmyk(arr as [number, number, number]);
-        },
-        ansi256: (rgb: [number, number, number] | { r: number; g: number; b: number }) => {
-          const arr = Array.isArray(rgb) ? rgb : [rgb.r, rgb.g, rgb.b];
-          return colorConvert.rgb.ansi256(arr as [number, number, number]);
-        },
-        lab: (rgb: [number, number, number] | { r: number; g: number; b: number }) => {
-          const arr = Array.isArray(rgb) ? rgb : [rgb.r, rgb.g, rgb.b];
-          return colorConvert.rgb.lab(arr as [number, number, number]);
-        },
-      },
-      hex: {
-        rgb: (hex: string) => colorConvert.hex.rgb(hex) as [number, number, number],
-      },
-      hsl: {
-        rgb: (hsl: [number, number, number] | { h: number; s: number; l: number }) => {
-          const arr = Array.isArray(hsl) ? hsl : [hsl.h, hsl.s, hsl.l];
-          return colorConvert.hsl.rgb(arr as [number, number, number]) as [number, number, number];
-        },
-      },
-    },
+    md5: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.CRYPTO.HASH, 'md5', text),
+    sha1: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.CRYPTO.HASH, 'sha1', text),
+    sha256: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.CRYPTO.HASH, 'sha256', text),
+    sha512: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.CRYPTO.HASH, 'sha512', text),
   },
   qrcode: {
     generate: async (text: string, options?: QRCodeGenerateOptions): Promise<string> => {
@@ -195,264 +71,80 @@ const electronAPI: ElectronAPI = {
         throw new Error('Failed to generate QR code: ' + error.message);
       }
     },
-    read: async (dataUrl: string): Promise<string> => {
-      try {
-        return await ipcRenderer.invoke(IPC_CHANNELS.QRCODE.READ, dataUrl) as string;
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        throw new Error('Failed to read QR code: ' + error.message);
-      }
-    }
-  },
-  jwt: {
-    decode: (token: string) => jwtDecode(token),
-  },
-  uuid: {
-    generate: () => uuidv4(),
-    validate: (str: string): boolean => {
-      try {
-        return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          str
-        );
-      } catch {
-        return false;
-      }
-    },
   },
   ulid: {
     generate: () => ulid(),
     decode: (str: string) => {
       try {
-        const time = ulid.decodeTime(str);
-        return {
-          timestamp: time,
-          date: new Date(time).toISOString(),
-        };
+        const time = decodeTime(str);
+        return { timestamp: time, date: new Date(time).toISOString() };
       } catch {
         throw new Error('Invalid ULID');
       }
     },
   },
-  diff: {
-    create: (oldStr: string, newStr: string) => {
-      return diffLines(oldStr, newStr).map((part) => ({
-        value: part.value,
-        added: part.added,
-        removed: part.removed,
-      }));
-    },
-  },
-  cron: {
-    parse: (expression: string) => {
-      try {
-        const interval = cronParser.parseExpression(expression);
-        return {
-          next: interval.next().toString(),
-          prev: interval.prev().toString(),
-          description:
-            'Next 5 occurrences:\n' +
-            Array.from({ length: 5 }, () => interval.next().toString()).join(
-              '\n'
-            ),
-        };
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        throw new Error('Invalid cron expression: ' + error.message);
-      }
-    },
-  },
   csv: {
     toJSON: (csv: string) => Papa.parse(csv, { header: true }) as { data: Record<string, unknown>[]; errors: unknown[]; meta: unknown },
-    fromJSON: (json: unknown) => Papa.unparse(json),
+    fromJSON: (json: unknown) => {
+      if (!Array.isArray(json)) throw new Error('JSON must be an array of objects');
+      const bad = json.findIndex((row) => row === null || typeof row !== 'object' || Array.isArray(row));
+      if (bad !== -1) throw new Error(`Item ${bad} is not an object: JSON must be an array of objects`);
+      return Papa.unparse(json as Record<string, unknown>[]);
+    },
   },
   htmlToJsx: {
     convert: (html: string) => htmlToJsx(html),
   },
-  php: {
-    serialize: (data: unknown) => serialize(data),
-    unserialize: (str: string) => unserialize(str),
-  },
   svg: {
-    optimize: (svg: string) => getSvgo().optimize(svg).data,
+    optimize: (svg: string) => ipcRenderer.invoke(IPC_CHANNELS.SVG.OPTIMIZE, svg),
   },
   x509: {
-    decode: (cert: string) => {
-      try {
-        const certificate = new crypto.X509Certificate(cert);
-        const formatName = (name: string) => name.split('\n').filter(Boolean).join(', ');
-        return {
-          subject: formatName(certificate.subject),
-          issuer: formatName(certificate.issuer),
-          notBefore: new Date(certificate.validFrom).toISOString(),
-          notAfter: new Date(certificate.validTo).toISOString(),
-          serialNumber: certificate.serialNumber.toLowerCase(),
-          signatureAlgorithm: readSignatureAlgorithmOid(certificate.raw),
-          fingerprint: {
-            sha1: crypto.createHash('sha1').update(certificate.raw).digest('hex'),
-            sha256: crypto.createHash('sha256').update(certificate.raw).digest('hex'),
-          },
-        };
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        throw new Error('Invalid certificate: ' + error.message);
-      }
-    },
+    decode: (cert: string) => ipcRenderer.invoke(IPC_CHANNELS.X509.DECODE, cert),
   },
   string: {
+    // Hex is the UTF-8 byte sequence of the text, and decodes back the same way.
     toAscii: (hex: string): string => {
-      return hex.replace(/[0-9A-Fa-f]{2}/g, (match) =>
-        String.fromCharCode(parseInt(match, 16))
-      );
+      const compact = hex.replace(/0x/gi, '').replace(/[^0-9A-Fa-f]/g, '');
+      const pairs = compact.match(/[0-9A-Fa-f]{2}/g) ?? [];
+      const bytes = Uint8Array.from(pairs, (p) => parseInt(p, 16));
+      return new TextDecoder('utf-8').decode(bytes);
     },
-    toHex: (ascii: string): string => {
-      return ascii
-        .split('')
-        .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
-        .join('');
-    },
-    generateRandom: (length: number, options: { lowercase?: boolean; uppercase?: boolean; numbers?: boolean; special?: boolean } = {}): string => {
-      const charset = {
-        lowercase: 'abcdefghijklmnopqrstuvwxyz',
-        uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-        numbers: '0123456789',
-        special: '!@#$%^&*()_+-=[]{}|;:,.<>?',
-      };
-      let chars = '';
-      if (options.lowercase) chars += charset.lowercase;
-      if (options.uppercase) chars += charset.uppercase;
-      if (options.numbers) chars += charset.numbers;
-      if (options.special) chars += charset.special;
-      if (!chars)
-        chars = charset.lowercase + charset.uppercase + charset.numbers;
-
-      let result = '';
-      const array = new Uint8Array(length);
-      crypto.randomFillSync(array);
-      for (let i = 0; i < length; i++) {
-        result += chars[array[i]! % chars.length]!;
-      }
-      return result;
-    },
+    toHex: (text: string): string =>
+      Array.from(utf8Encoder.encode(text), (b) => b.toString(16).padStart(2, '0')).join(''),
     cases: {
-      toCamelCase: (str: string): string => {
-        // Handle various input formats: spaces, underscores, hyphens, camelCase, PascalCase
-        return str
-          .trim()
-          .replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''))
-          .replace(/^(.)/, (c) => c.toLowerCase());
-      },
-      toPascalCase: (str: string): string => {
-        // Handle various input formats
-        return str
-          .trim()
-          .replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''))
-          .replace(/^(.)/, (c) => c.toUpperCase());
-      },
-      toSnakeCase: (str: string): string => {
-        // Convert camelCase/PascalCase to snake_case, handle existing separators
-        return str
-          .trim()
-          .replace(/([a-z])([A-Z])/g, '$1_$2') // Insert _ before capitals in camelCase
-          .replace(/[\s-]+/g, '_') // Replace spaces/hyphens with underscores
-          .toLowerCase();
-      },
-      toKebabCase: (str: string): string => {
-        // Convert camelCase/PascalCase to kebab-case, handle existing separators
-        return str
-          .trim()
-          .replace(/([a-z])([A-Z])/g, '$1-$2') // Insert - before capitals in camelCase
-          .replace(/[\s_]+/g, '-') // Replace spaces/underscores with hyphens
-          .toLowerCase();
-      },
-      toConstantCase: (str: string): string => str.toUpperCase().replace(/[-\s]/g, '_'),
+      toCamelCase: (str: string): string => splitWords(str).map((w, i) => (i ? cap(w) : w)).join(''),
+      toPascalCase: (str: string): string => splitWords(str).map(cap).join(''),
+      toSnakeCase: (str: string): string => splitWords(str).join('_'),
+      toKebabCase: (str: string): string => splitWords(str).join('-'),
+      toConstantCase: (str: string): string => splitWords(str).join('_').toUpperCase(),
     },
-  },
-  preprocessors: {
-    sass: {
-      compile: (scss: string): string => getSass().compileString(scss).css,
-    },
-    less: {
-      compile: async (lessCode: string): Promise<string> => {
-        const output = await getLess().render(lessCode);
-        return output.css;
-      },
-    },
-  },
-  base64: {
-    encode: (str: string): string => Buffer.from(str).toString('base64'),
-    decode: (b64: string): string => {
-      try {
-        // Handle URL-safe base64
-        const cleaned = b64.replace(/-/g, '+').replace(/_/g, '/');
-        return Buffer.from(cleaned, 'base64').toString('utf-8');
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        throw new Error('Invalid base64 string: ' + error.message);
-      }
-    },
-  },
-  validateJson: (str: string) => {
-    try {
-      const parsed = JSON.parse(str);
-      return { valid: true, parsed };
-    } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e));
-      return { valid: false, error: error.message };
-    }
   },
   barcode: {
-    generate: (text: string, options?: BarcodeGenerateOptions): Promise<string> => {
-      return ipcRenderer.invoke(IPC_CHANNELS.BARCODE.GENERATE, text, options) as Promise<string>;
-    },
+    generate: (text: string, options?: BarcodeGenerateOptions): Promise<string> =>
+      ipcRenderer.invoke(IPC_CHANNELS.BARCODE.GENERATE, text, options) as Promise<string>,
   },
 };
 
-// Expose electronAPI to renderer
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
-// Expose platform information to renderer
 contextBridge.exposeInMainWorld('platform', {
   isMac: process.platform === 'darwin',
   isWindows: process.platform === 'win32',
   isLinux: process.platform === 'linux',
-  platform: process.platform
+  platform: process.platform,
 });
 
-// Expose cronParser helper because contextBridge cannot pass objects with methods (like .next())
+// contextBridge cannot pass objects with methods (like .next()), so expose plain helpers.
 const cronParserAPI: CronParserAPI = {
   getNextOccurrences: (expression: string, count = 5): string[] => {
-    try {
-      const interval = cronParser.parseExpression(expression);
-      const dates: string[] = [];
-      for (let i = 0; i < count; i++) {
-        dates.push(interval.next().toDate().toString());
-      }
-      return dates;
-    } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e));
-      throw new Error(error.message);
-    }
+    const n = Math.max(1, Math.min(50, Math.floor(Number(count) || 5)));
+    const interval = cronParser.parseExpression(expression);
+    const dates: string[] = [];
+    for (let i = 0; i < n; i++) dates.push(interval.next().toDate().toString());
+    return dates;
   },
-  parseExpression: (expression: string) => {
-    // Keep this for validation if needed, but return simple object
-    try {
-      cronParser.parseExpression(expression);
-      return { valid: true };
-    } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e));
-      throw new Error(error.message);
-    }
-  }
 };
-
 contextBridge.exposeInMainWorld('cronParser', cronParserAPI);
 
-// Expose Diff library for text diff tool
-const diffAPI: DiffAPI = {
-  diffLines,
-  diffWords,
-  diffChars,
-};
-
+const diffAPI: DiffAPI = { diffLines, diffWords, diffChars };
 contextBridge.exposeInMainWorld('Diff', diffAPI);
-

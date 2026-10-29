@@ -1,9 +1,10 @@
 // Background / tray mode: close-to-tray, user-defined global shortcut, start at login,
 // single instance. Preferences live in a small JSON file in userData (main process only).
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, Notification, Tray } from 'electron';
+import { app, BrowserWindow, globalShortcut, Menu, nativeImage, Notification, Tray } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { IPC_CHANNELS, type BackgroundSettings, type ShortcutResult } from '../types/ipc';
+import { handle } from './ipcGuard';
 
 interface Stored extends BackgroundSettings { trayNoticeShown: boolean }
 
@@ -81,7 +82,7 @@ function toggleWindow(): void {
 function applyLoginItem(): void {
   if (isE2E || !app.isPackaged) return; // never register a dev/test binary as a login item
   try {
-    app.setLoginItemSettings({ openAtLogin: prefs.openAtLogin, openAsHidden: true, args: ['--hidden'] });
+    app.setLoginItemSettings({ openAtLogin: prefs.openAtLogin, args: ['--hidden'] });
   } catch {
     // Unsupported on this platform (e.g. some Linux desktops)
   }
@@ -176,8 +177,8 @@ export function initBackground(windowGetter: () => BrowserWindow | null): void {
   app.on('before-quit', () => { quitting = true; });
   app.on('will-quit', () => globalShortcut.unregisterAll());
 
-  ipcMain.handle(IPC_CHANNELS.BACKGROUND.GET, () => publicSettings());
-  ipcMain.handle(IPC_CHANNELS.BACKGROUND.SET, (_e, patch: unknown) => {
+  handle(IPC_CHANNELS.BACKGROUND.GET, () => publicSettings());
+  handle(IPC_CHANNELS.BACKGROUND.SET, (_e, patch: unknown) => {
     const p = (patch ?? {}) as Partial<BackgroundSettings>;
     if (typeof p.keepInBackground === 'boolean') prefs.keepInBackground = p.keepInBackground;
     if (typeof p.openAtLogin === 'boolean') { prefs.openAtLogin = p.openAtLogin; applyLoginItem(); }
@@ -185,7 +186,7 @@ export function initBackground(windowGetter: () => BrowserWindow | null): void {
     rebuildTrayMenu();
     return publicSettings();
   });
-  ipcMain.handle(IPC_CHANNELS.BACKGROUND.SET_SHORTCUT, (_e, accel: unknown): ShortcutResult => {
+  handle(IPC_CHANNELS.BACKGROUND.SET_SHORTCUT, (_e, accel: unknown): ShortcutResult => {
     const a = typeof accel === 'string' && accel.trim() ? accel.trim().slice(0, 64) : null;
     return registerShortcut(a);
   });

@@ -33,7 +33,9 @@ export function render(container: HTMLElement): void {
     const inputEl = $f('svg-input');
     const output = $f('svg-output');
 
-    const update = (): void => {
+    let seq = 0;
+    const update = async (): Promise<void> => {
+        const mine = ++seq;
         const input = inputEl.value;
         if (!input.trim()) {
             output.value = '';
@@ -47,7 +49,8 @@ export function render(container: HTMLElement): void {
         $('svg-input-size').textContent = `Size: ${(inputSize / 1024).toFixed(2)} KB`;
         try {
             if (!/<svg[\s>]/i.test(input)) throw new Error('Input must contain an <svg> element');
-            const optimized = window.electronAPI.svg.optimize(input);
+            const optimized = await window.electronAPI.svg.optimize(input);
+            if (mine !== seq) return;
             const outputSize = new Blob([optimized]).size;
             const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);
             output.value = optimized;
@@ -55,6 +58,7 @@ export function render(container: HTMLElement): void {
             setFieldInvalid('svg-input', false);
             reportOk('Optimized', `-${reduction}%`);
         } catch (e) {
+            if (mine !== seq) return;
             output.value = '';
             $('svg-stats').textContent = '';
             setFieldInvalid('svg-input', true, errorMessage(e));
@@ -62,8 +66,8 @@ export function render(container: HTMLElement): void {
         }
     };
 
-    inputEl.addEventListener('input', debounce(update));
-    $('svg-sample').onclick = () => { inputEl.value = SAMPLE; update(); };
-    $('svg-clear').onclick = () => clearWithUndo(['svg-input'], update);
+    inputEl.addEventListener('input', debounce(() => void update()));
+    $('svg-sample').onclick = () => { inputEl.value = SAMPLE; void update(); };
+    $('svg-clear').onclick = () => clearWithUndo(['svg-input'], () => void update());
     resetStatus();
 }

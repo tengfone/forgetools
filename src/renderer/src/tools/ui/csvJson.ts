@@ -44,7 +44,9 @@ export function render(container: HTMLElement): void {
         if (!json.value.trim()) { csv.value = ''; setFieldInvalid('json-output', false); resetStatus(); return; }
         try {
             const data: unknown = JSON.parse(json.value);
-            if (!Array.isArray(data)) throw new Error('JSON must be an array of objects to convert to CSV');
+            if (!Array.isArray(data) || data.some(r => r === null || typeof r !== 'object' || Array.isArray(r))) {
+                throw new Error('JSON must be an array of objects to convert to CSV');
+            }
             csv.value = window.electronAPI.csv.fromJSON(data);
             setFieldInvalid('json-output', false);
             reportOk('Converted JSON to CSV');

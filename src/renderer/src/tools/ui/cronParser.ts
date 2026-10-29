@@ -37,8 +37,9 @@ export function render(container: HTMLElement): void {
             return;
         }
         try {
-            cronDesc.textContent = window.electronAPI.cron.parse(val).description;
-            window.cronParser.getNextOccurrences(val, 5).forEach(dateStr => {
+            const runs = window.cronParser.getNextOccurrences(val, 5);
+            cronDesc.textContent = 'Valid expression: next 5 runs listed below';
+            runs.forEach(dateStr => {
                 const li = document.createElement('li');
                 li.className = 'copy-chip mb-1.5';
                 li.dataset.copySelf = '';
