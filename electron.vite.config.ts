@@ -116,13 +116,18 @@ export default defineConfig({
         }
       } : undefined,
       rollupOptions: {
-        external: ['@zxing/library', 'qrcode', 'jsbarcode', '@xmldom/xmldom']
+        external: ['qrcode', 'jsbarcode', '@xmldom/xmldom', 'svgo']
       }
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    // The renderer is sandboxed, so the preload may only require('electron') at runtime:
+    // bundle every dependency into out/preload/index.js instead of externalizing it.
+    plugins: [],
     build: {
+      // Leave these require() calls in place (unhoisted): cron-parser's parseFile (fs) and
+      // ulid's Node fallback (crypto, inside try/catch) are never reached in the renderer.
+      commonjsOptions: { ignore: ['fs', 'crypto'] },
       outDir: 'out/preload',
       sourcemap: false, // Disable source maps in production
       minify: process.env.NODE_ENV === 'production' ? 'terser' : false,
@@ -137,26 +142,7 @@ export default defineConfig({
         }
       } : undefined,
       rollupOptions: {
-        external: [
-          'js-beautify',
-          'jwt-decode',
-          'js-yaml',
-          'jsbarcode',
-          'papaparse',
-          'marked',
-          'color-convert',
-          'qrcode',
-          'uuid',
-          'ulid',
-          'diff',
-          'cron-parser',
-          'html-to-jsx-transform',
-          'php-serialize',
-          'svgo',
-          'sass',
-          'less',
-          'ajv'
-        ]
+        external: ['electron']
       }
     }
   },
@@ -221,13 +207,6 @@ export default defineConfig({
           drop_debugger: true,
           pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
           passes: 3, // More passes for better compression
-          unsafe: true, // Enable unsafe optimizations
-          unsafe_comps: true,
-          unsafe_math: true,
-          unsafe_methods: true,
-          unsafe_proto: true,
-          unsafe_regexp: true,
-          unsafe_undefined: true,
           dead_code: true,
           unused: true
         },

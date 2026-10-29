@@ -16,8 +16,7 @@
     "postinstall": "node scripts/setup-monaco.js",
     "release:patch": "npm version patch -m \"chore(release): v%s\" && git push --follow-tags",
     "release:minor": "npm version minor -m \"chore(release): v%s\" && git push --follow-tags",
-    "release:major": "npm version major -m \"chore(release): v%s\" && git push --follow-tags",
-    "rebuild": "electron-rebuild"
+    "release:major": "npm version major -m \"chore(release): v%s\" && git push --follow-tags"
   },
   "keywords": [
     "developer-tools",
@@ -32,18 +31,16 @@
     "markdown",
     "yaml",
     "json",
-    "sass",
-    "less",
     "code-editor",
     "monaco-editor"
   ],
   "author": "tengfone",
   "license": "MIT",
   "devDependencies": {
-    "@electron/rebuild": "^4.2.1",
     "@playwright/test": "^1.49.1",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.10.0",
+    "@types/qrcode": "^1.5.6",
     "@typescript-eslint/eslint-plugin": "^8.72.0",
     "@typescript-eslint/parser": "^8.72.0",
     "autoprefixer": "^10.4.16",
@@ -52,10 +49,6 @@
     "electron-vite": "^3.1.0",
     "eslint": "^8.56.0",
     "fs-extra": "^11.3.2",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "jest-junit": "^17.0.0",
-    "nodemon": "^3.0.2",
     "postcss": "^8.4.32",
     "prettier": "^3.1.1",
     "tailwindcss": "^3.4.0",
@@ -67,27 +60,20 @@
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@xmldom/xmldom": "^0.8.15",
-    "@zxing/library": "^0.21.3",
-    "ajv": "^8.12.0",
-    "color-convert": "^2.0.1",
     "cron-parser": "^4.9.0",
     "diff": "^5.1.0",
+    "dompurify": "^3.4.17",
     "html-to-jsx-transform": "^1.2.1",
     "js-beautify": "^1.14.11",
     "js-yaml": "^4.1.1",
     "jsbarcode": "^3.12.1",
-    "jwt-decode": "^4.0.0",
-    "less": "^4.2.0",
     "marked": "^11.1.0",
     "material-icons": "^1.13.14",
     "monaco-editor": "^0.45.0",
     "papaparse": "^5.4.1",
-    "php-serialize": "^4.1.1",
     "qrcode": "^1.5.3",
-    "sass": "^1.69.7",
     "svgo": "^3.2.0",
-    "ulid": "^2.3.0",
-    "uuid": "^11.1.1"
+    "ulid": "^2.3.0"
   },
   "build": {
     "appId": "com.forgetools.app",
@@ -101,10 +87,7 @@
       "buildResources": "build"
     },
     "files": [
-      ".vite/**/*",
-      "dist-electron/**/*",
       "out/**/*",
-      "src/renderer/vs/**/*",
       "src/renderer/fonts/**/*",
       "src/renderer/assets/**/*",
       "package.json",
@@ -121,13 +104,17 @@
       "!**/node_modules/**/CHANGELOG*",
       "**/node_modules/**/{LICENSE,LICENCE,COPYING,NOTICE}*"
     ],
-    "extraResources": [{ "from": "build/icon256.png", "to": "tray.png" }],
+    "extraResources": [
+      {
+        "from": "build/icon256.png",
+        "to": "tray.png"
+      }
+    ],
     "extraFiles": [],
     "npmRebuild": false,
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
     "asarUnpack": [
-      "node_modules/@zxing/library/**/*",
       "node_modules/qrcode/**/*",
       "node_modules/jsbarcode/**/*",
       "node_modules/@xmldom/xmldom/**/*"
