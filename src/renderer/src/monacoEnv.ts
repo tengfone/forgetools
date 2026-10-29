@@ -31,4 +31,12 @@ window.monacoPath = isDev ? '/vs' : './vs';
   }
 };
 
+// Monaco cancels its own pending work (hover, word highlight, layout) when an editor is disposed
+// or re-laid out, rejecting with Error('Canceled'). Monaco treats that as expected; WebKit can
+// surface it as an unhandled rejection, so drop exactly that error and nothing else.
+window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
+  const r = ev.reason as { name?: string; message?: string } | null;
+  if (r && r.name === 'Canceled' && r.message === 'Canceled') ev.preventDefault();
+});
+
 export {};

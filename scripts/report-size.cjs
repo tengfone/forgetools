@@ -27,4 +27,4 @@ if (front.length) {
 }
 if (!rows.length) console.log('report-size: nothing built yet');
 for (const [kind, name, n] of rows) console.log(`${kind.padEnd(10)} ${mb(n).padStart(10)}  ${name}`);
-console.log('(baseline v0.2.1 Electron: Win 103.9 MB, mac arm64 119.3 MB, mac x64 123.1 MB, AppImage 100.8 MB)');
+console.log('(baseline v0.2.1, see tests/fixtures/BASELINE.md: Win 103.9 MB, mac arm64 119.3 MB, mac x64 123.1 MB, AppImage 100.8 MB)');

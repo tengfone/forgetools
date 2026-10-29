@@ -68,9 +68,14 @@ function pageQuery(steps, op, arg) {
     }
     case 'clickfocus': {
       // Browser default for a real mousedown: focus the nearest focusable ancestor of the target.
+      // Applied inside the next mousedown event (one-shot), so it can never run after the click
+      // handler has already moved focus elsewhere.
       if (!el) return false;
-      const f = el.closest('button, input, select, textarea, a[href], summary, [tabindex], [contenteditable="true"]');
-      if (f && !f.disabled && !f.contains(document.activeElement)) f.focus({ preventScroll: true });
+      document.addEventListener('mousedown', (e) => {
+        if (e.defaultPrevented || !(e.target instanceof Element)) return;
+        const f = e.target.closest('button, input, select, textarea, a[href], summary, [tabindex], [contenteditable="true"]');
+        if (f && !f.disabled && !f.contains(document.activeElement)) f.focus({ preventScroll: true });
+      }, { capture: false, once: true });
       return true;
     }
     case 'focus':
@@ -206,12 +211,11 @@ export class Locator {
     }
     if (click && !p.hits) throw new Error(`element is covered at its centre: ${JSON.stringify(this.steps)}`);
     let a = browser.action('pointer').move({ x: p.x, y: p.y, origin: 'viewport' });
-    if (click) a = a.down({ button: 0 });
-    await a.perform();
     if (click) {
       await query(this.steps, 'clickfocus');
-      await browser.action('pointer').move({ x: p.x, y: p.y, origin: 'viewport' }).up({ button: 0 }).perform();
+      a = a.down({ button: 0 }).up({ button: 0 });
     }
+    await a.perform();
   }
   async hover() {
     await this.waitFor();
@@ -338,7 +342,8 @@ export async function captureErrors() {
     if (window.__e2e) return;
     const e2e = (window.__e2e = { pageErrors: [], consoleErrors: [] });
     window.addEventListener('error', ev => e2e.pageErrors.push(ev.message || String(ev.error)));
-    window.addEventListener('unhandledrejection', ev => e2e.pageErrors.push(String(ev.reason && ev.reason.message || ev.reason)));
+    // Like Playwright's pageerror: a rejection the page handled (preventDefault) is not an error.
+    window.addEventListener('unhandledrejection', ev => ev.defaultPrevented || e2e.pageErrors.push(String(ev.reason && ev.reason.message || ev.reason)));
     document.addEventListener('securitypolicyviolation', ev =>
       e2e.consoleErrors.push(`Refused by Content Security Policy directive "${ev.violatedDirective}": ${ev.blockedURI}`));
     const orig = console.error.bind(console);
