@@ -19,11 +19,26 @@
         "minWidth": 720,
         "minHeight": 500,
         "center": true,
-        "decorations": false
+        "visible": false,
+        "decorations": false,
+        "backgroundColor": "#0b0b0c"
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "img-src": "'self' data: blob:",
+        "script-src": "'self' 'wasm-unsafe-eval'",
+        "style-src": "'self' 'unsafe-inline'",
+        "worker-src": "'self' blob:",
+        "connect-src": "ipc: http://ipc.localhost https://api.github.com",
+        "font-src": "'self'",
+        "object-src": "'none'",
+        "frame-src": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'self'",
+        "frame-ancestors": "'none'"
+      }
     }
   },
   "bundle": {

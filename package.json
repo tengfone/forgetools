@@ -2,7 +2,6 @@
   "name": "forgetools",
   "version": "0.2.1",
   "description": "Offline Developer Utilities",
-  "main": "out/main/main.js",
   "scripts": {
     "dev": "tauri dev",
     "dev:web": "vite",
@@ -17,13 +16,13 @@
     "pack": "tauri build --no-bundle",
     "dist": "tauri build",
     "postinstall": "node scripts/setup-monaco.js",
+    "version": "node scripts/sync-version.cjs",
     "release:patch": "npm version patch -m \"chore(release): v%s\" && git push --follow-tags",
     "release:minor": "npm version minor -m \"chore(release): v%s\" && git push --follow-tags",
     "release:major": "npm version major -m \"chore(release): v%s\" && git push --follow-tags"
   },
   "keywords": [
     "developer-tools",
-    "electron-app",
     "utilities",
     "offline-tools",
     "code-formatter",
@@ -35,7 +34,8 @@
     "yaml",
     "json",
     "code-editor",
-    "monaco-editor"
+    "monaco-editor",
+    "tauri"
   ],
   "author": "tengfone",
   "license": "MIT",
@@ -57,9 +57,6 @@
     "cron-parser": "^4.9.0",
     "diff": "^5.2.2",
     "dompurify": "^3.4.17",
-    "electron": "^44.9.3",
-    "electron-builder": "^26.18.0",
-    "electron-vite": "^3.1.0",
     "eslint": "^8.56.0",
     "fs-extra": "^11.3.2",
     "graphql": "~17.0.2",
@@ -87,94 +84,6 @@
     "jsbarcode": "^3.12.1",
     "qrcode": "^1.5.3",
     "svgo": "^3.2.0"
-  },
-  "build": {
-    "appId": "com.forgetools.app",
-    "productName": "ForgeTools",
-    "asar": true,
-    "electronLanguages": [
-      "en-US"
-    ],
-    "compression": "maximum",
-    "removePackageScripts": true,
-    "removePackageKeywords": true,
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "out/**/*",
-      "package.json",
-      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-      "!**/*.map",
-      "!**/*.md",
-      "!**/*.ts",
-      "!src/**/*.ts",
-      "!**/tsconfig.json",
-      "!**/jsconfig.json",
-      "!electron.vite.config.ts",
-      "!**/node_modules/**/*.d.ts",
-      "!**/node_modules/**/README*",
-      "!**/node_modules/**/CHANGELOG*",
-      "**/node_modules/**/{LICENSE,LICENCE,COPYING,NOTICE}*"
-    ],
-    "extraResources": [
-      {
-        "from": "build/icon256.png",
-        "to": "tray.png"
-      }
-    ],
-    "extraFiles": [],
-    "npmRebuild": false,
-    "nodeGypRebuild": false,
-    "buildDependenciesFromSource": false,
-    "asarUnpack": [
-      "node_modules/qrcode/**/*",
-      "node_modules/jsbarcode/**/*",
-      "node_modules/@xmldom/xmldom/**/*"
-    ],
-    "afterPack": "./build/afterPack.js",
-    "mac": {
-      "icon": "build/icon.png",
-      "target": [
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "artifactName": "ForgeTools-${version}-mac-${arch}.${ext}",
-      "category": "public.app-category.developer-tools",
-      "identity": null,
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false,
-      "entitlements": null,
-      "entitlementsInherit": null,
-      "provisioningProfile": null
-    },
-    "win": {
-      "target": "portable",
-      "icon": "build/icon.ico"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "ForgeTools-${version}.${ext}",
-      "category": "Development",
-      "icon": "build/icon512.png"
-    },
-    "portable": {
-      "artifactName": "ForgeTools-Portable-${version}.exe",
-      "requestExecutionLevel": "user"
-    }
   },
   "overrides": {
     "postcss-selector-parser": "^7.1.6"

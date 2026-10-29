@@ -78,6 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set theme immediately on load
   setTheme(getTheme());
   initApp();
+  // The window is created hidden (no white flash); reveal it once the first frame is painted.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => getCurrentWindow().show()).catch(() => {});
+  }));
 });
 
 // Monaco is loaded lazily the first time an editor-based tool opens.
