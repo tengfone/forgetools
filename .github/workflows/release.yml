@@ -1,12 +1,16 @@
 name: Release
 
-# Builds and releases only when a version tag is pushed, e.g.:
+# Tests on every branch push and PR. Builds and releases only when a version tag is pushed, e.g.:
 #   npm version patch   (bumps package.json, commits, creates tag vX.Y.Z)
 #   git push --follow-tags
 on:
+  # Branch pushes and PRs run the test job only; build and release need a v* tag.
   push:
     tags:
       - "v*"
+    branches: [tauri, main]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,8 +24,12 @@ env:
 
 jobs:
   test:
-    timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
     steps:
       - uses: actions/checkout@v5
 
@@ -32,13 +40,27 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install system dependencies
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: test
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf xdg-utils xvfb webkit2gtk-driver
 
       - name: Install dependencies
         run: npm ci # also runs the postinstall script
+
+      - name: Audit
+        if: runner.os == 'Linux' # lockfiles are the same on every OS
+        shell: bash
+        run: |
+          npm audit --omit=dev
+          cargo install cargo-audit --locked --quiet
+          (cd src-tauri && cargo audit)
 
       - name: Unit tests
         run: npm run test:unit
@@ -47,13 +69,39 @@ jobs:
         working-directory: src-tauri
         run: cargo test --lib
 
+      - name: E2E tests
+        if: runner.os != 'Linux'
+        run: npm run test:e2e
+
+      - name: E2E tests (Xvfb)
+        if: runner.os == 'Linux'
+        run: |
+          npm run build:e2e
+          xvfb-run -a npx wdio run wdio.conf.mjs
+
+      - name: Release build smoke test
+        shell: bash
+        run: |
+          npx tauri build --no-bundle
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npm run test:smoke; else npm run test:smoke; fi
+
+      - name: Report sizes (informational)
+        if: always()
+        continue-on-error: true
+        run: node scripts/report-size.cjs
+
   build:
     needs: [test]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
-        os: [macos-latest, ubuntu-24.04, windows-latest]
+        include:
+          - { os: windows-latest, name: win, args: "--bundles nsis" }
+          - { os: macos-latest, name: mac-arm64, target: aarch64-apple-darwin, args: "--target aarch64-apple-darwin --bundles app" }
+          - { os: macos-latest, name: mac-x64, target: x86_64-apple-darwin, args: "--target x86_64-apple-darwin --bundles app" }
+          - { os: ubuntu-22.04, name: linux, args: "--bundles appimage" }
     steps:
       - uses: actions/checkout@v5
 
@@ -63,12 +111,19 @@ jobs:
           cache: "npm"
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.name }}
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf xdg-utils
 
       - name: Install dependencies
         run: npm ci
@@ -80,8 +135,30 @@ jobs:
           echo "Building version $VERSION"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
-      - name: Build Tauri app
-        run: npx tauri build
+      # Unsigned build. The action only builds here; our own steps name and upload the assets.
+      - uses: tauri-apps/tauri-action@v1
+        with:
+          args: ${{ matrix.args }}
+
+      - name: Collect release asset
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          case "${{ matrix.name }}" in
+            win)   cp src-tauri/target/release/forgetools.exe "dist/ForgeTools-Portable-$VERSION.exe" ;;
+            mac-*) ditto -c -k --keepParent "src-tauri/target/${{ matrix.target }}/release/bundle/macos/ForgeTools.app" "dist/ForgeTools-$VERSION-${{ matrix.name }}.zip" ;;
+            linux) cp src-tauri/target/release/bundle/appimage/*.AppImage "dist/ForgeTools-$VERSION.AppImage" ;;
+          esac
+          ls -la dist
+
+      - name: Check AppImage bundles the tray library
+        if: runner.os == 'Linux'
+        run: |
+          APP=$(ls dist/*.AppImage)
+          chmod +x "$APP"
+          (cd /tmp && "$GITHUB_WORKSPACE/$APP" --appimage-extract >/dev/null)
+          find /tmp/squashfs-root -name 'libayatana-appindicator3.so*' | grep -q . || { echo "libayatana-appindicator3 missing from AppImage"; exit 1; }
 
       - name: Report sizes (informational)
         if: always()
@@ -91,12 +168,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: forgetools-${{ runner.os }}
-          path: |
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.AppImage
+          name: forgetools-${{ matrix.name }}
+          path: dist/*
           if-no-files-found: error
 
   release:
@@ -119,7 +192,7 @@ jobs:
       - name: Collect release files
         run: |
           mkdir -p release
-          find artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.dmg" -o -name "*.AppImage" \) -exec mv {} release/ \;
+          find artifacts -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.AppImage" \) -exec mv {} release/ \;
           ls -la release
 
       - name: Generate release notes
