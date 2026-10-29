@@ -300,13 +300,18 @@ function startIconObserver(): void {
   hideIcons(document.body);
   new MutationObserver(records => {
     for (const r of records) {
+      // Text-only / removal mutations (e.g. Monaco typing, live outputs) cost nothing here
+      if (r.addedNodes.length === 0) continue;
+      // Monaco re-renders its view lines constantly and never contains icon fonts
+      if (r.target instanceof Element && r.target.closest('.monaco-editor')) continue;
       r.addedNodes.forEach(n => {
         if (n.nodeType !== 1) return;
         const el = n as Element;
         if ((el.classList.contains('material-icons') || el.classList.contains('material-icons-outlined')) && !el.hasAttribute('aria-hidden')) {
           el.setAttribute('aria-hidden', 'true');
         }
-        if (el.firstElementChild) hideIcons(el);
+        // Cheap pre-check via the (native, cached) class collections before running a selector query
+        if (el.firstElementChild && (el.getElementsByClassName('material-icons').length || el.getElementsByClassName('material-icons-outlined').length)) hideIcons(el);
       });
     }
   }).observe(document.body, { childList: true, subtree: true });

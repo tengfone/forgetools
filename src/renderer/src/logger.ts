@@ -1,9 +1,10 @@
 /**
- * Production-safe logger utility
- * Only logs in development mode, removed in production builds via terser
+ * Production-safe logger utility.
+ * log/info/warn/debug only emit in development builds. Errors are always emitted,
+ * including in production, so real failures remain diagnosable from DevTools.
  */
 
-const isDev = import.meta.env.DEV || !import.meta.env.PROD;
+const isDev = import.meta.env.DEV;
 
 export const logger = {
   log: (...args: unknown[]) => {
@@ -16,11 +17,10 @@ export const logger = {
     if (isDev) console.warn(...args);
   },
   error: (...args: unknown[]) => {
-    // Always log errors, even in production, but they'll be removed by terser
+    // Always log errors, in every build
     console.error(...args);
   },
   debug: (...args: unknown[]) => {
     if (isDev) console.debug(...args);
   }
 };
-

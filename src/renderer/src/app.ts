@@ -13,6 +13,9 @@ import { scoreTool } from './search';
 import { esc, bumpToolEpoch } from './ui';
 import { captureFields, restoreFields, clearableFieldIds, clearWithUndo, type FieldSnapshot } from './ui';
 import { showToast, copyText, readClipboardText, wireClipboardActions, setStatus, openModal, closeModal, getIndent, getIndentChoice, setIndentChoice, type IndentChoice } from './ui';
+import { getTheme, setTheme, syncThemeButton, isDarkActive, defineMonacoThemes } from './app/theme';
+import { setupBackgroundSettings } from './app/backgroundSettings';
+import { resultCache, resultCacheKey, MAX_CACHEABLE_INPUT, debounce } from './app/cache';
 
 // Configure Monaco loader (using requirejs for Monaco)
 // Monaco Editor uses AMD/RequireJS which is loaded via script tag
@@ -38,88 +41,6 @@ let currentTool: Tool | null = null;
 const toolModes = new Map<string, string>();
 const currentMode = (t: Tool): string | undefined => t.modes?.length ? (toolModes.get(t.id) ?? t.modes[0].id) : undefined;
 let renderToken = 0; // guards against a slow tool module rendering over a newer one
-let currentTheme: 'system' | 'light' | 'dark' = (localStorage.getItem('theme') as 'system' | 'light' | 'dark') || 'system';
-
-// Optimized LRU Cache implementation for processed results
-// Uses Map for O(1) operations and better memory efficiency
-class LRUCache<K> {
-  private cache: Map<K, { value: string; timestamp: number }>;
-  private maxSize: number;
-  private ttl: number;
-  private cleanupThreshold: number;
-
-  constructor(maxSize: number = 100, ttl: number = 5 * 60 * 1000) {
-    this.cache = new Map();
-    this.maxSize = maxSize;
-    this.ttl = ttl;
-    // Cleanup when cache is 90% full to avoid frequent cleanup
-    this.cleanupThreshold = Math.floor(maxSize * 0.9);
-  }
-
-  get(key: K): string | undefined {
-    const item = this.cache.get(key);
-    if (!item) return undefined;
-    
-    const now = Date.now();
-    // Check TTL
-    if (now - item.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return undefined;
-    }
-    
-    // Move to end (most recently used) - Map maintains insertion order
-    this.cache.delete(key);
-    this.cache.set(key, item);
-    return item.value;
-  }
-
-  set(key: K, value: string): void {
-    const now = Date.now();
-    
-    // Remove if exists to update position
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxSize) {
-      // Remove least recently used (first item in Map iteration order)
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.cache.delete(firstKey);
-      }
-    }
-    
-    this.cache.set(key, { value, timestamp: now });
-    
-    // Periodic cleanup of expired entries when threshold is reached
-    if (this.cache.size >= this.cleanupThreshold) {
-      this.cleanupExpired(now);
-    }
-  }
-
-  private cleanupExpired(now: number): void {
-    // Remove expired entries in batches
-    let removed = 0;
-    const maxRemovals = Math.floor(this.maxSize * 0.1); // Remove up to 10% at a time
-    
-    for (const [key, item] of this.cache.entries()) {
-      if (removed >= maxRemovals) break;
-      if (now - item.timestamp > this.ttl) {
-        this.cache.delete(key);
-        removed++;
-      }
-    }
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  size(): number {
-    return this.cache.size;
-  }
-}
-
-// Small and short-lived: inputs may contain secrets (JWTs, keys), so don't hold them long.
-const resultCache = new LRUCache<string>(20, 60 * 1000);
 
 // Event listener cleanup tracking
 const eventListeners: Array<{ element: EventTarget; event: string; handler: EventListener }> = [];
@@ -132,137 +53,11 @@ function cleanupEventListeners(): void {
   eventListeners.length = 0;
 }
 
-// Debounce utility function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  
-  return function executedFunction(...args: Parameters<T>) {
-    const later = () => {
-      timeout = null;
-      func(...args);
-    };
-    
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    timeout = setTimeout(later, wait);
-  };
-}
-
-// Theme Management
-function setTheme(theme: 'system' | 'light' | 'dark'): void {
-  currentTheme = theme;
-  localStorage.setItem('theme', theme);
-  
-  let isDark: boolean;
-  if (theme === 'dark') {
-    isDark = true;
-  } else if (theme === 'light') {
-    isDark = false;
-  } else {
-    // system theme
-    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }
-  
-  // Remove dark class, then add it if needed
-  // Tailwind uses 'dark' class for dark mode, absence means light mode
-  document.documentElement.classList.remove('dark');
-  if (isDark) {
-    document.documentElement.classList.add('dark');
-  }
-  // Keep the native caption buttons (Windows/Linux overlay) in step with the app theme
-  try { window.electronAPI?.window?.setTitleBarTheme?.(isDark ? 'dark' : 'light'); } catch { /* not in Electron */ }
-  
-  // Update Monaco Theme (themes are rebuilt from the CSS variables now in effect)
-  if (window.monaco) {
-    defineMonacoThemes();
-    window.monaco.editor.setTheme(isDark ? 'forge-dark' : 'forge-light');
-  }
-  syncThemeButton();
-}
-
-function syncThemeButton(): void {
-  const btn = document.getElementById('themeToggle');
-  if (!btn) return;
-  const name = currentTheme === 'system' ? 'System' : currentTheme === 'light' ? 'Light' : 'Dark';
-  const next = currentTheme === 'system' ? 'light' : currentTheme === 'light' ? 'dark' : 'system';
-  btn.dataset.theme = currentTheme;
-  btn.setAttribute('aria-label', `Theme: ${name}. Switch to ${next}`);
-  btn.title = `Theme: ${name} (click for ${next})`;
-  const icon = btn.querySelector('.material-icons');
-  if (icon) icon.textContent = currentTheme === 'system' ? 'brightness_auto' : currentTheme === 'light' ? 'light_mode' : 'dark_mode';
-}
-
-function isDarkActive(): boolean {
-  return document.documentElement.classList.contains('dark');
-}
-
-/** Resolve a CSS color (any syntax, incl. rgba()) to #rrggbb[aa] for Monaco. */
-function cssColor(varName: string, fallback: string): string {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  if (!raw) return fallback;
-  const probe = document.createElement('canvas').getContext('2d');
-  if (!probe) return fallback;
-  probe.fillStyle = fallback;
-  probe.fillStyle = raw;
-  const v = String(probe.fillStyle);
-  if (v.startsWith('#')) return v;
-  const m = v.match(/rgba?\(([^)]+)\)/);
-  if (!m) return fallback;
-  const [r, g, b, a = '1'] = m[1].split(',').map(s => s.trim());
-  const hex = (n: number): string => Math.round(n).toString(16).padStart(2, '0');
-  return `#${hex(+r)}${hex(+g)}${hex(+b)}${parseFloat(a) < 1 ? hex(parseFloat(a) * 255) : ''}`;
-}
-
-function defineMonacoThemes(): void {
-  if (!window.monaco) return;
-  const build = (dark: boolean): editor.IStandaloneThemeData => {
-    // Read tokens with the matching class applied, then restore
-    const root = document.documentElement;
-    const had = root.classList.contains('dark');
-    root.classList.toggle('dark', dark);
-    const canvas = cssColor('--bg-panel', dark ? '#111113' : '#ffffff');
-    const ink = cssColor('--text-primary', dark ? '#ededef' : '#18181b');
-    const secondary = cssColor('--text-tertiary', dark ? '#8a8a92' : '#6b6b73');
-    const hairline = cssColor('--border-color', dark ? '#1f1f22' : '#e4e4e0');
-    const selection = cssColor('--selection', dark ? '#ff8a3d40' : '#ff8a3d47');
-    const accent = cssColor('--accent-color', dark ? '#ff8a3d' : '#e5670f');
-    const tint = cssColor('--hover-tint', dark ? '#ffffff0a' : '#0000000a');
-    root.classList.toggle('dark', had);
-    return {
-      base: dark ? 'vs-dark' : 'vs',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': canvas,
-        'editor.foreground': ink,
-        'editorLineNumber.foreground': secondary,
-        'editorLineNumber.activeForeground': ink,
-        'editor.lineHighlightBackground': tint,
-        'editor.lineHighlightBorder': '#00000000',
-        'editor.selectionBackground': selection,
-        'editor.inactiveSelectionBackground': selection,
-        'editorCursor.foreground': accent,
-        'editorIndentGuide.background': hairline,
-        'editorWidget.border': hairline,
-        'focusBorder': accent,
-        'editorGutter.background': canvas,
-        'scrollbarSlider.background': hairline,
-        'editorOverviewRuler.border': '#00000000'
-      }
-    };
-  };
-  window.monaco.editor.defineTheme('forge-light', build(false));
-  window.monaco.editor.defineTheme('forge-dark', build(true));
-}
 
 // Initialize Theme Listener with cleanup tracking
 const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 const themeChangeHandler = () => {
-  if (currentTheme === 'system') setTheme('system');
+  if (getTheme() === 'system') setTheme('system');
 };
 themeMediaQuery.addEventListener('change', themeChangeHandler);
 eventListeners.push({ element: themeMediaQuery, event: 'change', handler: themeChangeHandler });
@@ -284,7 +79,7 @@ window.addEventListener('beforeunload', () => {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
   // Set theme immediately on load
-  setTheme(currentTheme);
+  setTheme(getTheme());
   initApp();
 });
 
@@ -467,7 +262,7 @@ function setupTitlebar(): void {
   themeBtn.innerHTML = '<i class="material-icons" aria-hidden="true"></i>';
   themeBtn.onclick = () => {
     const order = ['system', 'light', 'dark'] as const;
-    setTheme(order[(order.indexOf(currentTheme) + 1) % order.length]!);
+    setTheme(order[(order.indexOf(getTheme()) + 1) % order.length]!);
   };
   controls.append(themeBtn);
   syncThemeButton();  const settings = document.createElement('button');
@@ -858,6 +653,7 @@ function switchTool(toolId: string): void {
   if (!tool) return;
 
   snapshotSession();
+  resultCache.sweepExpired();
   // Ensure we have a proper reference to the tool with all properties
   currentTool = tool;
   rememberRecent(tool.id);
@@ -1112,11 +908,14 @@ function setupHomeSearch(): void {
 
   const clear = (): void => { box.value = ''; render(); };
 
-  box.addEventListener('input', render);
+  // Grow immediately for responsiveness; detection/filtering is debounced
+  const debouncedRender = debounce(render, 150);
+  box.addEventListener('input', () => { grow(); debouncedRender(); });
   box.addEventListener('keydown', e => {
     if (e.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      render(); // flush the debounced detection so Enter acts on the current text
       if (top[0]) { open(top[0]); return; }
       const first = visibleTiles()[0];
       if (first && box.value.trim()) { const id = first.dataset.toolTile!; clear(); switchTool(id); }
@@ -1128,6 +927,7 @@ function setupHomeSearch(): void {
       // Leave the textarea only from its last line, so multi-line pastes stay editable
       const after = box.value.slice(box.selectionEnd);
       if (after.includes('\n')) return;
+      render();
       const target = line.querySelector<HTMLElement>('button') ?? visibleTiles()[0];
       if (target) { e.preventDefault(); target.focus(); }
     }
@@ -1297,8 +1097,9 @@ async function processInput(): Promise<void> {
 
     const indentChoice = getIndentChoice();
     const mode = currentMode(currentTool) ?? '';
-    const cacheKey = `${currentTool.id}:${mode}:${indentChoice}:${input}`;
-    if (input.trim()) {
+    const cacheable = input.length <= MAX_CACHEABLE_INPUT && input.trim() !== '';
+    const cacheKey = cacheable ? resultCacheKey(currentTool.id, mode, String(indentChoice), input) : '';
+    if (cacheable) {
       const cached = resultCache.get(cacheKey);
       if (cached !== undefined) {
         showOutput(cached, input);
@@ -1313,7 +1114,7 @@ async function processInput(): Promise<void> {
       outputStr = outputStr.replace(/^(?: {4})+/gm, m => '\t'.repeat(m.length / 4));
     }
 
-    if (input.trim()) {
+    if (cacheable) {
       resultCache.set(cacheKey, outputStr);
     }
     showOutput(outputStr, input);
@@ -1827,114 +1628,4 @@ function syncHomePins(): void {
     const sig = pinned.join(',') + '|' + getRecent().join(',');
     if (quick.dataset.sig !== sig) { quick.dataset.sig = sig; renderWelcome(); }
   }
-}
-
-/** KeyboardEvent -> Electron accelerator ("Ctrl+Alt+Space"). Null while only modifiers are held. */
-function toAccelerator(e: KeyboardEvent): string | null {
-  const k = e.key;
-  if (['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].includes(k)) return null;
-  const isMac = !!window.platform?.isMac;
-  const mods: string[] = [];
-  if (e.ctrlKey) mods.push(isMac ? 'Control' : 'Ctrl');
-  if (e.metaKey) mods.push(isMac ? 'Command' : 'Super');
-  if (e.altKey) mods.push(isMac ? 'Option' : 'Alt');
-  if (e.shiftKey) mods.push('Shift');
-  let key: string | null = null;
-  const code = e.code;
-  if (/^Key[A-Z]$/.test(code)) key = code.slice(3);
-  else if (/^Digit[0-9]$/.test(code)) key = code.slice(5);
-  else if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) key = code;
-  else {
-    const map: Record<string, string> = {
-      Space: 'Space', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete', Insert: 'Insert',
-      Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown',
-      ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
-      Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\',
-      Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
-    };
-    key = map[code] ?? null;
-  }
-  if (!key) return null;
-  // A global shortcut needs a modifier (function keys excepted) or it would swallow normal typing
-  if (!mods.length && !/^F\d+$/.test(key)) return null;
-  return [...mods, key].join('+');
-}
-
-/** Pretty label for an accelerator: mac glyphs, otherwise as-is. */
-function accelLabel(a: string): string {
-  if (!window.platform?.isMac) return a.replace(/\+/g, ' + ');
-  return a.replace(/Command\+?/g, '\u2318').replace(/Control\+?/g, '\u2303').replace(/Option\+?|Alt\+?/g, '\u2325').replace(/Shift\+?/g, '\u21e7');
-}
-
-function setupBackgroundSettings(): void {
-  const api = window.electronAPI?.background;
-  const group = document.getElementById('settingsBackground');
-  if (!api || !group) { group?.setAttribute('hidden', ''); return; }
-  const bg = document.getElementById('setting-background') as HTMLInputElement | null;
-  const login = document.getElementById('setting-login') as HTMLInputElement | null;
-  const rec = document.getElementById('shortcutRec') as HTMLButtonElement | null;
-  const clearBtn = document.getElementById('shortcutClear') as HTMLButtonElement | null;
-  const chips = document.getElementById('shortcutChips');
-  const msg = document.getElementById('shortcutMsg');
-  if (!bg || !login || !rec || !clearBtn || !chips || !msg) return;
-  const HINT = 'Shows or hides ForgeTools from any app.';
-  let current: string | null = null;
-  let recording = false;
-
-  const paint = (): void => {
-    rec.classList.toggle('is-recording', recording);
-    rec.setAttribute('aria-pressed', String(recording));
-    rec.textContent = recording ? 'Press a key combination\u2026' : current ? accelLabel(current) : 'Not set';
-    rec.classList.toggle('is-empty', !current && !recording);
-    clearBtn.disabled = !current;
-  };
-  const say = (text: string, error = false): void => {
-    msg.textContent = text;
-    msg.classList.toggle('is-error', error);
-  };
-  const apply = async (accel: string | null): Promise<void> => {
-    const r = await api.setGlobalShortcut(accel);
-    current = r.accelerator;
-    if (r.ok) say(accel ? `${accelLabel(accel)} now shows or hides ForgeTools.` : HINT);
-    else say(r.error ?? 'Shortcut is in use by another app', true);
-    paint();
-  };
-
-  const isMac = !!window.platform?.isMac;
-  const suggestions = isMac ? ['Option+Space', 'Control+Shift+Option+F'] : ['Ctrl+Alt+Space', 'Ctrl+Shift+Alt+F'];
-  suggestions.forEach(s => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'home-chip shortcut-chip';
-    b.dataset.accel = s;
-    b.textContent = accelLabel(s);
-    b.onclick = () => { recording = false; void apply(s); };
-    chips.appendChild(b);
-  });
-
-  rec.addEventListener('click', () => { recording = !recording; if (recording) say('Press the combination, or Esc to cancel.'); else say(HINT); paint(); });
-  rec.addEventListener('blur', () => { if (recording) { recording = false; say(HINT); paint(); } });
-  rec.addEventListener('keydown', e => {
-    if (!recording) return;
-    if (e.key === 'Tab') { recording = false; paint(); return; }
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) { recording = false; say(HINT); paint(); return; }
-    const accel = toAccelerator(e);
-    if (!accel) { if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) say('Add Ctrl, Alt or Shift to the key.', true); return; }
-    recording = false;
-    void apply(accel);
-  });
-  clearBtn.addEventListener('click', () => { recording = false; void apply(null); });
-
-  bg.addEventListener('change', () => { void api.setBackgroundSettings({ keepInBackground: bg.checked }); });
-  login.addEventListener('change', () => { void api.setBackgroundSettings({ openAtLogin: login.checked }); });
-
-  void api.getBackgroundSettings().then(s => {
-    bg.checked = s.keepInBackground;
-    login.checked = s.openAtLogin;
-    current = s.globalShortcut;
-    paint();
-  });
-  paint();
 }
