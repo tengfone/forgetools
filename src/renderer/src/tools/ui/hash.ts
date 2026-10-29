@@ -42,8 +42,8 @@ export function render(container: HTMLElement): void {
             return;
         }
         try {
-            const api = window.electronAPI.crypto;
-            const values = await Promise.all([api.md5(text), api.sha1(text), api.sha256(text), api.sha512(text)]);
+            const { hashText } = await import('../lib/media');
+            const values = await Promise.all([hashText('md5', text), hashText('sha1', text), hashText('sha256', text), hashText('sha512', text)]);
             if (mine !== seq) return;
             ALGOS.forEach(([id], i) => { $f(`hash-${id}`).value = values[i]; });
             reportOk('Hashed', `${new TextEncoder().encode(text).length} bytes`);

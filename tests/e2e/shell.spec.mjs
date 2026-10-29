@@ -1,46 +1,47 @@
-const { test, expect } = require("@playwright/test");
-const { launchElectronApp } = require("./helpers/electronApp");
+import { page as window, expect, captureErrors } from "./helpers/pw.mjs";
+import { waitForAppReady, nativeWindow } from "./helpers/tauriApp.mjs";
 
-let app;
-let window;
-
-test.beforeAll(async () => {
-  ({ app, window } = await launchElectronApp());
+before(async () => {
+  await waitForAppReady();
+  await captureErrors();
   await window.setViewportSize?.({ width: 1280, height: 800 }).catch(() => {});
 });
 
-test.afterAll(async () => {
-  if (app) {
-    // Leave persisted shell state as other suites expect it
-    await window.evaluate(() => { localStorage.removeItem("sidebar-collapsed"); localStorage.setItem("theme", "system"); }).catch(() => {});
-    await app.close();
-  }
+after(async () => {
+  // Leave persisted shell state as other suites expect it
+  await window.evaluate(() => { localStorage.removeItem("sidebar-collapsed"); localStorage.setItem("theme", "system"); }).catch(() => {});
 });
 
-test("window has no native title bar; caption overlay is active", async () => {
-  const main = await app.evaluate(({ BrowserWindow }) => {
-    const win = BrowserWindow.getAllWindows()[0];
-    return { menu: win.isMenuBarVisible(), platform: process.platform };
-  });
+it("window has no native title bar; caption overlay is active", async () => {
+  // Tauri: no native decorations and no menu bar; the app draws the caption buttons itself
+  // (#windowControls) on Windows/Linux. macOS keeps native traffic lights in an overlay title bar.
+  const main = await nativeWindow();
   expect(main.menu).toBe(false);
-  if (main.platform === "darwin") return;
+  if (main.platform === "macos") return;
+  expect(main.decorated).toBe(false);
   const wco = await window.evaluate(() => {
-    const o = navigator.windowControlsOverlay;
-    const r = o?.getTitlebarAreaRect();
-    const bar = document.querySelector(".titlebar").getBoundingClientRect();
+    const box = document.getElementById("windowControls");
+    const r = box.getBoundingClientRect();
     const ctrls = document.getElementById("titlebarControls").getBoundingClientRect();
-    return { visible: o?.visible === true, x: r?.x, w: r?.width, vw: innerWidth, barRight: bar.right, ctrlRight: ctrls.right };
+    return { visible: !box.hidden && r.width > 0, buttons: box.querySelectorAll("button").length, x: r.x, w: r.width, vw: innerWidth, ctrlRight: ctrls.right };
   });
   expect(wco.visible).toBe(true);
-  // Our controls end right where the native caption buttons begin (4px breathing room)
-  expect(wco.ctrlRight).toBeLessThanOrEqual(wco.x + wco.w);
-  expect(wco.x + wco.w - wco.ctrlRight).toBeLessThanOrEqual(6);
+  expect(wco.buttons).toBe(3);
+  expect(wco.vw - (wco.x + wco.w)).toBeLessThanOrEqual(1); // caption buttons flush with the right edge
+  // Our controls end right where the caption buttons begin (4px breathing room)
+  expect(wco.ctrlRight).toBeLessThanOrEqual(wco.x);
+  expect(wco.x - wco.ctrlRight).toBeLessThanOrEqual(6);
 });
 
-test("titlebar theme button cycles and switches to light", async () => {
+it("titlebar theme button cycles and switches to light", async () => {
   const btn = window.locator("#themeToggle");
   await expect(btn).toBeVisible();
-  const region = await btn.evaluate(el => getComputedStyle(el).getPropertyValue("-webkit-app-region") || getComputedStyle(el).webkitAppRegion);
+  // Tauri drag region: the header drags (data-tauri-drag-region="deep") but buttons inside never do.
+  const region = await btn.evaluate(el => {
+    const bar = el.closest("[data-tauri-drag-region]");
+    const own = el.getAttribute("data-tauri-drag-region");
+    return bar && bar.getAttribute("data-tauri-drag-region") === "deep" && el.tagName === "BUTTON" && (own === null || own === "false") ? "no-drag" : "drag";
+  });
   expect(region).toBe("no-drag");
   for (let i = 0; i < 3; i++) {
     if ((await btn.getAttribute("data-theme")) === "light") break;
@@ -53,11 +54,10 @@ test("titlebar theme button cycles and switches to light", async () => {
   await expect(btn).toHaveAttribute("data-theme", "dark");
   expect(await window.evaluate(() => document.documentElement.classList.contains("dark"))).toBe(true);
   // Native caption colours follow the theme
-  const overlay = await app.evaluate(({ BrowserWindow }) => typeof BrowserWindow.getAllWindows()[0].setTitleBarOverlay);
-  expect(overlay).toBe("function");
+  await expect.poll(async () => (await nativeWindow()).theme).toBe("dark");
 });
 
-test("sidebar collapse toggle: button and Ctrl+B", async () => {
+it("sidebar collapse toggle: button and Ctrl+B", async () => {
   const toggle = window.locator("#sidebarToggle");
   await expect(toggle).toHaveAttribute("aria-label", "Collapse sidebar");
   await toggle.click();
@@ -76,7 +76,7 @@ test("sidebar collapse toggle: button and Ctrl+B", async () => {
   await expect(window.locator("body")).not.toHaveClass(/sidebar-collapsed/);
 });
 
-test("nav icons do not shift on hover or after opening tools", async () => {
+it("nav icons do not shift on hover or after opening tools", async () => {
   const rects = () => window.evaluate(() =>
     Array.from(document.querySelectorAll("#sidebar .nav-icon, #sidebarToggle, #themeToggle, #titlebarSettings"))
       .filter(el => el.offsetParent !== null)

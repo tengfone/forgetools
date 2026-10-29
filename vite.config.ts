@@ -3,6 +3,7 @@ import type { Plugin } from 'vite';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
 import fsExtra from 'fs-extra';
+import pkg from './package.json';
 
 // Tauri dev host (set by 	auri dev for mobile/remote targets); falls back to localhost.
 const host = process.env.TAURI_DEV_HOST;
@@ -105,6 +106,8 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TAURI_ENV_'],
   // .env.<mode> files live at the repo root, not in `root` (src/renderer).
   envDir: __dirname,
+  // Single source of truth for the version (tauri.conf.json reads package.json too).
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [copyMonacoFiles(), suppressMonacoSourceMapWarnings()],
   resolve: {
     alias: {
@@ -123,7 +126,7 @@ export default defineConfig({
     }
   },
   build: {
-    // Same output folder electron-vite used; tauri.conf.json frontendDist points here.
+    // Frontend output folder; tauri.conf.json frontendDist points here.
     outDir: resolve(__dirname, 'out/renderer'),
     // Disable source maps in production for smaller bundle size
     sourcemap: process.env.NODE_ENV === 'production' ? false : true,
@@ -152,7 +155,7 @@ export default defineConfig({
         // Optimize chunk size limits
         compact: process.env.NODE_ENV === 'production'
       },
-      // Externalize dependencies that are already in preload
+      // Externalize dependencies that are bundled separately
       external: []
     },
     minify: process.env.NODE_ENV === 'production' ? 'terser' : false,

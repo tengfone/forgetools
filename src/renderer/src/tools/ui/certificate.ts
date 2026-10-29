@@ -45,7 +45,7 @@ export function render(container: HTMLElement): void {
         }
         try {
             if (!val.includes('-----BEGIN CERTIFICATE-----')) throw new Error('PEM must start with -----BEGIN CERTIFICATE-----');
-            const decoded = await window.electronAPI.x509.decode(val);
+            const decoded = await (await import('../lib/media')).decodeX509(val);
             if (mine !== seq) return;
             if (!decoded) throw new Error('Could not decode the certificate body');
             $f('cert-subject').value = decoded.subject || '';

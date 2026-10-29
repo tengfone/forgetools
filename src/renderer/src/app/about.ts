@@ -1,6 +1,6 @@
 // Settings > About: version, update check (manual + opt-in daily), links and runtime details.
-import '../../../types/electronAPI';
-import type { ExternalLinkId, UpdateCheckResult } from '../../../types/ipc';
+import { clipboard, getAppInfo, openLink, type ExternalLinkId } from '../native';
+import { updates, type UpdateCheckResult } from '../updates';
 import { showToast } from '../ui';
 
 /** Flag "update available" on the titlebar Settings button and the About tab. */
@@ -13,9 +13,8 @@ function flag(on: boolean): void {
 }
 
 export function setupAbout(): void {
-  const api = window.electronAPI;
   const group = document.getElementById('settingsAbout');
-  if (!api?.app || !group) return;
+  if (!group) return;
 
   const version = document.getElementById('aboutVersion');
   const navVersion = document.getElementById('settingsNavVersion');
@@ -24,13 +23,13 @@ export function setupAbout(): void {
   const auto = document.getElementById('setting-autoupdate') as HTMLInputElement | null;
   const meta = document.getElementById('aboutMeta');
   let details = '';
-  const openRelease = (): void => { void api.app.openLink('latestRelease').catch(() => showToast('Could not open link', 'error')); };
+  const openRelease = (): void => { void openLink('latestRelease').catch(() => showToast('Could not open link', 'error')); };
 
-  void api.app.getInfo().then(info => {
+  void getAppInfo().then(info => {
     if (version) version.textContent = `Version ${info.version}`;
     if (navVersion) navVersion.textContent = `v${info.version}`;
-    details = `ForgeTools ${info.version} · Electron ${info.electron} · Chromium ${info.chrome} · Node ${info.node} · ${info.platform}-${info.arch}`;
-    if (meta) meta.textContent = `Electron ${info.electron} · Chromium ${info.chrome.split('.')[0]} · Node ${info.node} · ${info.platform}-${info.arch}`;
+    details = `ForgeTools ${info.version} · Tauri ${info.tauri} · WebView ${info.webview} · ${info.platform}-${info.arch}`;
+    if (meta) meta.textContent = `Tauri ${info.tauri} · WebView ${info.webview.split('.')[0]} · ${info.platform}-${info.arch}`;
   }).catch(() => { if (version) version.textContent = ''; });
 
   const setStatus = (kind: '' | 'ok' | 'error' | 'new', text = ''): void => {
@@ -66,10 +65,10 @@ export function setupAbout(): void {
     checkBtn.disabled = true;
     checkBtn.textContent = 'Checking…';
     setStatus('');
-    api.updates.check()
+    updates().check()
       .then(show)
       .catch((e: unknown) => {
-        const msg = (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+        const msg = e instanceof Error ? e.message : String(e);
         setStatus('error', /fetch|net::|ENOTFOUND|network|abort|timeout/i.test(msg) ? "Couldn't reach GitHub" : msg);
       })
       .finally(() => {
@@ -79,28 +78,28 @@ export function setupAbout(): void {
   });
 
   if (auto) {
-    void api.updates.getPrefs().then(p => { auto.checked = p.autoCheck; }).catch(() => {});
+    auto.checked = updates().getPrefs().autoCheck;
     auto.addEventListener('change', () => {
       const want = auto.checked;
-      void api.updates.setPrefs({ autoCheck: want }).then(p => {
+      void Promise.resolve().then(() => updates().setPrefs({ autoCheck: want })).then(p => {
         auto.checked = p.autoCheck;
-        if (p.autoCheck) void api.updates.auto().then(r => { if (r) show(r); }).catch(() => {});
+        if (p.autoCheck) void updates().auto().then(r => { if (r) show(r); }).catch(() => {});
       }).catch(() => { auto.checked = !want; showToast('Could not save setting', 'error'); });
     });
   }
-  // Startup: the main process decides whether to touch the network (opt-in, once a day).
-  void api.updates.auto().then(r => { if (r?.available) show(r); }).catch(() => {});
+  // Startup: updates.ts decides whether to touch the network (opt-in, once a day).
+  void updates().auto().then(r => { if (r?.available) show(r); }).catch(() => {});
 
   meta?.addEventListener('click', () => {
     if (!details) return;
-    void api.clipboard.writeText(details)
+    void clipboard.writeText(details)
       .then(() => showToast('Version details copied'))
       .catch(() => showToast('Could not copy', 'error'));
   });
 
   group.querySelectorAll<HTMLButtonElement>('[data-link]').forEach(btn => {
     btn.addEventListener('click', () => {
-      void api.app.openLink(btn.dataset.link as ExternalLinkId).catch(() => showToast('Could not open link', 'error'));
+      void openLink(btn.dataset.link as ExternalLinkId).catch(() => showToast('Could not open link', 'error'));
     });
   });
 }

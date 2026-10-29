@@ -1,11 +1,11 @@
 // Settings > Background: keep-in-background, open-at-login and the global show/hide shortcut recorder.
-import '../../../types/electronAPI';
+import { background, isMac as isMacPlatform, isTauri } from '../native';
 
-/** KeyboardEvent -> Electron accelerator ("Ctrl+Alt+Space"). Null while only modifiers are held. */
+/** KeyboardEvent -> global-shortcut accelerator ("Ctrl+Alt+Space"). Null while only modifiers are held. */
 export function toAccelerator(e: KeyboardEvent): string | null {
   const k = e.key;
   if (['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].includes(k)) return null;
-  const isMac = !!window.platform?.isMac;
+  const isMac = isMacPlatform();
   const mods: string[] = [];
   if (e.ctrlKey) mods.push(isMac ? 'Control' : 'Ctrl');
   if (e.metaKey) mods.push(isMac ? 'Command' : 'Super');
@@ -34,12 +34,12 @@ export function toAccelerator(e: KeyboardEvent): string | null {
 
 /** Pretty label for an accelerator: mac glyphs, otherwise as-is. */
 export function accelLabel(a: string): string {
-  if (!window.platform?.isMac) return a.replace(/\+/g, ' + ');
+  if (!isMacPlatform()) return a.replace(/\+/g, ' + ');
   return a.replace(/Command\+?/g, '\u2318').replace(/Control\+?/g, '\u2303').replace(/Option\+?|Alt\+?/g, '\u2325').replace(/Shift\+?/g, '\u21e7');
 }
 
 export function setupBackgroundSettings(): void {
-  const api = window.electronAPI?.background;
+  const api = isTauri() ? background : null;
   const group = document.getElementById('settingsBackground');
   if (!api || !group) { group?.setAttribute('hidden', ''); return; }
   const bg = document.getElementById('setting-background') as HTMLInputElement | null;
@@ -72,7 +72,7 @@ export function setupBackgroundSettings(): void {
     paint();
   };
 
-  const isMac = !!window.platform?.isMac;
+  const isMac = isMacPlatform();
   const suggestions = isMac ? ['Option+Space', 'Control+Shift+Option+F'] : ['Ctrl+Alt+Space', 'Ctrl+Shift+Alt+F'];
   suggestions.forEach(s => {
     const b = document.createElement('button');
@@ -99,10 +99,10 @@ export function setupBackgroundSettings(): void {
   });
   clearBtn.addEventListener('click', () => { recording = false; void apply(null); });
 
-  bg.addEventListener('change', () => { void api.setBackgroundSettings({ keepInBackground: bg.checked }); });
-  login.addEventListener('change', () => { void api.setBackgroundSettings({ openAtLogin: login.checked }); });
+  bg.addEventListener('change', () => { void api.set({ keepInBackground: bg.checked }); });
+  login.addEventListener('change', () => { void api.set({ openAtLogin: login.checked }); });
 
-  void api.getBackgroundSettings().then(s => {
+  void api.get().then(s => {
     bg.checked = s.keepInBackground;
     login.checked = s.openAtLogin;
     current = s.globalShortcut;

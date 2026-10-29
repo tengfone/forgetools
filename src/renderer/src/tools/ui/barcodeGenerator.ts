@@ -98,7 +98,7 @@ export function render(container: HTMLElement): void {
             return;
         }
         setFieldInvalid('barcode-input', false);
-        window.electronAPI.barcode.generate(input, { format, width: 2, height: 100, displayValue: true })
+        import('../lib/media').then(m => m.generateBarcode(input, { format, width: 2, height: 100, displayValue: true }))
             .then(svgString => {
                 if (my !== seq || !preview.isConnected) return; // stale result
                 const svg = parseSvg(svgString);

@@ -2,7 +2,7 @@ import './fonts.css';
 import './monacoEnv'; // must run before Monaco's AMD loader requests editor.main
 import type { Tool } from '../../types/tools';
 import type { editor } from 'monaco-editor';
-import '../../types/electronAPI'; // Ensure Window types are available
+import { appWindow, background, getPlatform, isMac as isMacPlatform, isTauri, startHidden } from './native';
 import { logger } from './logger';
 import { detect, type Candidate } from './detect';
 import './tools';
@@ -85,8 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
   setTheme(getTheme());
   initApp();
   // The window is created hidden (no white flash); reveal it once the first frame is painted.
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    void import('@tauri-apps/api/window').then(({ getCurrentWindow }) => getCurrentWindow().show()).catch(() => {});
+  // Launched at login with --hidden: stay in the tray until the user opens it.
+  if (isTauri()) requestAnimationFrame(() => requestAnimationFrame(() => {
+    void startHidden().then(hidden => hidden ? undefined : appWindow.show()).catch(() => {});
   }));
 });
 
@@ -205,7 +206,6 @@ function initMonaco(): void {
 }
 
 // --- Tool help popover (button + F1) ---
-const isMacPlatform = (): boolean => window.platform?.isMac ?? (navigator.platform.toUpperCase().indexOf('MAC') >= 0);
 /** Platform modifier label: \u2318 on macOS, Ctrl elsewhere. */
 const modKey = (): string => isMacPlatform() ? '\u2318' : 'Ctrl';
 
@@ -252,17 +252,28 @@ function setupHelp(): void {
   });
 }
 
+/** Windows/Linux: our own minimize / maximize / close buttons (macOS keeps native traffic lights). */
+function setupWindowControls(isMac: boolean): void {
+  const box = document.getElementById('windowControls');
+  if (!box || isMac || !isTauri()) return;
+  box.hidden = false;
+  document.getElementById('wcMinimize')?.addEventListener('click', () => void appWindow.minimize());
+  document.getElementById('wcMaximize')?.addEventListener('click', () => void appWindow.toggleMaximize());
+  document.getElementById('wcClose')?.addEventListener('click', () => void appWindow.close());
+}
+
 let openSettingsSheet: (opener?: HTMLElement | null) => void = () => {};
 let openAboutSheet: (opener?: HTMLElement | null) => void = () => {};
 
 function setupTitlebar(): void {
-  const isMac = window.platform?.isMac ?? (navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+  const isMac = isMacPlatform();
   const titlebar = document.querySelector<HTMLElement>('.titlebar');
   if (!titlebar) return;
   document.querySelectorAll('.mod-key').forEach(el => { el.textContent = isMac ? '\u2318' : 'Ctrl'; });
   document.getElementById('railSearch')?.setAttribute('title', `Search (${isMac ? '\u2318' : 'Ctrl '}K)`);
-  // Platform class drives titlebar insets: traffic lights (mac, left) or caption overlay (win/linux, right)
-  document.documentElement.classList.add(isMac ? 'platform-mac' : (window.platform?.isLinux ? 'platform-linux' : 'platform-win'));
+  // Platform class drives titlebar insets: traffic lights (mac, left) or our caption buttons (win/linux, right)
+  document.documentElement.classList.add(`platform-${getPlatform()}`);
+  setupWindowControls(isMac);
   document.getElementById('homeLogo')?.addEventListener('click', () => goHome());
 
   const controls = document.getElementById('titlebarControls') ?? titlebar;
@@ -456,7 +467,7 @@ function initApp(): void {
   setupHomeSearch();
   setupBackgroundSettings();
   setupAbout();
-  window.electronAPI?.background?.onGoHome(() => {
+  if (isTauri()) void background.onGoHome(() => {
     if (currentTool) goHome();
     focusHomeSearch();
   });

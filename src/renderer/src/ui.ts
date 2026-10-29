@@ -4,6 +4,7 @@
 //   data-copy-self          copy this element's own value/textContent
 //   data-copy-text="..."    copy a literal string
 //   data-paste="elementId"  paste clipboard into that field and fire `input`
+import { clipboard, isTauri } from './native';
 
 type Field = HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement;
 
@@ -146,20 +147,14 @@ export function clearableFieldIds(root: HTMLElement): string[] {
   }).map(el => el.id);
 }
 
-type ClipApi = { writeText?: (t: string) => Promise<void>; readText?: () => Promise<string> };
-const clipApi = (): ClipApi | undefined =>
-  (window as unknown as { electronAPI?: { clipboard?: ClipApi } }).electronAPI?.clipboard;
-
-/** Write to the system clipboard via the main process (navigator fallback outside Electron). */
+/** Write to the system clipboard via the clipboard plugin (navigator fallback outside Tauri). */
 export function writeClipboardText(text: string): Promise<void> {
-  const api = clipApi();
-  return api?.writeText ? api.writeText(text) : navigator.clipboard.writeText(text);
+  return isTauri() ? clipboard.writeText(text) : navigator.clipboard.writeText(text);
 }
 
-/** Read the system clipboard via the main process (navigator fallback outside Electron). */
+/** Read the system clipboard via the clipboard plugin (navigator fallback outside Tauri). */
 export function readClipboardText(): Promise<string> {
-  const api = clipApi();
-  return api?.readText ? api.readText() : navigator.clipboard.readText();
+  return isTauri() ? clipboard.readText() : navigator.clipboard.readText();
 }
 
 export async function copyText(text: string, msg = 'Copied'): Promise<void> {

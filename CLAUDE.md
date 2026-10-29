@@ -1,24 +1,24 @@
 # CLAUDE.md
 
-ForgeTools: an offline desktop app of developer utilities. Electron + electron-vite + TypeScript + Tailwind, with Monaco for the editor tools.
+ForgeTools: an offline desktop app of developer utilities. Tauri v2 (Rust shell, system WebView) + Vite + TypeScript + Tailwind, with Monaco for the editor tools.
 
 ## Commands
 
 ```bash
 npm run dev        # hot reload
-npm run build      # build to out/ (required before tests)
-npm test           # Playwright e2e against out/main/main.js
-npm run dist       # package into dist/
-node scripts/record-demo.js   # re-record assets/demo.gif (needs build + ffmpeg)
+npm run build      # frontend to out/renderer
+npm run test:unit  # Vitest
+npm run test:e2e   # builds the wdio test binary, then WebdriverIO e2e (tests/e2e/*.spec.mjs)
+npm run dist       # tauri build (installers in src-tauri/target/release/bundle)
 ```
 
-Always run `npm run build && npm test` before saying a change works.
+Always run `npm run test:unit`, `npm run test:e2e` and `cargo test --lib` (in src-tauri) before saying a change works.
 
 ## Layout
 
-- `src/main/main.ts`: Electron main process (window, CSP, IPC handlers for QR/barcode decoding etc.)
-- `src/preload/index.ts`: the only bridge to the renderer (`window.electronAPI`). `contextIsolation: true`, `nodeIntegration: false`.
-- `src/types/ipc.ts`: IPC channel names. Add new channels here, then wire them in main, preload and the `ElectronAPI` type.
+- `src-tauri/`: Rust shell. `src/lib.rs` (plugins, window events), `src/background.rs` (tray, close-to-tray, global shortcut, start at login). CSP and window config in `tauri.conf.json`; permissions in `capabilities/default.json`.
+- `src/renderer/src/native.ts`: the only bridge to native code (Tauri APIs, official plugins, our Rust commands). Add new native calls here and grant the permission in the capability.
+- `src/renderer/src/updates.ts`: the opt-in update check. `tools/lib/media.ts`: hash, X.509, QR, barcode, SVG (run in the webview).
 - `src/renderer/src/app.ts`: shell (sidebar, command palette, welcome screen, theme, tool loading)
 - `src/renderer/src/tools/index.ts`: **tool registry**. Every tool is declared here.
 - `src/renderer/src/tools/ui/*.ts`: custom tool UIs, each lazily loaded and exporting `render(container)`
@@ -35,7 +35,7 @@ Always run `npm run build && npm test` before saying a change works.
 
 ## Conventions
 
-- **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled. The single exception is the update check (`src/main/updates.ts`): one GET to `api.github.com/repos/tengfone/forgetools/releases/latest`, run from the main process only when the user clicks "Check for updates" or has turned on the opt-in daily check (off by default, skipped under `FORGE_E2E`). External links open in the OS browser through the allowlist in `EXTERNAL_LINKS` (`src/types/ipc.ts`).
+- **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled. The single exception is the update check (`src/renderer/src/updates.ts`): one GET to `api.github.com/repos/tengfone/forgetools/releases/latest`, run only when the user clicks "Check for updates" or has turned on the opt-in daily check (off by default, skipped under `FORGE_E2E`). External links open in the OS browser through the allowlist in `EXTERNAL_LINKS` (`src/renderer/src/native.ts`, also scoped in the opener capability).
 - **Settings** is one dialog with sections (Editor, Privacy, Background, About; `app/settingsDialog.ts`). Add new options as `.setting-row`s in an existing section, or add a section. Don't make one section scroll.
 - Errors go to the shared status bar (`reportError` / `reportOk` / `resetStatus`), not `alert()` or console-only.
 - No inline styles or inline event handlers in tool markup (a test enforces this). Use Tailwind/CSS classes and `addEventListener`.
@@ -52,5 +52,4 @@ Don't tag or release unless asked.
 ## Gotchas
 
 - Windows dev machine: use PowerShell syntax (no `&&` in older shells; use `;`).
-- Playwright `recordVideo` hangs with this Electron app. `record-demo.js` uses a CDP screencast instead.
 - macOS builds are unsigned.

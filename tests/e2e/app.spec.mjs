@@ -1,35 +1,20 @@
-const { test, expect } = require("@playwright/test");
-const { launchElectronApp } = require("./helpers/electronApp");
+import { page as window, expect, captureErrors } from "./helpers/pw.mjs";
+import { waitForAppReady, windowState } from "./helpers/tauriApp.mjs";
 
-let app;
-let window;
 
-test.beforeAll(async () => {
-  const launched = await launchElectronApp();
-  app = launched.app;
-  window = launched.window;
+before(async () => {
+  await waitForAppReady();
+  await captureErrors();
 });
 
-test.afterAll(async () => {
-  if (app) {
-    await app.close();
-  }
-});
-
-test.describe("Application Tests", () => {
-  test("should launch and display basic UI", async () => {
+describe("Application Tests", () => {
+  it("should launch and display basic UI", async () => {
     // Verify window title
-    const title = await app.evaluate(async ({ BrowserWindow }) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      return win.getTitle();
-    });
+    const { title } = await windowState();
     expect(title).toContain("ForgeTools");
 
     // Verify window is visible
-    const isVisible = await app.evaluate(async ({ BrowserWindow }) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      return win.isVisible();
-    });
+    const { visible: isVisible } = await windowState();
     expect(isVisible).toBe(true);
 
     // Wait for app to initialize
@@ -48,7 +33,7 @@ test.describe("Application Tests", () => {
     await expect(mainContent).toBeVisible({ timeout: 5000 });
   });
 
-  test("should display sidebar with tools", async () => {
+  it("should display sidebar with tools", async () => {
     // Wait for app to initialize
     await window.waitForSelector("#toolsNav", { timeout: 20000 });
     await window.waitForTimeout(1000);
@@ -63,7 +48,7 @@ test.describe("Application Tests", () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  test("should be able to navigate to a tool", async () => {
+  it("should be able to navigate to a tool", async () => {
     // Wait for app to initialize
     await window.waitForSelector("#toolsNav", { timeout: 20000 });
     await window.waitForTimeout(1000);

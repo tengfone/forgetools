@@ -1,23 +1,18 @@
-const { test, expect } = require("@playwright/test");
-const { launchElectronApp } = require("./helpers/electronApp");
+import { createRequire } from "node:module";
+import { page as window, expect, captureErrors, pageErrors as getPageErrors, clipboard } from "./helpers/pw.mjs";
+import { waitForAppReady } from "./helpers/tauriApp.mjs";
+const require = createRequire(import.meta.url);
 
 // Smoke test: every tool must render without throwing, and shared
 // clipboard actions plus the diff modes must work end to end.
-let app;
-let window;
-const pageErrors = [];
 
-test.beforeAll(async () => {
-  ({ app, window } = await launchElectronApp());
-  window.on("pageerror", (e) => pageErrors.push(e.message));
+before(async () => {
+  await waitForAppReady();
+  await captureErrors();
   await window.waitForSelector("#toolsNav [data-tool-id]", { timeout: 20000 });
 });
 
-test.afterAll(async () => {
-  if (app) await app.close();
-});
-
-test("every tool opens without runtime errors", async () => {
+it("every tool opens without runtime errors", async () => {
   const ids = await window.$$eval("#toolsNav [data-tool-id]", (els) =>
     els.map((e) => e.getAttribute("data-tool-id"))
   );
@@ -26,10 +21,10 @@ test("every tool opens without runtime errors", async () => {
     await window.click(`#toolsNav [data-tool-id="${id}"]`);
     await window.waitForTimeout(150);
   }
-  expect(pageErrors).toEqual([]);
+  expect(await getPageErrors()).toEqual([]);
 });
 
-test("no inline styles or handlers leak into tool UIs", async () => {
+it("no inline styles or handlers leak into tool UIs", async () => {
   const ids = await window.$$eval("#toolsNav [data-tool-id]", (els) =>
     els.map((e) => e.getAttribute("data-tool-id"))
   );
@@ -41,39 +36,39 @@ test("no inline styles or handlers leak into tool UIs", async () => {
   }
 });
 
-test("delegated copy writes to the clipboard", async () => {
+it("delegated copy writes to the clipboard", async () => {
   await window.click('#toolsNav [data-tool-id="randomStringGenerator"]');
   const chip = window.locator("#rand-results .copy-chip").first();
   await chip.waitFor();
   const text = (await chip.textContent()).trim();
   await chip.click();
   await expect(window.locator(".toast").last()).toContainText("Copied");
-  const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
+  const clip = await clipboard.readText();
   expect(clip).toBe(text);
 });
 
-test("JSON output Copy goes through the main-process clipboard", async () => {
+it("JSON output Copy goes through the main-process clipboard", async () => {
   await window.click('#toolsNav [data-tool-id="json"]');
   await window.click("#sampleBtn");
   await expect.poll(async () => (await window.evaluate(() =>
     document.querySelector("#outputEditor .view-lines")?.textContent ?? "")).length, { timeout: 10000 }).toBeGreaterThan(5);
-  await app.evaluate(({ clipboard }) => clipboard.writeText(""));
+  await clipboard.writeText("");
   await window.click("#copyBtn");
   await expect(window.locator(".toast").last()).toContainText("Copied output");
-  const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
+  const clip = await clipboard.readText();
   expect(clip.length).toBeGreaterThan(5);
   expect(() => JSON.parse(clip)).not.toThrow();
   expect(clip).toContain("\n"); // formatted output, not the raw sample echo
 });
 
-test("Paste button reads the main-process clipboard", async () => {
-  await app.evaluate(({ clipboard }) => clipboard.writeText("hello paste"));
+it("Paste button reads the main-process clipboard", async () => {
+  await clipboard.writeText("hello paste");
   await window.click('#toolsNav [data-tool-id="base64"]');
   await window.click('[data-paste="b64-plain"]');
   await expect(window.locator("#b64-plain")).toHaveValue("hello paste");
 });
 
-test("sidebar search trigger opens the palette", async () => {
+it("sidebar search trigger opens the palette", async () => {
   await window.click("#sidebarSearch");
   await expect(window.locator("#cmdPalette")).toHaveClass(/visible/);
   await expect(window.locator("#sidebarSearch kbd").first()).toBeVisible();
@@ -81,19 +76,19 @@ test("sidebar search trigger opens the palette", async () => {
   await expect(window.locator("#cmdPalette")).not.toHaveClass(/visible/);
 });
 
-test("diff tool supports word and char modes", async () => {
+it("diff tool supports word and char modes", async function () {
   await window.click('#toolsNav [data-tool-id="textDiff"]');
   await window.waitForSelector("#diff-mode");
   const hasDiff = await window.locator("#diff-mode").count();
-  test.skip(!hasDiff, "diff tool id differs");
+  if (!hasDiff) this.skip(); // diff tool id differs
   for (const mode of ["line", "word", "char"]) {
     await window.selectOption("#diff-mode", mode);
     await window.waitForTimeout(100);
   }
-  expect(pageErrors).toEqual([]);
+  expect(await getPageErrors()).toEqual([]);
 });
 
-test("custom tool errors land in the shared status bar", async () => {
+it("custom tool errors land in the shared status bar", async () => {
   await window.click('#toolsNav [data-tool-id="yamlFormatter"]');
   await window.waitForSelector("#yaml-input");
   await window.fill("#yaml-input", "a: [unclosed");
@@ -106,7 +101,7 @@ test("custom tool errors land in the shared status bar", async () => {
   await expect(window.locator("#statusMsg")).toHaveText("Ready");
 });
 
-test("number base rejects invalid digits instead of ignoring them", async () => {
+it("number base rejects invalid digits instead of ignoring them", async () => {
   await window.click('#toolsNav [data-tool-id="numberBaseConverter"]');
   await window.waitForSelector("#num-binary");
   await window.fill("#num-binary", "1012");
@@ -116,7 +111,7 @@ test("number base rejects invalid digits instead of ignoring them", async () => 
   await expect(window.locator("#num-decimal")).toHaveValue("10");
 });
 
-test("barcode validates format before generating", async () => {
+it("barcode validates format before generating", async () => {
   await window.click('#toolsNav [data-tool-id="barcodeGenerator"]');
   await window.waitForSelector("#barcode-input");
   await window.fill("#barcode-input", "abc");
@@ -125,7 +120,7 @@ test("barcode validates format before generating", async () => {
   await expect(window.locator("#statusMsg")).toContainText("EAN-13");
 });
 
-test("clear can be undone from the toast", async () => {
+it("clear can be undone from the toast", async () => {
   await window.click('#toolsNav [data-tool-id="yamlFormatter"]');
   await window.waitForSelector("#yaml-input");
   await window.fill("#yaml-input", "keep: me");
@@ -135,7 +130,7 @@ test("clear can be undone from the toast", async () => {
   await expect(window.locator("#yaml-input")).toHaveValue("keep: me");
 });
 
-test("help popover opens per tool with syntax table", async () => {
+it("help popover opens per tool with syntax table", async () => {
   await window.click('#toolsNav [data-tool-id="cronParser"]');
   await window.click("#helpBtn");
   await expect(window.locator("#helpPopover")).toBeVisible();
@@ -148,7 +143,7 @@ test("help popover opens per tool with syntax table", async () => {
   await expect(window.locator("#helpPopover")).toBeHidden();
 });
 
-test("tool inputs survive switching tools within the session", async () => {
+it("tool inputs survive switching tools within the session", async () => {
   const token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl";
   await window.click('#toolsNav [data-tool-id="jwt"]');
   const ta = window.locator("#customInterface textarea").first();
@@ -161,7 +156,7 @@ test("tool inputs survive switching tools within the session", async () => {
   await expect(window.locator("#statusSession")).toHaveText("memory only");
 });
 
-test("url two-way: typing decoded encodes, swap flips direction", async () => {
+it("url two-way: typing decoded encodes, swap flips direction", async () => {
   await window.click('#toolsNav [data-tool-id="url"]');
   await window.waitForSelector("#url-decoded");
   await window.fill("#url-decoded", "");
@@ -176,21 +171,21 @@ test("url two-way: typing decoded encodes, swap flips direction", async () => {
   await expect(window.locator("#url-decoded")).toHaveValue("a b&c");
 });
 
-test("palette fuzzy search finds Base64 for 'b64'", async () => {
+it("palette fuzzy search finds Base64 for 'b64'", async () => {
   await window.keyboard.press("Control+K");
   await window.keyboard.type("b64");
   await expect(window.locator("#cmdResults")).toContainText("Base64");
   await window.keyboard.press("Escape");
 });
 
-test("titlebar settings button opens the Settings dialog", async () => {
+it("titlebar settings button opens the Settings dialog", async () => {
   await window.click('button[aria-label="Settings"] >> nth=0');
   await expect(window.locator("#settingsTitle")).toHaveText("Settings");
   await expect(window.locator("#settingsOverlay")).toHaveClass(/visible/);
   await window.keyboard.press("Escape");
 });
 
-test("palette 'about' opens Settings on the About section", async () => {
+it("palette 'about' opens Settings on the About section", async () => {
   const pkg = require("../../package.json");
   await window.keyboard.press("Control+K");
   await window.keyboard.type("about");
@@ -206,7 +201,7 @@ test("palette 'about' opens Settings on the About section", async () => {
   await expect(window.locator("#settingsOverlay")).not.toHaveClass(/visible/);
 });
 
-test("settings sections switch with tabs and arrow keys, and fit the window", async () => {
+it("settings sections switch with tabs and arrow keys, and fit the window", async () => {
   await window.click('button[aria-label="Settings"] >> nth=0');
   await window.click("#stab-editor");
   await expect(window.locator("#spane-editor")).toBeVisible();
@@ -223,7 +218,7 @@ test("settings sections switch with tabs and arrow keys, and fit the window", as
   await window.keyboard.press("Escape");
 });
 
-test("editor mode segmented control switches mode", async () => {
+it("editor mode segmented control switches mode", async () => {
   await window.click('#toolsNav [data-tool-id="json"]');
   const group = window.locator('#toolActions [role="radiogroup"]');
   await group.waitFor();
@@ -239,7 +234,7 @@ test("editor mode segmented control switches mode", async () => {
   await expect(fmt).toBeFocused();
 });
 
-test("opening JWT focuses its input", async () => {
+it("opening JWT focuses its input", async () => {
   await window.click('#toolsNav [data-tool-id="jwt"]');
   await expect(window.locator("#jwt-input")).toBeFocused({ timeout: 5000 });
 });

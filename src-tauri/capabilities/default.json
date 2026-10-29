@@ -6,6 +6,24 @@
   "permissions": [
     "core:event:default",
     "core:app:default",
-    "core:window:allow-show"
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-theme",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://github.com/tengfone/forgetools" },
+        { "url": "https://github.com/tengfone/forgetools/*" },
+        { "url": "https://www.buymeacoffee.com/tengfone" }
+      ]
+    },
+    "os:default"
   ]
 }

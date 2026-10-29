@@ -21,7 +21,7 @@ export const config = {
   services: [['@wdio/tauri-service', {
     appBinaryPath,
     driverProvider: 'embedded',
-    // Same intent as Electron's FORGE_E2E=1: no tray, no close-to-tray,
+    // FORGE_E2E=1: no tray, no close-to-tray,
     // no single-instance lock, no automatic update check.
     env: { FORGE_E2E: '1' },
     captureFrontendLogs: true,

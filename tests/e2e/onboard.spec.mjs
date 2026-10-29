@@ -1,22 +1,17 @@
-const { test, expect } = require("@playwright/test");
-const { launchElectronApp } = require("./helpers/electronApp");
+import { page as window, expect, captureErrors } from "./helpers/pw.mjs";
+import { waitForAppReady } from "./helpers/tauriApp.mjs";
 
 const JWT =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
-let app;
-let window;
 
-test.beforeAll(async () => {
-  ({ app, window } = await launchElectronApp());
+before(async () => {
+  await waitForAppReady();
+  await captureErrors();
   await window.waitForSelector("#homeSearch", { timeout: 20000 });
 });
 
-test.afterAll(async () => {
-  if (app) await app.close();
-});
-
-test("home box filters the grid for 'b64'", async () => {
+it("home box filters the grid for 'b64'", async () => {
   await window.fill("#homeSearch", "b64");
   await expect(window.locator('#homeGrid [data-tool-tile="base64"]')).toBeVisible();
   await expect(window.locator('#homeGrid [data-tool-tile="json"]')).toBeHidden();
@@ -26,14 +21,14 @@ test("home box filters the grid for 'b64'", async () => {
   await expect(window.locator('#homeGrid [data-tool-tile="json"]')).toBeVisible();
 });
 
-test("Arrow Down moves from the box into the grid", async () => {
+it("Arrow Down moves from the box into the grid", async () => {
   await window.fill("#homeSearch", "b64");
   await window.press("#homeSearch", "ArrowDown");
   await expect(window.locator('#homeGrid [data-tool-tile="base64"]')).toBeFocused();
   await window.fill("#homeSearch", "");
 });
 
-test("Ctrl+K on Home focuses and selects the box", async () => {
+it("Ctrl+K on Home focuses and selects the box", async () => {
   await window.fill("#homeSearch", "abc");
   await window.locator("#homeBrowseHeading").click();
   await window.keyboard.press("Control+K");
@@ -44,7 +39,7 @@ test("Ctrl+K on Home focuses and selects the box", async () => {
   await window.fill("#homeSearch", "");
 });
 
-test("pasting a JWT into the box and pressing Enter opens the decoder with it", async () => {
+it("pasting a JWT into the box and pressing Enter opens the decoder with it", async () => {
   await window.fill("#homeSearch", JWT);
   await expect(window.locator("#homeDetect .btn-primary")).toContainText("Looks like a JWT");
   await expect(window.locator("#homeDetect .btn-primary")).toContainText("JWT Decoder");

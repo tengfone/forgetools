@@ -155,7 +155,6 @@ export const GITIGNORE: Record<string, string[]> = {
     Terraform: ['.terraform/', '*.tfstate', '*.tfstate.*', 'crash.log', '*.tfvars', '*.tfvars.json', 'override.tf', 'override.tf.json', '.terraformrc', 'terraform.rc'],
     Next: ['.next/', 'out/', 'next-env.d.ts', '.vercel'],
     Vite: ['dist/', 'dist-ssr/', '*.local'],
-    Electron: ['out/', 'dist/', 'release/'],
     Env: ['.env', '.env.*', '!.env.example', '*.pem', '*.key'],
     macOS: ['.DS_Store', '.AppleDouble', '.LSOverride', '._*', '.Spotlight-V100', '.Trashes'],
     Windows: ['Thumbs.db', 'ehthumbs.db', 'Desktop.ini', '$RECYCLE.BIN/', '*.lnk'],

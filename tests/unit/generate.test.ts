@@ -39,7 +39,7 @@ describe('cron builder', () => {
 
 describe('.gitignore', () => {
     it('merges templates without duplicates', () => {
-        const g = buildGitignore(['Node', 'Vite', 'Electron']);
+        const g = buildGitignore(['Node', 'Vite', 'Python']);
         expect(g).toContain('# Node\nnode_modules/');
         expect(g.match(/^dist\/$/gm)).toHaveLength(1);
         expect(buildGitignore([])).toBe('');

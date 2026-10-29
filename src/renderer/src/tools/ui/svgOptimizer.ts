@@ -49,7 +49,7 @@ export function render(container: HTMLElement): void {
         $('svg-input-size').textContent = `Size: ${(inputSize / 1024).toFixed(2)} KB`;
         try {
             if (!/<svg[\s>]/i.test(input)) throw new Error('Input must contain an <svg> element');
-            const optimized = await window.electronAPI.svg.optimize(input);
+            const optimized = await (await import('../lib/media')).optimizeSvg(input);
             if (mine !== seq) return;
             const outputSize = new Blob([optimized]).size;
             const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);

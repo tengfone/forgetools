@@ -1,6 +1,6 @@
 // Theme management: app colour scheme, theme toggle button, and Monaco themes derived from CSS variables.
 import type { editor } from 'monaco-editor';
-import '../../../types/electronAPI';
+import { appWindow, isTauri } from '../native';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
 let currentTheme: ThemeChoice = (localStorage.getItem('theme') as ThemeChoice) || 'system';
@@ -26,8 +26,9 @@ export function setTheme(theme: 'system' | 'light' | 'dark'): void {
   if (isDark) {
     document.documentElement.classList.add('dark');
   }
-  // Keep the native caption buttons (Windows/Linux overlay) in step with the app theme
-  try { window.electronAPI?.window?.setTitleBarTheme?.(isDark ? 'dark' : 'light'); } catch { /* not in Electron */ }
+  // Keep the native window theme (macOS title bar, WebView scrollbars) in step with the app theme
+  // 'system' passes null so prefers-color-scheme keeps following the OS.
+  if (isTauri()) void appWindow.setTheme(theme === 'system' ? null : isDark ? 'dark' : 'light').catch(() => {});
   
   // Update Monaco Theme (themes are rebuilt from the CSS variables now in effect)
   if (window.monaco) {

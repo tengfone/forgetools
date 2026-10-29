@@ -1,4 +1,4 @@
-// Pure string helpers (formerly in the preload). No dependencies, safe to import anywhere.
+// Pure string helpers. No dependencies, safe to import anywhere.
 
 /**
  * Split an identifier/phrase into lower-case words: separators (space, _, -, ., /),

@@ -65,11 +65,9 @@ cd forgetools
 npm install
 npm run dev        # run with hot reload
 npm run test:unit  # unit tests (Vitest)
-npm test           # end-to-end tests (Playwright; run `npm run build` first)
+npm run test:e2e   # end-to-end tests (WebdriverIO against a Tauri test build)
 npm run dist       # package for your platform into dist/
 ```
-
-To re-record the demo GIF above, run `npm run build && node scripts/record-demo.js` (needs ffmpeg on PATH).
 
 To release, run `npm run release:patch` (or `release:minor` / `release:major`). It tags the version, and once tests and all platform builds pass, CI publishes the GitHub release automatically. Only the 10 newest releases are kept; older ones are deleted (their git tags stay).
 
@@ -79,4 +77,4 @@ To release, run `npm run release:patch` (or `release:minor` / `release:major`). 
 
 ---
 
-Built with Electron, TypeScript, Tailwind CSS and Monaco Editor. Developed with assistance from Anthropic's Claude.
+Built with Tauri, TypeScript, Tailwind CSS and Monaco Editor. Developed with assistance from Anthropic's Claude.

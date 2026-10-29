@@ -1,4 +1,4 @@
-// Pure version helpers (no Electron imports, so they're unit-testable).
+// Pure version helpers (no DOM or Tauri imports, so they're unit-testable).
 
 /** "v1.2.3-beta" -> [1,2,3]; null when it isn't a version. Pre-release suffixes are ignored. */
 export function parseVersion(v: string): [number, number, number] | null {

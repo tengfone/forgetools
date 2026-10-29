@@ -16,10 +16,10 @@ An all-in-one desktop developer toolkit: formatters, encoders/decoders, converte
 Every tool runs fully offline with no telemetry. Pasted data (tokens, certificates, customer payloads) never leaves the machine. It's fast, all-in-one, and pleasant to use, in contrast to ad-laden, network-dependent web utilities.
 
 ## Operating Context
-Desktop app (Electron) used alongside an editor, terminal, and browser. Input is usually pasted or typed text, files, or images; output is copied back into other tools.
+Desktop app (Tauri) used alongside an editor, terminal, and browser. Input is usually pasted or typed text, files, or images; output is copied back into other tools.
 
 ## Capabilities and Constraints
-- Stack: Electron-Vite, TypeScript, Tailwind CSS, Monaco Editor, Playwright tests.
+- Stack: Tauri v2, Vite, TypeScript, Tailwind CSS, Monaco Editor, Vitest and WebdriverIO tests.
 - Tool categories (see README.md): Formatters (JSON, XML, SQL, HTML, HTML→JSX, Markdown→HTML, Markdown preview, YAML, SVG optimizer); Encoders/Decoders (Base64, URL, JWT, backslash escape, HEX↔ASCII, X.509 certificate, hashes); Converters (YAML↔JSON, CSV↔JSON, timestamp, color, number base, image→Base64); Generators (UUID/ULID, QR, barcode, Lorem Ipsum, random string); Text tools (diff viewer). Also: HMAC, JWT signing, key pairs, CSR/SAML/PEM↔JWK, bcrypt/Argon2, password strength, JSON↔YAML/TOML/.env, JSON→types, JSONPath, JSON diff, cURL→code, docker run↔compose, Dockerfile lint, CSS/JS/GraphQL formatting, CIDR, URL/User-Agent parsing, gzip, protobuf/MessagePack, Unicode inspector, chmod, data sizes, time zones, HTTP status, cheat sheets, fake data, cron builder, .gitignore, favicons, a tool pipeline, and opt-in local per-tool history.
 - Hard constraints: must work entirely offline; no telemetry or network calls with user data. The only network request is an opt-in update check (manual button, or a daily check that is off by default) that asks GitHub for the latest release version; it sends nothing about the user.
 - Undecided: target OSes, distribution, brand identity, accessibility standard.

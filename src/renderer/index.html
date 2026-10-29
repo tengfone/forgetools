@@ -10,11 +10,12 @@
     <link rel="stylesheet" href="/vs/editor/editor.main.css">
 </head>
 <body class="m-0 p-0 font-sans bg-bg-app text-text-primary h-screen overflow-hidden text-[13px] antialiased leading-[1.5]">
-    <header class="titlebar">
+    <header class="titlebar" data-tauri-drag-region="deep">
         <button type="button" class="titlebar-menu" id="navMenuBtn" aria-controls="sidebar" aria-expanded="false" aria-label="Open tool list" title="Tools (Ctrl+B)"><i class="material-icons" aria-hidden="true">menu</i></button>
         <button type="button" class="titlebar-home" id="homeLogo" aria-label="Home" title="Home"><span class="wordmark text-[12px]" aria-hidden="true"><img class="wordmark-logo" src="./assets/favicon.png" alt="" draggable="false">ForgeTools</span></button>
         <div class="flex-grow"></div>
         <div class="titlebar-controls flex items-center gap-1.5" id="titlebarControls"></div>
+        <div class="window-controls" id="windowControls" hidden><button type="button" class="wc-btn" id="wcMinimize" aria-label="Minimize" title="Minimize"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10"/></svg></button><button type="button" class="wc-btn" id="wcMaximize" aria-label="Maximize" title="Maximize"><svg viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9"/></svg></button><button type="button" class="wc-btn wc-close" id="wcClose" aria-label="Close" title="Close"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10"/></svg></button></div>
     </header>
     <div id="loadingScreen" class="fixed inset-0 bg-bg-app z-[9999] flex flex-col items-center justify-center transition-opacity duration-150 ease-out">
         <div class="wordmark wordmark-lg"><img class="wordmark-logo" src="./assets/favicon.png" alt="" draggable="false">ForgeTools</div>

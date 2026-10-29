@@ -59,7 +59,7 @@ export function render(container: HTMLElement): void {
         setFieldInvalid('qr-size', false);
         if (!text) { empty('Enter text to generate a QR code'); resetStatus(); return; }
         try {
-            const url = await window.electronAPI.qrcode.generate(text, { width: size, margin: 2 });
+            const url = await (await import('../lib/media')).generateQr(text, { width: size, margin: 2 });
             if (my !== seq || !preview.isConnected) return; // stale result
             currentDataUrl = url;
             const img = document.createElement('img');

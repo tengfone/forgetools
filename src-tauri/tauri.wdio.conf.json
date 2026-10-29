@@ -11,12 +11,19 @@
         {
           "identifier": "wdio",
           "description": "E2E-only: WebdriverIO plugins (merged in by tauri.wdio.conf.json)",
-          "windows": ["main"],
+          "windows": [
+            "main"
+          ],
           "permissions": [
             "wdio:default",
             "wdio-webdriver:default",
             "core:window:allow-title",
-            "core:window:allow-is-visible"
+            "core:window:allow-is-visible",
+            "core:window:allow-is-decorated",
+            "core:window:allow-inner-size",
+            "core:window:allow-outer-size",
+            "core:window:allow-theme",
+            "core:window:allow-set-size"
           ]
         }
       ]

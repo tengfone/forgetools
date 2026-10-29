@@ -1,18 +1,13 @@
-const { test, expect } = require("@playwright/test");
-const { launchElectronApp } = require("./helpers/electronApp");
+import { page as window, expect, captureErrors } from "./helpers/pw.mjs";
+import { waitForAppReady } from "./helpers/tauriApp.mjs";
 
-let app;
-let window;
 
-test.beforeAll(async () => {
-  ({ app, window } = await launchElectronApp());
+before(async () => {
+  await waitForAppReady();
+  await captureErrors();
 });
 
-test.afterAll(async () => {
-  if (app) await app.close();
-});
-
-test("logo returns home and deselects the tool", async () => {
+it("logo returns home and deselects the tool", async () => {
   await window.click('#toolsNav [data-tool-id="json"]');
   await expect(window.locator("#toolContainer")).toBeVisible();
   await window.click('#homeLogo');
@@ -22,7 +17,7 @@ test("logo returns home and deselects the tool", async () => {
   await expect(window.locator("#railHome")).toHaveAttribute("aria-current", "page");
 });
 
-test("rail Home and palette 'Go home' return home", async () => {
+it("rail Home and palette 'Go home' return home", async () => {
   await window.click('#toolsNav [data-tool-id="url"]');
   await expect(window.locator("#toolContainer")).toBeVisible();
   await window.click("#railHome");
@@ -35,7 +30,7 @@ test("rail Home and palette 'Go home' return home", async () => {
   await expect(window.locator("#toolContainer")).toBeHidden();
 });
 
-test("home search box filter 'b64' shows Base64 and opens it", async () => {
+it("home search box filter 'b64' shows Base64 and opens it", async () => {
   await window.click("#homeLogo");
   await window.fill("#homeSearch", "b64");
   const tile = window.locator('#homeGrid [data-tool-tile="base64"]');

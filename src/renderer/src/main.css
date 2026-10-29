@@ -136,8 +136,8 @@
   .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border-hover); border: 3px solid transparent; background-clip: content-box; border-radius: 6px; }
 }
 
-.titlebar { -webkit-app-region: drag; }
-.titlebar button, .titlebar select, .titlebar input, .titlebar a { -webkit-app-region: no-drag; }
+/* Window dragging: the header carries data-tauri-drag-region="deep"; Tauri skips buttons,
+   links and inputs, and a double-click toggles maximize. */
 
 .command-palette-overlay { display: none; }
 .command-palette-overlay.visible { display: flex !important; }
@@ -146,13 +146,17 @@
 @layer components {
   /* ---------- Shell ---------- */
   .titlebar { @apply h-10 flex items-center gap-2 px-3 relative z-[100] min-w-0; background: var(--bg-app); }
-  /* macOS traffic lights (hiddenInset) on the left; Windows/Linux caption overlay on the right.
-     env(titlebar-area-*) is set when the overlay is active; 140px covers the three caption buttons otherwise. */
+  /* macOS: native traffic lights (overlay title bar) on the left. Windows/Linux: our own caption
+     buttons sit flush with the right edge, so the bar has no right padding there. */
   .platform-mac .titlebar { padding-left: 78px; }
-  /* Reserve exactly the Window Controls Overlay width (0 when there is no overlay). */
-  .platform-win .titlebar, .platform-linux .titlebar {
-    padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 4px);
-  }
+  .platform-win .titlebar, .platform-linux .titlebar { padding-right: 0; }
+  .window-controls { @apply flex items-stretch self-stretch shrink-0; margin-left: -4px; } /* 4px from the controls (bar gap is 8px) */
+  .window-controls[hidden] { display: none; }
+  .wc-btn { @apply w-[46px] flex items-center justify-center border-0 bg-transparent p-0 cursor-default text-text-secondary; }
+  .wc-btn svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; shape-rendering: crispEdges; }
+  .wc-btn:hover { background: var(--hover-tint); color: var(--text-primary); }
+  .wc-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+  .wc-close:hover { background: #c42b1c; color: #fff; }
   .titlebar-menu { display: none; }
   .titlebar-menu {
     @apply w-7 h-7 shrink-0 items-center justify-center border-0 rounded-[6px] bg-transparent cursor-pointer text-text-secondary p-0 -ml-1;
