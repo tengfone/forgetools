@@ -86,9 +86,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initApp();
   // The window is created hidden (no white flash); reveal it once the first frame is painted.
   // Launched at login with --hidden: stay in the tray until the user opens it.
-  if (isTauri()) requestAnimationFrame(() => requestAnimationFrame(() => {
-    void startHidden().then(hidden => hidden ? undefined : appWindow.show()).catch(() => {});
-  }));
+  // WebKit (macOS/Linux) does not run rAF for a hidden window, so a timer is the fallback.
+  if (isTauri()) {
+    let done = false;
+    const reveal = (): void => {
+      if (done) return;
+      done = true;
+      void startHidden().then(hidden => hidden ? undefined : appWindow.show()).catch(() => {});
+    };
+    requestAnimationFrame(() => requestAnimationFrame(reveal));
+    setTimeout(reveal, 100);
+  }
 });
 
 // Monaco is loaded lazily the first time an editor-based tool opens.
