@@ -73,12 +73,20 @@ const JWT =
   await win.locator("#ts-now-btn").click().catch(() => {});
   await win.waitForTimeout(2200);
 
-  // 4. UUID generator
-  await palette("uuid");
-  await win.locator("#uuid-generate-btn").click().catch(() => {});
-  await win.waitForTimeout(500);
-  await win.locator("#uuid-generate-btn").click().catch(() => {});
-  await win.waitForTimeout(2200);
+  // 4. Pipeline: chain decode -> format in one recipe
+  await palette("pipeline");
+  await win.locator("#chain-sample").click();
+  await win.waitForTimeout(2400);
+
+  // 5. Cron builder: plain-English schedule + next runs
+  await palette("cron builder");
+  await win.locator("#cronb-sample").click();
+  await win.waitForTimeout(2400);
+
+  // 6. Fake data
+  await palette("fake data");
+  await win.locator("#fake-sample").click();
+  await win.waitForTimeout(2400);
 
   const tEnd = Date.now() / 1000;
   await cdp.send("Page.stopScreencast");
