@@ -1171,7 +1171,11 @@ function setupHistory(): void {
 function focusToolStart(tool: Tool): void {
   const live = document.getElementById('toolAnnounce');
   if (live) { live.textContent = ''; setTimeout(() => { live.textContent = `${tool.title} opened`; }, 50); }
-  requestAnimationFrame(() => {
+  // Next frame, or a timer when WebKit pauses rAF (window occluded or not yet shown).
+  let done = false;
+  const run = (): void => {
+    if (done) return;
+    done = true;
     if (currentTool !== tool) return;
     const active = document.activeElement;
     // Don't steal focus from the palette while it's still handling input
@@ -1188,7 +1192,9 @@ function focusToolStart(tool: Tool): void {
       return;
     }
     document.getElementById('currentToolTitle')?.focus({ preventScroll: true });
-  });
+  };
+  requestAnimationFrame(run);
+  setTimeout(run, 100);
 }
 
 
