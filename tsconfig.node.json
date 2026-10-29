@@ -8,6 +8,6 @@
     "strict": true,
     "types": ["node"]
   },
-  "include": ["electron.vite.config.ts", "scripts/**/*"]
+  "include": ["vite.config.ts", "scripts/**/*"]
 }
 
