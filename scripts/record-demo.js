@@ -30,7 +30,7 @@ const JWT =
   // Start from a clean welcome screen
   await win.evaluate(() => localStorage.removeItem("recent-tools"));
   await win.reload();
-  await win.waitForSelector("#welcomePaste", { timeout: 20000 });
+  await win.waitForSelector("#homeSearch", { timeout: 20000 });
   await win.waitForTimeout(800);
 
   // Screencast frames arrive only when the page repaints; we resample to a
@@ -56,8 +56,8 @@ const JWT =
   await win.waitForTimeout(1200);
 
   // 1. Paste anything -> auto-detect -> Enter opens the right tool
-  await win.locator("#welcomePaste").focus();
-  await win.locator("#welcomePaste").fill(JWT);
+  await win.locator("#homeSearch").focus();
+  await win.locator("#homeSearch").fill(JWT);
   await win.waitForTimeout(1600);
   await win.keyboard.press("Enter");
   await win.waitForSelector("#jwt-header-out");

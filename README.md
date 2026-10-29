@@ -10,6 +10,8 @@ Offline developer utilities in one desktop app. Format, decode, convert and gene
 - **Paste anything**: drop a JWT, JSON, timestamp or colour on the home screen and ForgeTools opens the right tool.
 - **Keyboard-first**: `Ctrl/Cmd+K` to jump to any tool, `Ctrl/Cmd+Shift+C` to copy output, `F1` for tool help.
 - **Light and dark themes** that follow your system.
+- **Lives in the tray**: closing the window keeps it running, with an optional global shortcut and start at login (see [Background mode](#background-mode)).
+- **Locked down**: sandboxed renderer, strict Content Security Policy, sanitized Markdown preview, and no network access.
 - Runs on **Windows, macOS (Intel & Apple Silicon) and Linux**.
 
 ## Tools
@@ -22,6 +24,16 @@ Offline developer utilities in one desktop app. Format, decode, convert and gene
 | **Text & Utilities** | String Case, RegExp Tester, String Inspector, Hash Generator (MD5/SHA-1/SHA-256/SHA-512), Cron Parser |
 | **Generate** | UUID/ULID, QR Code, Barcode (EAN-13, UPC, CODE128, CODE39), Lorem Ipsum, Random String |
 | **Compare** | Text Diff (line, word, char) |
+
+## Background mode
+
+Closing the window keeps ForgeTools running in the system tray (the menu bar on macOS). Quit from the tray menu, or with `Cmd+Q` on macOS.
+
+In **Settings** you can:
+
+- turn off **Keep running in background** to quit when the window closes;
+- enable **Start at login**, which launches ForgeTools hidden in the tray;
+- set a **global shortcut** (none by default; try `Ctrl+Alt+Space`) that opens ForgeTools on Home with the search box focused, or hides it if it is already focused.
 
 ## Download
 
@@ -57,6 +69,3 @@ To release, run `npm run release:patch` (or `release:minor` / `release:major`). 
 ---
 
 Built with Electron, TypeScript, Tailwind CSS and Monaco Editor. Developed with assistance from Anthropic's Claude.
-## Background mode
-
-Closing the window keeps ForgeTools running in the system tray (menu bar on macOS); quit from the tray menu or with Cmd+Q. Turn this off in Settings ? "Keep running in background". Settings also offer **Start at login** (launches hidden) and a user-defined **global shortcut** (none by default; suggestions Ctrl+Alt+Space / Ctrl+Shift+Alt+F) that shows ForgeTools on Home with the search box focused, or hides it when focused.
