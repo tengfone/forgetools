@@ -1,16 +1,8 @@
 // native.ts against mocked Tauri IPC; updates.ts with a mocked fetch.
 import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest';
 import { mockIPC, mockWindows, clearMocks } from '@tauri-apps/api/mocks';
-import {
-  background,
-  clipboard,
-  linkUrl,
-  EXTERNAL_LINKS,
-  appWindow,
-  CLIPBOARD_MAX,
-  openLink,
-} from '../../src/renderer/src/native';
-import { createUpdates, type UpdateEnv } from '../../src/renderer/src/updates';
+import { background, clipboard, linkUrl, EXTERNAL_LINKS, appWindow, CLIPBOARD_MAX, openLink } from '../../src/native';
+import { createUpdates, type UpdateEnv } from '../../src/updates';
 
 beforeAll(() => {
   // mocks need a window object with crypto (node provides globalThis.crypto)

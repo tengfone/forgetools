@@ -18,8 +18,8 @@ import {
   decodeProtobuf,
   decodeMsgpack,
   encodeMsgpack,
-} from '../../src/renderer/src/tools/lib/convert';
-import { hexToBytes } from '../../src/renderer/src/tools/lib/bytes';
+} from '../../src/tools/lib/convert';
+import { hexToBytes } from '../../src/tools/lib/bytes';
 
 describe('TOML <-> JSON', () => {
   it('round-trips', () => {

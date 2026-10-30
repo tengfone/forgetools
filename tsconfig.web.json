@@ -19,5 +19,5 @@
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["src/renderer/**/*", "src/types/**/*"]
+  "include": ["src/**/*"]
 }

@@ -1,6 +1,6 @@
 name: CI
 
-# Tests on every push to tauri/main and on PRs. A v* tag additionally builds all platforms
+# Tests on every push to main and on PRs. A v* tag additionally builds all platforms
 # and creates a DRAFT GitHub release, published by hand. Tag with:
 #   npm run release:patch|minor|major   (bumps package.json + Cargo files, commits, tags, pushes)
 on:
@@ -8,7 +8,7 @@ on:
   push:
     tags:
       - 'v*'
-    branches: [tauri, main]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

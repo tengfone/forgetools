@@ -8,7 +8,7 @@ import {
   generateBarcode,
   optimizeSvg,
   type HashAlgo,
-} from '../../src/renderer/src/tools/lib/media';
+} from '../../src/tools/lib/media';
 
 type G = {
   hash: Array<Record<'text' | HashAlgo, string>>;

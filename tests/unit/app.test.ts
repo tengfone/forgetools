@@ -7,10 +7,10 @@ import {
   HISTORY_MAX,
   historyLabel,
   looksSecret,
-} from '../../src/renderer/src/tools/lib/history';
-import { buildIco } from '../../src/renderer/src/tools/lib/favicon';
-import { detect } from '../../src/renderer/src/detect';
-import { SAMPLE_CSR_EC } from '../../src/renderer/src/tools/lib/samples';
+} from '../../src/tools/lib/history';
+import { buildIco } from '../../src/tools/lib/favicon';
+import { detect } from '../../src/detect';
+import { SAMPLE_CSR_EC } from '../../src/tools/lib/samples';
 
 class MemStore {
   m = new Map<string, string>();

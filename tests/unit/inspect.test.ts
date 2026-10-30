@@ -11,7 +11,7 @@ import {
   graphemeCount,
   HTTP_STATUS,
   searchHttpStatus,
-} from '../../src/renderer/src/tools/lib/inspect';
+} from '../../src/tools/lib/inspect';
 
 describe('URL parser', () => {
   it('parses and rebuilds', () => {

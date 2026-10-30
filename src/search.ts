@@ -1,6 +1,6 @@
 // Tool search shared by the command palette and the sidebar filter.
 // Ranking per field: prefix > word-start > substring > subsequence (fuzzy).
-import type { Tool } from '../../types/tools';
+import type { Tool } from './types/tools';
 
 const PREFIX = 100,
   WORD = 70,

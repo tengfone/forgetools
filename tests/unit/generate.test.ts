@@ -7,10 +7,10 @@ import {
   buildGitignore,
   GITIGNORE,
   CHEATSHEETS,
-} from '../../src/renderer/src/tools/lib/generate';
-import { CHAIN_OPS, CHAIN_RECIPES, runChain } from '../../src/renderer/src/tools/lib/chain';
-import { bytesToBase64, toUtf8 } from '../../src/renderer/src/tools/lib/bytes';
-import { compress } from '../../src/renderer/src/tools/lib/crypto';
+} from '../../src/tools/lib/generate';
+import { CHAIN_OPS, CHAIN_RECIPES, runChain } from '../../src/tools/lib/chain';
+import { bytesToBase64, toUtf8 } from '../../src/tools/lib/bytes';
+import { compress } from '../../src/tools/lib/crypto';
 
 describe('fake data', () => {
   it('is deterministic with a seed and has every field', () => {

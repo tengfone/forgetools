@@ -31,18 +31,18 @@ Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
 ## Layout
 
 - `src-tauri/`: Rust shell. `src/lib.rs` (plugins, logging, window events), `src/background.rs` (tray, close-to-tray, global shortcut, start at login). CSP and window config in `tauri.conf.json`; permissions in `capabilities/default.json`.
-- `src/renderer/src/native.ts`: the only bridge to native code (Tauri APIs, official plugins, our Rust commands). Add new native calls here and grant the permission in the capability.
-- `src/renderer/src/links.ts`: `EXTERNAL_LINKS`, the only URLs the app may open in the browser (dependency-free; also scoped in the opener capability).
-- `src/renderer/src/updates.ts`: the opt-in update check. `tools/lib/media.ts`: hash, X.509, QR, barcode, SVG (run in the webview).
-- `src/renderer/src/app.ts`: shell entry; wires up the `app/*` modules:
+- `src/native.ts`: the only bridge to native code (Tauri APIs, official plugins, our Rust commands). Add new native calls here and grant the permission in the capability.
+- `src/links.ts`: `EXTERNAL_LINKS`, the only URLs the app may open in the browser (dependency-free; also scoped in the opener capability).
+- `src/updates.ts`: the opt-in update check. `tools/lib/media.ts`: hash, X.509, QR, barcode, SVG (run in the webview).
+- `src/app.ts`: shell entry; wires up the `app/*` modules:
   - `app/state.ts` shared shell state; `app/windowShell.ts` reveal-after-first-paint, caption buttons, go-home event
   - `app/sidebar.ts`, `app/palette.ts`, `app/home.ts` (welcome / paste-anything), `app/pins.ts`, `app/session.ts`, `app/history.ts`
   - `app/toolView.ts` (tool loading), `app/editors.ts` (Monaco editor tools), `app/help.ts`, `app/theme.ts`, `app/cache.ts`
   - `app/settingsDialog.ts`, `app/backgroundSettings.ts`, `app/about.ts` (Settings sections)
-- `src/renderer/src/tools/index.ts`: **tool registry**. Every tool is declared here.
-- `src/renderer/src/tools/ui/*.ts`: custom tool UIs, each lazily loaded and exporting `render(container)`.
-- `src/renderer/src/ui.ts` and `tools/ui/common.ts`: shared helpers (status bar, toasts, copy, input actions, `twoWay`, `emptyState`).
-- `src/renderer/src/monaco.ts`: Monaco (0.57), bundled by Vite as ESM and loaded lazily (`loadMonaco()`/`getMonaco()` in `monacoEnv.ts`). Only the editor core, curated editor features, the `editor.worker` and the tokenizers the tools use are imported; there is no AMD loader, `vs/` folder or postinstall step. Add a language in `monaco.ts` before using it as a tool's `language`.
+- `src/tools/index.ts`: **tool registry**. Every tool is declared here.
+- `src/tools/ui/*.ts`: custom tool UIs, each lazily loaded and exporting `render(container)`.
+- `src/ui.ts` and `tools/ui/common.ts`: shared helpers (status bar, toasts, copy, input actions, `twoWay`, `emptyState`).
+- `src/monaco.ts`: Monaco (0.57), bundled by Vite as ESM and loaded lazily (`loadMonaco()`/`getMonaco()` in `monacoEnv.ts`). Only the editor core, curated editor features, the `editor.worker` and the tokenizers the tools use are imported; there is no AMD loader, `vs/` folder or postinstall step. Add a language in `monaco.ts` before using it as a tool's `language`.
 - `DESIGN.md` and `PRODUCT.md`: the visual system and product principles. Follow them for any UI work.
 
 ## Testing
@@ -60,7 +60,7 @@ Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
 
 ## Conventions
 
-- **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled. The single exception is the update check (`src/renderer/src/updates.ts`): one GET to `api.github.com/repos/tengfone/forgetools/releases/latest`, run only when the user clicks "Check for updates" or has turned on the opt-in daily check (off by default, skipped under `FORGE_E2E`). External links open in the OS browser through `EXTERNAL_LINKS` (`links.ts`).
+- **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled. The single exception is the update check (`src/updates.ts`): one GET to `api.github.com/repos/tengfone/forgetools/releases/latest`, run only when the user clicks "Check for updates" or has turned on the opt-in daily check (off by default, skipped under `FORGE_E2E`). External links open in the OS browser through `EXTERNAL_LINKS` (`links.ts`).
 - **CSP** is strict (`tauri.conf.json`): no inline scripts, no `blob:` workers, `wasm-unsafe-eval` only. Don't loosen it; run `csp-probe.cjs` after touching Monaco or workers.
 - **Settings** is one dialog with sections (Editor, Privacy, Background, About; `app/settingsDialog.ts`). Add new options as `.setting-row`s in an existing section, or add a section. Don't make one section scroll.
 - Errors go to the shared status bar (`reportError` / `reportOk` / `resetStatus`), not `alert()` or console-only.
@@ -71,7 +71,7 @@ Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
 
 ## Releases
 
-CI (`.github/workflows/release.yml`, workflow "CI") runs the test job (lint gate, typecheck, format check, audit, unit, Rust, e2e, release smoke) on every push to `tauri`/`main` and on PRs. A `v*` tag additionally builds Win/macOS/Linux and creates a **draft** GitHub release.
+CI (`.github/workflows/release.yml`, workflow "CI") runs the test job (lint gate, typecheck, format check, audit, unit, Rust, e2e, release smoke) on every push to `main` and on PRs. A `v*` tag additionally builds Win/macOS/Linux and creates a **draft** GitHub release.
 
 1. Move `## [X.Y.Z] - Unreleased` in `CHANGELOG.md` to today's date and commit.
 2. `npm run release:patch|minor|major` (clean working tree). `npm version` runs `scripts/sync-version.cjs`, which copies the version into `src-tauri/Cargo.toml`/`Cargo.lock` in the same commit (`node scripts/sync-version.cjs --dry-run [version]` previews). CI fails if the tag, `package.json` and `Cargo.toml` disagree.

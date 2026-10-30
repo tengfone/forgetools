@@ -1,4 +1,4 @@
-import type { Tool } from '../../../types/tools';
+import type { Tool } from '../types/tools';
 import { getMonaco } from '../monacoEnv';
 import { logger } from '../logger';
 import { bumpToolEpoch, nextFrameOrTimeout, setStatus, showToast, copyText, announce } from '../ui';

@@ -10,7 +10,7 @@ import {
   lintDockerfile,
   dockerRunToCompose,
   composeToDockerRun,
-} from '../../src/renderer/src/tools/lib/format';
+} from '../../src/tools/lib/format';
 
 describe('CSS / JS', () => {
   it('beautifies and minifies CSS', () => {

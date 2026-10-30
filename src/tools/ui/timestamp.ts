@@ -1,6 +1,6 @@
 import { $, $f, reportError, reportOk, resetStatus, setFieldInvalid } from '../../ui';
 import { inputActions, readonlyField, wireLiveTool } from './common';
-import type { ToolDispose } from '../../../../types/tools';
+import type { ToolDispose } from '../../types/tools';
 
 /** How often the "Relative" field is refreshed. */
 const RELATIVE_REFRESH_MS = 5000;

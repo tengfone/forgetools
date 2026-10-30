@@ -1,4 +1,4 @@
-import type { Tool } from '../../../types/tools';
+import type { Tool } from '../types/tools';
 import {
   captureFields,
   restoreFields,

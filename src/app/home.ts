@@ -1,4 +1,4 @@
-import type { Tool } from '../../../types/tools';
+import type { Tool } from '../types/tools';
 import { detect, type Candidate } from '../detect';
 import { scoreTool } from '../search';
 import { esc } from '../ui';

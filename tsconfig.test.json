@@ -4,5 +4,5 @@
     "composite": false,
     "types": ["vite/client", "node"]
   },
-  "include": ["tests/unit/**/*", "src/renderer/**/*", "src/types/**/*", "vitest.config.mts"]
+  "include": ["tests/unit/**/*", "src/**/*", "vitest.config.mts"]
 }

@@ -1,4 +1,4 @@
-import type { Tool } from '../../../types/tools';
+import type { Tool } from '../types/tools';
 import { openModal, closeModal } from '../ui';
 import { scoreTool } from '../search';
 import { state, allTools, toolById, nav } from './state';

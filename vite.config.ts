@@ -10,18 +10,18 @@ export default defineConfig(({ command }) => {
   // `vite` / `tauri dev` (command 'serve') keeps maps and readable output.
   const isProd = command === 'build';
   return {
-    root: resolve(__dirname, 'src/renderer'),
+    root: resolve(__dirname, 'src'),
     base: './',
     // Keep Tauri's Rust errors visible in the terminal.
     clearScreen: false,
     envPrefix: ['VITE_', 'TAURI_ENV_'],
-    // .env.<mode> files live at the repo root, not in `root` (src/renderer).
+    // .env.<mode> files live at the repo root, not in `root` (src).
     envDir: __dirname,
     // Single source of truth for the version (tauri.conf.json reads package.json too).
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src/renderer/src'),
+        '@': resolve(__dirname, 'src'),
       },
     },
     server: {

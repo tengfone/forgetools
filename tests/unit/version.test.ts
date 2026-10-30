@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isNewer, parseVersion } from '../../src/renderer/src/version';
+import { isNewer, parseVersion } from '../../src/version';
 
 describe('update version compare', () => {
   it('parses tags with or without v and ignores suffixes', () => {

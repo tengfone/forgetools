@@ -1,4 +1,4 @@
-import type { Tool } from '../../../types/tools';
+import type { Tool } from '../types/tools';
 import { isMac } from '../native';
 import { state, allTools, toolById, nav } from './state';
 import { getCollapsed, getPinned, isPinned, togglePin, forgetCollapsed, syncPinButton, COLLAPSED_KEY } from './pins';

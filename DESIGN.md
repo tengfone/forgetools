@@ -133,7 +133,7 @@ A precision instrument, not a native-app clone. Dark first (Linear/Raycast linea
 
 ## Colors
 
-All colour flows through CSS custom properties in `src/renderer/src/main.css` (`--bg-*`, `--text-*`, `--accent-*`, `--border-color`, `--field-border`, `--success-*`, `--error-*`, `--part-*`). Monaco themes are rebuilt from the same variables (`--bg-panel` background, `--selection` amber at 25%).
+All colour flows through CSS custom properties in `src/main.css` (`--bg-*`, `--text-*`, `--accent-*`, `--border-color`, `--field-border`, `--success-*`, `--error-*`, `--part-*`). Monaco themes are rebuilt from the same variables (`--bg-panel` background, `--selection` amber at 25%).
 
 - **Canvas ? panel ? control**: `#0b0b0c` ? `#111113` (1px `#1f1f22`, 10px radius, 8px inset from the window) ? `#17171a` (border `#26262b`, hover `#1c1c20`).
 - **Ink**: primary `#ededef`, secondary `#a0a0a8`, label `#8a8a92` (the brief's `#6e6e76` measured 3.7:1 and was raised).
@@ -191,7 +191,7 @@ Flat. Only floating layers (command palette, help popover, settings dialog, toas
 ## Implementation Notes 
 
 - **Shared primitives** (`main.css` components layer): `.card-head`, `.field-label`, `.ui-label`, `.ui-section`, `.ui-meta`, `.copy-chip`, `.panel-well`, `.drop-zone`, `.big-num`, `.empty-glyph`, `.btn-primary`, `.btn-block`, `.btn-sm`, `.icon-sm`, `.diff-line`/`.diff-inline` with `.is-add`/`.is-del`, `.regex-hit`, `.match-card`. Tool templates use these instead of inline `style=""`.
-- **Clipboard actions are declarative**: `data-copy="id"`, `data-copy-self`, `data-copy-text="…"`, `data-paste="id"`. A single delegated listener in `src/renderer/src/ui.ts` handles them and confirms with a toast. Inline `onclick` is not allowed.
+- **Clipboard actions are declarative**: `data-copy="id"`, `data-copy-self`, `data-copy-text="…"`, `data-paste="id"`. A single delegated listener in `src/ui.ts` handles them and confirms with a toast. Inline `onclick` is not allowed.
 - **JWT parts** use a coloured dot plus a tinted header (`--part`), never a coloured side stripe.
 - **Flat Bench enforced**: tool cards and colour previews have no shadow; only the palette, toasts and overlays float.
 - **Blockquotes** in markdown preview use a neutral 2px rule, since amber is reserved for focus, selection and the primary action.
@@ -199,7 +199,7 @@ Flat. Only floating layers (command palette, help popover, settings dialog, toas
 - **One error surface**: every tool, editor-based or custom, reports problems through the shared status bar (`reportError` / `reportOk` / `resetStatus` in `ui.ts`). Tool bodies never print red error text. Invalid fields get `.is-invalid` + `aria-invalid`. The bar resets to Ready on every tool switch.
 - **Validate before running**: tools with known input grammars (barcode formats, number bases) check input up front and name the rule that failed.
 - **Action vocabulary**: Paste, Sample, Clear, Copy, Generate, Download, Swap. No variants ("Clipboard", "Copy Base64", "Generate QR Code").
-- **Tool modules**: `src/renderer/src/tools/index.ts` holds the registry; each custom UI lives in `tools/ui/<id>.ts` exporting `render(container)` and is loaded on first open via `load: () => import(...)`.
+- **Tool modules**: `src/tools/index.ts` holds the registry; each custom UI lives in `tools/ui/<id>.ts` exporting `render(container)` and is loaded on first open via `load: () => import(...)`.
 - **Barcode canvas** is literal white (`#fff`) with `#6e6e73` hint text in both themes, because scanners need a white quiet zone. This is the only theme-independent surface.
 - **Colour converter default** `#72cd42` is sample data, not a UI colour.
 - **Destructive actions are undoable**: every Clear (and the colour reset) snapshots its fields and shows a toast with an **Undo** action for 5s; Ctrl/Cmd+Z outside a text field triggers it too. The editor Clear goes through Monaco edits, so the editor's own undo history works as well. Use `clearWithUndo(ids, after)` from `ui.ts`.

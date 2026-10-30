@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  jsonToYaml,
-  yamlToJson,
-  jsonToTypes,
-  jsonPath,
-  jsonDiff,
-  formatJsonDiff,
-} from '../../src/renderer/src/tools/lib/json';
+import { jsonToYaml, yamlToJson, jsonToTypes, jsonPath, jsonDiff, formatJsonDiff } from '../../src/tools/lib/json';
 
 describe('JSON <-> YAML', () => {
   it('round-trips', () => {

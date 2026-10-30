@@ -1,4 +1,4 @@
-import type { ToolCategory, ToolsRegistry } from '../../../types/tools';
+import type { ToolCategory, ToolsRegistry } from '../types/tools';
 
 /** Sidebar category order. The registry below is declared in this same order. */
 export const CATEGORY_ORDER: ToolCategory[] = [

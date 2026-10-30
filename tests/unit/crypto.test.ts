@@ -18,9 +18,9 @@ import {
   decompress,
   autoDecompress,
   decodeSaml,
-} from '../../src/renderer/src/tools/lib/crypto';
-import { base64ToBytes, bytesToBase64, fromUtf8, toUtf8 } from '../../src/renderer/src/tools/lib/bytes';
-import { SAMPLE_CSR_EC, SAMPLE_CSR_RSA } from '../../src/renderer/src/tools/lib/samples';
+} from '../../src/tools/lib/crypto';
+import { base64ToBytes, bytesToBase64, fromUtf8, toUtf8 } from '../../src/tools/lib/bytes';
+import { SAMPLE_CSR_EC, SAMPLE_CSR_RSA } from '../../src/tools/lib/samples';
 
 describe('HMAC', () => {
   it('matches RFC 4231 test case 2', async () => {

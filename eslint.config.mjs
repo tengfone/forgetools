@@ -58,11 +58,11 @@ export default tseslint.config(
     rules: { 'no-console': 'error' },
   },
   {
-    files: ['src/renderer/src/logger.ts'],
+    files: ['src/logger.ts'],
     rules: { 'no-console': 'off' },
   },
   {
-    files: ['src/renderer/src/tools/ui/regexWorker.ts'],
+    files: ['src/tools/ui/regexWorker.ts'],
     languageOptions: { globals: { ...globals.worker } },
   },
   // Unit tests

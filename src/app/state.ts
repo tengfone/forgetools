@@ -1,4 +1,4 @@
-import type { Tool, ToolDispose } from '../../../types/tools';
+import type { Tool, ToolDispose } from '../types/tools';
 import tools from '../tools';
 
 /** The few pieces of shell state shared between app/* modules. */
