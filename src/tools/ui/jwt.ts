@@ -38,21 +38,21 @@ export function render(container: HTMLElement): void {
                         <h3>Header</h3>
                         ${copyButton('jwt-header-out')}
                     </div>
-                    <pre id="jwt-header-out" class="result-box cursor-pointer" data-copy-self></pre>
+                    <pre id="jwt-header-out" class="result-box cursor-pointer" tabindex="0" data-copy-self></pre>
                 </div>
                 <div class="jwt-part jwt-payload">
                     <div class="card-head">
                         <h3>Payload</h3>
                         ${copyButton('jwt-payload-out')}
                     </div>
-                    <pre id="jwt-payload-out" class="result-box cursor-pointer" data-copy-self></pre>
+                    <pre id="jwt-payload-out" class="result-box cursor-pointer" tabindex="0" data-copy-self></pre>
                 </div>
                 <div class="jwt-part jwt-signature">
                     <div class="card-head">
                         <h3>Signature</h3>
                         ${copyButton('jwt-sig-out')}
                     </div>
-                    <pre id="jwt-sig-out" class="result-box cursor-pointer" data-copy-self></pre>
+                    <pre id="jwt-sig-out" class="result-box cursor-pointer" tabindex="0" data-copy-self></pre>
                 </div>
             </div>
         </div>

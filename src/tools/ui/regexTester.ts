@@ -1,10 +1,11 @@
 import { debounce, emptyState, inputActions, toolCard } from './common';
 import { $f, clearWithUndo, esc, reportError, resetStatus } from '../../ui';
+import type { ToolDispose } from '../../types/tools';
 
 const MAX_INPUT = 200_000;
 const MAX_MATCHES = 1000;
 
-export function render(container: HTMLElement): void {
+export function render(container: HTMLElement): ToolDispose {
   container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
@@ -51,11 +52,14 @@ export function render(container: HTMLElement): void {
   let worker: Worker | null = null;
   let seq = 0;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
+  /** A match is running; a newer request must terminate it (its deadline goes with it). */
+  let busy = false;
 
   const killWorker = (): void => {
     clearTimeout(killTimer);
     worker?.terminate();
     worker = null;
+    busy = false;
   };
   const getWorker = (): Worker => {
     if (!worker) {
@@ -75,6 +79,7 @@ export function render(container: HTMLElement): void {
   let pendingText = '';
   const handle = (res: WRes): void => {
     if (res.seq !== seq) return; // stale
+    busy = false;
     clearTimeout(killTimer);
     if (!alive()) {
       killWorker();
@@ -137,7 +142,9 @@ export function render(container: HTMLElement): void {
 
   const update = (): void => {
     const my = ++seq;
-    clearTimeout(killTimer);
+    if (busy)
+      killWorker(); // before any early return, so clearing input can't leave it running
+    else clearTimeout(killTimer);
     try {
       const pattern = $f('regex-pattern').value;
       const testStr = $f('regex-test').value;
@@ -170,6 +177,7 @@ export function render(container: HTMLElement): void {
       new RegExp(pattern, flags); // syntax check on main thread (cheap, no matching)
       pendingText = testStr;
       getWorker().postMessage({ seq: my, pattern, flags, text: testStr, max: MAX_MATCHES });
+      busy = true;
       killTimer = setTimeout(() => {
         if (my !== seq) return;
         killWorker(); // recreated on next run
@@ -195,4 +203,5 @@ export function render(container: HTMLElement): void {
   };
   $f('regex-clear').onclick = () => clearWithUndo(['regex-test'], update);
   update();
+  return killWorker;
 }

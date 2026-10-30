@@ -570,7 +570,7 @@
     border-color: var(--field-border);
   }
   .copy-chip {
-    @apply px-2.5 py-1.5 rounded-[6px] font-mono text-[13px] break-all cursor-pointer border;
+    @apply block w-full text-left px-2.5 py-1.5 rounded-[6px] font-mono text-[13px] break-all cursor-pointer border;
     background: var(--bg-input);
     border-color: var(--field-border);
     transition: border-color 120ms ease-out;

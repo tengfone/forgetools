@@ -49,13 +49,17 @@ const check = (ok, msg) => {
   check(leaks.length === 0, `no @wdio/tauri-plugin in out/ ${leaks.join(', ')}`);
 
   const child = spawn(exe, [], { env: { ...process.env, TAURI_WEBDRIVER_PORT: String(PORT) }, stdio: 'ignore' });
-  let exited = null;
-  child.on('exit', (code) => {
-    exited = code;
+  // Track the exit itself: a signal-killed process (SIGSEGV, SIGABRT) also has code null.
+  let exit = null;
+  child.on('exit', (code, signal) => {
+    exit = { code, signal };
   });
   try {
     await sleep(5000);
-    check(exited === null, 'app still running after 5 s');
+    check(
+      exit === null,
+      `app still running after 5 s${exit ? ` (exited: ${exit.signal ?? `code ${exit.code}`})` : ''}`,
+    );
     check(!(await portOpen(PORT)), `no WebDriver server on :${PORT}`);
   } finally {
     child.kill();

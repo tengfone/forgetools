@@ -1,4 +1,4 @@
-import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid } from '../../ui';
+import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, requestGuard } from '../../ui';
 import { inputActions, copyButton, wireLiveTool } from './common';
 
 const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
@@ -33,9 +33,9 @@ export function render(container: HTMLElement): void {
   const inputEl = $f('svg-input');
   const output = $f('svg-output');
 
-  let seq = 0;
+  const requests = requestGuard();
   const update = async (): Promise<void> => {
-    const mine = ++seq;
+    const current = requests.start();
     const input = inputEl.value;
     if (!input.trim()) {
       output.value = '';
@@ -50,7 +50,7 @@ export function render(container: HTMLElement): void {
     try {
       if (!/<svg[\s>]/i.test(input)) throw new Error('Input must contain an <svg> element');
       const optimized = await (await import('../lib/media')).optimizeSvg(input);
-      if (mine !== seq) return;
+      if (!current()) return;
       const outputSize = new Blob([optimized]).size;
       const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);
       output.value = optimized;
@@ -58,7 +58,7 @@ export function render(container: HTMLElement): void {
       setFieldInvalid('svg-input', false);
       reportOk('Optimized', `-${reduction}%`);
     } catch (e) {
-      if (mine !== seq) return;
+      if (!current()) return;
       output.value = '';
       $('svg-stats').textContent = '';
       setFieldInvalid('svg-input', true, errorMessage(e));

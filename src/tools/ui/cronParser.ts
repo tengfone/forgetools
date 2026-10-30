@@ -42,9 +42,12 @@ export function render(container: HTMLElement): void {
       cronDesc.textContent = 'Valid expression: next 5 runs listed below';
       runs.forEach((dateStr) => {
         const li = document.createElement('li');
-        li.className = 'copy-chip mb-1.5';
-        li.dataset.copySelf = '';
-        li.textContent = dateStr;
+        li.className = 'mb-1.5';
+        const btn = li.appendChild(document.createElement('button'));
+        btn.type = 'button';
+        btn.className = 'copy-chip';
+        btn.dataset.copySelf = '';
+        btn.textContent = dateStr;
         cronNext.appendChild(li);
       });
       setFieldInvalid('cron-input', false);

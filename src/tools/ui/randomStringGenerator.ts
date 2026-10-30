@@ -67,7 +67,9 @@ export function render(container: HTMLElement): void {
       return;
     }
     const results = Array.from({ length: 5 }, () => makeString(sets, length));
-    $('rand-results').innerHTML = results.map((r) => `<div class="copy-chip" data-copy-self>${esc(r)}</div>`).join('');
+    $('rand-results').innerHTML = results
+      .map((r) => `<button type="button" class="copy-chip" data-copy-self>${esc(r)}</button>`)
+      .join('');
     reportOk('Generated 5 strings', `${length} chars`);
   };
 

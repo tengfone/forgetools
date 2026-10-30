@@ -1,7 +1,7 @@
 import type { editor } from 'monaco-editor';
 import { getMonaco, loadMonaco } from '../monacoEnv';
 import { logger } from '../logger';
-import { setStatus, getIndent, getIndentChoice, showToast, copyText, readClipboardText } from '../ui';
+import { setStatus, getIndent, getIndentChoice, showToast, copyText, readClipboardText, requestGuard } from '../ui';
 import { defineMonacoThemes, isDarkActive } from './theme';
 import { resultCache, resultCacheKey, MAX_CACHEABLE_INPUT, debounce } from './cache';
 import { state, currentMode } from './state';
@@ -156,9 +156,14 @@ export function clearMarkers(): void {
   if (model && monaco) monaco.editor.setModelMarkers(model, MARKER_OWNER, []);
 }
 
-function showOutput(text: string, input: string): void {
+/** Latest-request ownership for processInput: an older formatter result never replaces a newer one. */
+const formatRequests = requestGuard();
+
+function showOutput(text: string, input: string, current: () => boolean): void {
   clearMarkers();
-  requestAnimationFrame(() => editors.output?.setValue(text));
+  requestAnimationFrame(() => {
+    if (current()) editors.output?.setValue(text);
+  });
   if (!input.trim()) setStatus('idle', 'Ready');
   else setStatus('ok', 'Done', `${formatBytes(input.length)} \u2192 ${formatBytes(text.length)}`);
 }
@@ -167,6 +172,7 @@ export async function processInput(): Promise<void> {
   const tool = state.currentTool;
   if (!tool || tool.useCustomUI || !editors.output || !tool.format) return;
   const input = editors.input?.getValue() || '';
+  const current = formatRequests.start();
 
   try {
     const indentChoice = getIndentChoice();
@@ -176,15 +182,16 @@ export async function processInput(): Promise<void> {
     if (cacheable) {
       const cached = resultCache.get(cacheKey);
       if (cached !== undefined) {
-        showOutput(cached, input);
+        showOutput(cached, input, current);
         return;
       }
     }
 
     const outputStr = String(await tool.format(input, getIndent(), mode || undefined));
     if (cacheable) resultCache.set(cacheKey, outputStr);
-    showOutput(outputStr, input);
+    if (current()) showOutput(outputStr, input, current);
   } catch (e) {
+    if (!current()) return; // a newer input or another tool owns the status bar and markers now
     // Keep the last good output; report the problem in the status bar and mark the input
     const error = e instanceof Error ? e : new Error(String(e));
     const loc = locateError(error.message, input);

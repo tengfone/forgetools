@@ -23,8 +23,10 @@ export const $f = (id: string): Field => $<Field>(id);
  */
 export const textOf = (el: Element | null): string => {
   if (!el) return '';
-  const v = (el as Partial<Field>).value;
-  return typeof v === 'string' ? v : (el.textContent ?? '').trim();
+  // Only form fields hold data in .value (a <button> has an empty .value too).
+  const isField =
+    el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
+  return isField ? el.value : (el.textContent ?? '').trim();
 };
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -330,6 +332,13 @@ export function wireClipboardActions(): void {
     if ('select' in target) (target as Field).select();
     void copyText(textOf(target));
   });
+  // Keyboard equivalent for click-to-copy fields and blocks (buttons already click on Enter).
+  document.addEventListener('keydown', (e) => {
+    const target = e.target as HTMLElement | null;
+    if (e.key !== 'Enter' || !target?.matches('[data-copy-self]:not(button)')) return;
+    e.preventDefault();
+    target.click();
+  });
 }
 
 /** Shared status bar used by every tool, editor-based or custom. */
@@ -530,3 +539,19 @@ export const bumpToolEpoch = (): number => {
   }
   return ++toolEpoch;
 };
+
+/**
+ * Ownership for one tool's async work. Call `start()` when a request begins; the returned
+ * `current()` is false once a newer request started or the user switched tools, so a late
+ * result or error is dropped instead of landing in the wrong view.
+ */
+export function requestGuard(): { start: () => () => boolean } {
+  let seq = 0;
+  return {
+    start: () => {
+      const mine = ++seq;
+      const epoch = toolEpoch;
+      return () => mine === seq && epoch === toolEpoch;
+    },
+  };
+}

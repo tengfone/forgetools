@@ -126,7 +126,7 @@ const outField = (id: string, label: string): string => `
 const chip = (label: string, id: string): string => `
     <div class="mb-3">
         <div class="ui-section">${label}</div>
-        <div class="copy-chip" id="${id}" data-copy-self></div>
+        <button type="button" class="copy-chip" id="${id}" data-copy-self></button>
     </div>`;
 
 export function render(container: HTMLElement): void {

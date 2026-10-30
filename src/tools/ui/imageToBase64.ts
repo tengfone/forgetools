@@ -1,9 +1,10 @@
-import { $, $f, copyText, reportError, reportOk, resetStatus } from '../../ui';
+import { $, $f, copyText, reportError, reportOk, resetStatus, requestGuard } from '../../ui';
+import type { ToolDispose } from '../../types/tools';
 
 const MAX_FILE = 10 * 1024 * 1024; // refuse to encode beyond this
 const MAX_INLINE = 1024 * 1024; // above this, don't dump the data URL into the textarea
 
-export function render(container: HTMLElement): void {
+export function render(container: HTMLElement): ToolDispose {
   container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
@@ -52,6 +53,10 @@ export function render(container: HTMLElement): void {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
+  // Only the latest selection may commit; an older read is aborted and its callbacks ignored.
+  const requests = requestGuard();
+  let reader: FileReader | null = null;
+
   const handleFile = (file: File): void => {
     if (file.size > MAX_FILE) {
       reportError(`"${file.name}" is ${(file.size / 1048576).toFixed(1)} MB; the limit is 10 MB`);
@@ -61,9 +66,12 @@ export function render(container: HTMLElement): void {
       reportError(`"${file.name}" is not an image (expected image/* type)`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = typeof reader.result === 'string' ? reader.result : '';
+    reader?.abort();
+    const current = requests.start();
+    const r = (reader = new FileReader());
+    r.onload = () => {
+      if (!current()) return;
+      const base64 = typeof r.result === 'string' ? r.result : '';
       $<HTMLImageElement>('image-preview').src = base64;
       dataUrl = base64;
       baseName =
@@ -80,8 +88,10 @@ export function render(container: HTMLElement): void {
       resultCard.classList.remove('hidden');
       reportOk('Image encoded', `${(base64.length / 1024).toFixed(1)} KB`);
     };
-    reader.onerror = () => reportError('Could not read the file');
-    reader.readAsDataURL(file);
+    r.onerror = () => {
+      if (current()) reportError('Could not read the file');
+    };
+    r.readAsDataURL(file);
   };
 
   dropZone.onclick = () => fileInput.click();
@@ -107,4 +117,5 @@ export function render(container: HTMLElement): void {
     if (file) handleFile(file);
   };
   resetStatus();
+  return () => reader?.abort();
 }

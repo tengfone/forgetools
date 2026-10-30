@@ -23,8 +23,17 @@ export function render(container: HTMLElement): void {
       return;
     }
     try {
-      const result = Papa.parse<Record<string, unknown>>(csv.value, { header: true });
+      const result = Papa.parse<Record<string, unknown>>(csv.value, { header: true, skipEmptyLines: true });
       json.value = JSON.stringify(result.data, null, 2);
+      // Papa Parse reports problems instead of throwing. A single-column CSV has no delimiter to
+      // detect, which is not an error (it defaults to a comma).
+      const err = result.errors.find((e) => e.code !== 'UndetectableDelimiter');
+      if (err) {
+        const msg = `${err.row != null ? `Row ${err.row + 1}: ` : ''}${err.message}`;
+        setFieldInvalid('csv-input', true, msg);
+        reportError(msg, 'output is partial');
+        return;
+      }
       setFieldInvalid('csv-input', false);
       reportOk('Converted CSV to JSON');
     } catch (e) {

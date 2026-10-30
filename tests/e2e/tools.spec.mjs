@@ -33,12 +33,51 @@ describe('Tools', () => {
 
   it('delegated copy writes to the clipboard', async () => {
     await open('randomStringGenerator');
-    const chip = $('#rand-results .copy-chip');
+    const chip = $('#rand-results button.copy-chip'); // a real button, so keyboard users can reach it
     await chip.waitForDisplayed();
     const text = (await chip.getText()).trim();
     await chip.click();
     await expect($('#toastContainer .toast')).toHaveText(expect.stringContaining('Copied'));
     expect(await clipboard.readText()).toBe(text);
+  });
+
+  it('Enter copies a focused click-to-copy block', async () => {
+    // Buttons activate on Enter natively; this covers the non-button targets (JWT parts, readonly fields).
+    await open('jwt');
+    await $('#jwt-sample').click();
+    const out = $('#jwt-header-out');
+    await expect(out).toHaveText(expect.stringContaining('alg'));
+    await clipboard.writeText('');
+    await browser.execute(() => document.getElementById('jwt-header-out').focus());
+    await browser.keys('Enter');
+    await browser.waitUntil(async () => (await clipboard.readText()).includes('"alg"'), {
+      timeoutMsg: 'Enter on the focused JWT header did not copy',
+    });
+  });
+
+  it('malformed CSV is an error, not a successful conversion', async () => {
+    await open('csvJson');
+    await $('#csv-input').setValue('a,b\n1,2,3');
+    await expect($('#statusBar')).toHaveElementClass('is-error');
+    await expect($('#statusMsg')).toHaveText(expect.stringContaining('Too many fields'));
+  });
+
+  it('a pathological character diff never freezes the window', async () => {
+    await open('textDiff');
+    await selectOption('#diff-mode', { value: 'char' });
+    const started = Date.now();
+    await browser.execute(() => {
+      const set = (id, v) => {
+        const el = document.getElementById(id);
+        el.value = v;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      set('diff-original', 'a'.repeat(50_000));
+      set('diff-compared', 'b'.repeat(50_000));
+    });
+    // The page keeps answering while the worker gives up, then the status bar says so.
+    await expect($('#statusBar')).toHaveElementClass('is-error', { wait: 8000 });
+    expect(Date.now() - started).toBeLessThan(8000);
   });
 
   it('Copy keeps leading and trailing newlines', async () => {

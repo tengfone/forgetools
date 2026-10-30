@@ -1,4 +1,4 @@
-import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid } from '../../ui';
+import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, requestGuard } from '../../ui';
 import { emptyState, inputActions, readonlyField, wireLiveTool, toolCard } from './common';
 
 /** Self-signed sample (CN=forgetools.example, EC P-256, 2025-2035). */
@@ -33,9 +33,9 @@ export function render(container: HTMLElement): void {
   const input = $f('cert-input');
   const details = $('cert-details');
 
-  let seq = 0;
+  const requests = requestGuard();
   const update = async (): Promise<void> => {
-    const mine = ++seq;
+    const current = requests.start();
     const val = input.value.trim();
     if (!val) {
       details.classList.add('hidden');
@@ -48,7 +48,7 @@ export function render(container: HTMLElement): void {
       if (!val.includes('-----BEGIN CERTIFICATE-----'))
         throw new Error('PEM must start with -----BEGIN CERTIFICATE-----');
       const decoded = await (await import('../lib/media')).decodeX509(val);
-      if (mine !== seq) return;
+      if (!current()) return;
       if (!decoded) throw new Error('Could not decode the certificate body');
       $f('cert-subject').value = decoded.subject || '';
       $f('cert-issuer').value = decoded.issuer || '';
@@ -61,7 +61,7 @@ export function render(container: HTMLElement): void {
       setFieldInvalid('cert-input', false);
       reportOk('Certificate decoded');
     } catch (e) {
-      if (mine !== seq) return;
+      if (!current()) return;
       details.classList.add('hidden');
       $('cert-empty').classList.remove('hidden');
       setFieldInvalid('cert-input', true, errorMessage(e));

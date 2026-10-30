@@ -87,6 +87,11 @@ pub fn start_hidden() -> bool {
     std::env::args().any(|a| a == "--hidden")
 }
 
+/// Pure: stay hidden only when the tray icon exists; without it the window is the only way in.
+pub fn should_start_hidden(hidden_flag: bool, tray_available: bool) -> bool {
+    hidden_flag && tray_available
+}
+
 /// Parse a stored JSON blob leniently, field by field, like the v0.2.1 loader.
 pub fn parse_prefs(raw: &str) -> Stored {
     let Ok(v) = serde_json::from_str::<serde_json::Value>(raw) else {
@@ -594,6 +599,13 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hidden_launch_needs_a_tray() {
+        assert!(should_start_hidden(true, true));
+        assert!(!should_start_hidden(true, false));
+        assert!(!should_start_hidden(false, true));
+    }
 
     #[test]
     fn renderer_accelerators_parse() {

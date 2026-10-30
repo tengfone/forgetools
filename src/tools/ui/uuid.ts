@@ -7,7 +7,7 @@ const MAX = 100;
 const row = (label: string, value: string, last = false): string => `
     <div class="result-item${last ? '' : ' mb-3'}">
         <div class="ui-section">${label}</div>
-        <div class="copy-chip mt-1" data-copy-self>${esc(value)}</div>
+        <button type="button" class="copy-chip mt-1" data-copy-self>${esc(value)}</button>
     </div>`;
 
 export function render(container: HTMLElement): void {

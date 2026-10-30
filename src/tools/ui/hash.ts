@@ -1,4 +1,4 @@
-import { $, $f, reportOk, reportError, resetStatus } from '../../ui';
+import { $, $f, reportOk, reportError, resetStatus, requestGuard } from '../../ui';
 import { emptyState, inputActions, readonlyField, wireLiveTool, toolCard } from './common';
 
 const ALGOS = [
@@ -25,7 +25,7 @@ export function render(container: HTMLElement): void {
         </div>
     `;
   const input = $f('hash-input');
-  let seq = 0;
+  const requests = requestGuard();
 
   const show = (on: boolean): void => {
     $('hash-results').classList.toggle('hidden', !on);
@@ -34,7 +34,7 @@ export function render(container: HTMLElement): void {
   const update = async (): Promise<void> => {
     const text = input.value;
     show(!!text);
-    const mine = ++seq;
+    const current = requests.start();
     if (!text) {
       ALGOS.forEach(([id]) => {
         $f(`hash-${id}`).value = '';
@@ -50,13 +50,13 @@ export function render(container: HTMLElement): void {
         hashText('sha256', text),
         hashText('sha512', text),
       ]);
-      if (mine !== seq) return;
+      if (!current()) return;
       ALGOS.forEach(([id], i) => {
         $f(`hash-${id}`).value = values[i] ?? '';
       });
       reportOk('Hashed', `${new TextEncoder().encode(text).length} bytes`);
     } catch (e) {
-      reportError(e);
+      if (current()) reportError(e);
     }
   };
 

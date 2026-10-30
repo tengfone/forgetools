@@ -125,8 +125,13 @@ pub fn run() {
         });
 }
 
-/// True when launched by the login item: the frontend must not show the window.
+/// True when launched by the login item with a working tray: the frontend must not show the window.
 #[tauri::command]
-fn start_hidden() -> bool {
-    background::start_hidden()
+fn start_hidden(state: tauri::State<'_, background::State>) -> bool {
+    background::should_start_hidden(
+        background::start_hidden(),
+        state
+            .tray_available
+            .load(std::sync::atomic::Ordering::SeqCst),
+    )
 }

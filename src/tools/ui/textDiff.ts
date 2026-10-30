@@ -1,17 +1,9 @@
 import { debounce, emptyState } from './common';
 
 import { $f, esc, reportError, resetStatus, clearWithUndo } from '../../ui';
-import { logger } from '../../logger';
-import {
-  diffLines,
-  diffWords,
-  diffChars,
-  type DiffLinesOptionsNonabortable,
-  type DiffWordsOptionsNonabortable,
-  type DiffCharsOptionsNonabortable,
-} from 'diff';
+import type { ToolDispose } from '../../types/tools';
 
-export function render(container: HTMLElement): void {
+export function render(container: HTMLElement): ToolDispose {
   container.innerHTML = `
         <div class="custom-interface">
             <!-- Options Bar -->
@@ -93,7 +85,90 @@ export function render(container: HTMLElement): void {
   const caseSensitive = $f('diff-case-sensitive');
   const diffMode = $f('diff-mode');
 
-  const computeDiff = () => {
+  interface Part {
+    value: string;
+    added: boolean;
+    removed: boolean;
+  }
+  interface Res {
+    seq: number;
+    parts?: Part[];
+    error?: string;
+  }
+  /** jsdiff's own budget; the worker is terminated if it overruns this by DEADLINE_SLACK_MS. */
+  const DIFF_TIMEOUT_MS = 2000;
+  const DEADLINE_SLACK_MS = 1000;
+  let worker: Worker | null = null;
+  let seq = 0;
+  let busy = false;
+  let killTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const killWorker = (): void => {
+    clearTimeout(killTimer);
+    worker?.terminate();
+    worker = null;
+    busy = false;
+  };
+  const getWorker = (): Worker => {
+    if (!worker) {
+      worker = new Worker(new URL('./diffWorker.ts', import.meta.url), { type: 'module' });
+      worker.onmessage = (e: MessageEvent<Res>) => handle(e.data);
+    }
+    return worker;
+  };
+
+  let pendingMode = '';
+  const handle = (res: Res): void => {
+    if (res.seq !== seq) return; // stale
+    busy = false;
+    clearTimeout(killTimer);
+    if (!resultDiv.isConnected) return;
+    if (res.error !== undefined) {
+      reportError(res.error, 'previous result kept');
+      return;
+    }
+    const mode = pendingMode;
+    let addedCount = 0;
+    let removedCount = 0;
+    const kind = (p: Part) => (p.added ? 'is-add' : p.removed ? 'is-del' : '');
+    const parts = res.parts ?? [];
+    const result =
+      mode === 'line'
+        ? parts
+            .map((part) => {
+              const lines = part.value.split('\n');
+              if (lines[lines.length - 1] === '') lines.pop();
+              if (part.added) addedCount += lines.length;
+              else if (part.removed) removedCount += lines.length;
+              const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
+              return lines
+                .map((line) => `<div class="diff-line ${kind(part)}">${prefix}${esc(line) || ' '}</div>`)
+                .join('');
+            })
+            .join('')
+        : parts
+            .map((part) => {
+              const n = mode === 'word' ? part.value.split(/\s+/).filter(Boolean).length : part.value.length;
+              if (part.added) addedCount += n;
+              else if (part.removed) removedCount += n;
+              const text = mode === 'char' ? part.value.replace(/\n/g, '↵\n') : part.value;
+              return `<span class="diff-inline ${kind(part)}">${esc(text)}</span>`;
+            })
+            .join('');
+
+    resultDiv.innerHTML =
+      result ||
+      '<div class="tool-empty"><i aria-hidden="true" class="material-icons empty-glyph">check_circle</i>No differences. The texts are identical.</div>';
+    if (addedCount || removedCount) {
+      statsDiv.innerHTML = `<span class="text-success">+${addedCount}</span> / <span class="text-error">-${removedCount}</span>`;
+    } else {
+      statsDiv.textContent = '';
+    }
+  };
+
+  const computeDiff = (): void => {
+    const my = ++seq;
+    if (busy) killWorker(); // a newer request supersedes a running diff
     const original = originalInput.value;
     const compared = comparedInput.value;
 
@@ -113,57 +188,22 @@ export function render(container: HTMLElement): void {
     }
     resetStatus();
 
+    pendingMode = diffMode.value;
     // Case-insensitive compare via jsdiff ignoreCase keeps the original casing in the output.
-    const opts: DiffLinesOptionsNonabortable & DiffWordsOptionsNonabortable & DiffCharsOptionsNonabortable = {
+    getWorker().postMessage({
+      seq: my,
+      mode: pendingMode,
+      original,
+      compared,
       ignoreCase: !caseSensitive.checked,
-    };
-    const mode = diffMode.value;
-    let result = '';
-    let addedCount = 0;
-    let removedCount = 0;
-
-    try {
-      const kind = (p: { added?: boolean; removed?: boolean }) => (p.added ? 'is-add' : p.removed ? 'is-del' : '');
-      if (mode === 'line') {
-        result = diffLines(original, compared, opts)
-          .map((part) => {
-            const lines = part.value.split('\n');
-            if (lines[lines.length - 1] === '') lines.pop();
-            if (part.added) addedCount += lines.length;
-            else if (part.removed) removedCount += lines.length;
-            const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
-            return lines
-              .map((line) => `<div class="diff-line ${kind(part)}">${prefix}${esc(line) || ' '}</div>`)
-              .join('');
-          })
-          .join('');
-      } else {
-        const diff = mode === 'word' ? diffWords(original, compared, opts) : diffChars(original, compared, opts);
-        result = diff
-          .map((part) => {
-            const n = mode === 'word' ? part.value.split(/\s+/).filter(Boolean).length : part.value.length;
-            if (part.added) addedCount += n;
-            else if (part.removed) removedCount += n;
-            const text = mode === 'char' ? part.value.replace(/\n/g, '\u21B5\n') : part.value;
-            return `<span class="diff-inline ${kind(part)}">${esc(text)}</span>`;
-          })
-          .join('');
-      }
-
-      resultDiv.innerHTML =
-        result ||
-        '<div class="tool-empty"><i aria-hidden="true" class="material-icons empty-glyph">check_circle</i>No differences. The texts are identical.</div>';
-
-      // Update stats
-      if (addedCount || removedCount) {
-        statsDiv.innerHTML = `<span class="text-success">+${addedCount}</span> / <span class="text-error">-${removedCount}</span>`;
-      } else {
-        statsDiv.textContent = '';
-      }
-    } catch (e) {
-      logger.error('Diff error:', e);
-      reportError(e);
-    }
+      timeout: DIFF_TIMEOUT_MS,
+    });
+    busy = true;
+    killTimer = setTimeout(() => {
+      if (my !== seq) return;
+      killWorker(); // recreated on next run
+      if (resultDiv.isConnected) reportError('Diff took too long; try Line by Line', 'previous result kept');
+    }, DIFF_TIMEOUT_MS + DEADLINE_SLACK_MS);
   };
 
   const scheduleDiff = debounce(computeDiff, 250);
@@ -189,4 +229,5 @@ export function render(container: HTMLElement): void {
 
   // Initial state
   computeDiff();
+  return killWorker;
 }

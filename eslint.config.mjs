@@ -62,7 +62,7 @@ export default tseslint.config(
     rules: { 'no-console': 'off' },
   },
   {
-    files: ['src/tools/ui/regexWorker.ts'],
+    files: ['src/tools/ui/regexWorker.ts', 'src/tools/ui/diffWorker.ts'],
     languageOptions: { globals: { ...globals.worker } },
   },
   // Unit tests
