@@ -17,8 +17,8 @@ Offline developer utilities in one desktop app. Format, decode, convert and gene
 - **Opt-in input history**: off by default; when on, recent inputs are kept per tool. Tools that handle secrets never record, and secret-looking text is skipped.
 - **Light and dark themes** that follow your system.
 - **Lives in the tray**: closing the window keeps it running, with an optional global shortcut and start at login (see [Background mode](#background-mode)).
-- **Locked down**: sandboxed renderer, strict Content Security Policy, sanitized Markdown preview, and no network access. The one exception is an opt-in update check (a button in Settings → About, plus an optional daily check that is off by default) that only asks GitHub for the latest release number.
-- **Fast startup**: each tool loads its libraries only when you open it, and the app ships no runtime `node_modules` beyond four small main-process libraries (QR, barcode, SVG).
+- **Locked down**: system WebView with no Node.js, least-privilege Tauri permissions, strict Content Security Policy, sanitized Markdown preview, and no network access. The one exception is an opt-in update check (a button in Settings → About, plus an optional daily check that is off by default) that only asks GitHub for the latest release number.
+- **Small and fast**: about 5 MB to download on Windows and macOS, opens in about a third of a second, and each tool loads its libraries only when you open it.
 - Runs on **Windows, macOS (Intel & Apple Silicon) and Linux**.
 
 ## Tools
@@ -46,14 +46,18 @@ In **Settings** you can:
 
 Get the latest build from [Releases](https://github.com/tengfone/forgetools/releases/latest):
 
-| Platform | File |
-| --- | --- |
-| Windows | `ForgeTools-Portable-X.Y.Z.exe` |
-| macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` |
-| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` |
-| Linux | `ForgeTools-X.Y.Z.AppImage` |
+| Platform | File | Size |
+| --- | --- | --- |
+| Windows 10/11 | `ForgeTools-Portable-X.Y.Z.exe` | ~5 MB |
+| macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` | ~5 MB |
+| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` | ~5 MB |
+| Linux | `ForgeTools-X.Y.Z.AppImage` | ~80 MB |
 
-> The macOS build is unsigned. On first launch, right-click the app and choose **Open**.
+Platform notes:
+
+- **Windows**: needs the Microsoft Edge WebView2 runtime, which ships with Windows 10 and 11. The build is unsigned, so SmartScreen may warn on first launch: choose **More info** → **Run anyway**.
+- **macOS**: the build is unsigned. On first launch, right-click the app and choose **Open**.
+- **Linux**: make the file executable (`chmod +x ForgeTools-X.Y.Z.AppImage`) and run it. The AppImage bundles its own WebKitGTK, which is why it is larger. The tray icon has no click action on Linux; use its **Show** menu item. Some Wayland desktops block the global shortcut.
 
 ## Development
 
@@ -66,8 +70,10 @@ npm install
 npm run dev        # run with hot reload
 npm run test:unit  # unit tests (Vitest)
 npm run test:e2e   # end-to-end tests (WebdriverIO against a Tauri test build)
-npm run dist       # package for your platform into dist/
+npm run dist       # installers in src-tauri/target/release/bundle
 ```
+
+You also need the Rust toolchain and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS. `npm run demo` re-records `assets/demo.gif` (needs `npm run build:e2e` first and ffmpeg on PATH).
 
 To release, run `npm run release:patch` (or `release:minor` / `release:major`). It tags the version, and once tests and all platform builds pass, CI publishes the GitHub release automatically. Only the 10 newest releases are kept; older ones are deleted (their git tags stay).
 

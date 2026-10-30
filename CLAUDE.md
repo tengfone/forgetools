@@ -10,6 +10,10 @@ npm run build      # frontend to out/renderer
 npm run test:unit  # Vitest
 npm run test:e2e   # builds the wdio test binary, then WebdriverIO e2e (tests/e2e/*.spec.mjs)
 npm run dist       # tauri build (installers in src-tauri/target/release/bundle)
+npm run lint:gate  # fails if the old desktop runtime is mentioned anywhere
+npm run report:size  # binary/installer/frontend sizes (informational)
+npm run test:smoke # release binary smoke test (after `tauri build`)
+npm run demo       # re-record assets/demo.gif (after build:e2e; needs ffmpeg)
 ```
 
 Always run `npm run test:unit`, `npm run test:e2e` and `cargo test --lib` (in src-tauri) before saying a change works.

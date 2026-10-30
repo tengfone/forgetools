@@ -23,7 +23,8 @@
             "core:window:allow-inner-size",
             "core:window:allow-outer-size",
             "core:window:allow-theme",
-            "core:window:allow-set-size"
+            "core:window:allow-set-size",
+            "core:window:allow-center"
           ]
         }
       ]
