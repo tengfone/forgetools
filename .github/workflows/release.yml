@@ -102,7 +102,7 @@ jobs:
           - { os: windows-latest, name: win, args: "--bundles nsis" }
           - { os: macos-latest, name: mac-arm64, target: aarch64-apple-darwin, args: "--target aarch64-apple-darwin --bundles app" }
           - { os: macos-latest, name: mac-x64, target: x86_64-apple-darwin, args: "--target x86_64-apple-darwin --bundles app" }
-          - { os: ubuntu-22.04, name: linux, args: "--bundles appimage" }
+          - { os: ubuntu-22.04, name: linux, args: "--bundles appimage,deb,rpm" }
     steps:
       - uses: actions/checkout@v5
 
@@ -153,7 +153,10 @@ jobs:
           case "${{ matrix.name }}" in
             win)   cp src-tauri/target/release/forgetools.exe "dist/ForgeTools-Portable-$VERSION.exe" ;;
             mac-*) ditto -c -k --keepParent "src-tauri/target/${{ matrix.target }}/release/bundle/macos/ForgeTools.app" "dist/ForgeTools-$VERSION-${{ matrix.name }}.zip" ;;
-            linux) cp src-tauri/target/release/bundle/appimage/*.AppImage "dist/ForgeTools-$VERSION.AppImage" ;;
+            linux)
+              cp src-tauri/target/release/bundle/appimage/*.AppImage "dist/ForgeTools-$VERSION.AppImage"
+              cp src-tauri/target/release/bundle/deb/*.deb "dist/ForgeTools-$VERSION-amd64.deb"
+              cp src-tauri/target/release/bundle/rpm/*.rpm "dist/ForgeTools-$VERSION-x86_64.rpm" ;;
           esac
           ls -la dist
 
@@ -164,6 +167,7 @@ jobs:
           chmod +x "$APP"
           (cd /tmp && "$GITHUB_WORKSPACE/$APP" --appimage-extract >/dev/null)
           find /tmp/squashfs-root -name 'libayatana-appindicator3.so*' | grep -q . || { echo "libayatana-appindicator3 missing from AppImage"; exit 1; }
+          dpkg-deb -f dist/*.deb Depends | tee /dev/stderr | grep -q appindicator || { echo ".deb does not depend on appindicator"; exit 1; }
 
       - name: Report sizes (informational)
         if: always()
@@ -198,7 +202,7 @@ jobs:
       - name: Collect release files
         run: |
           mkdir -p release
-          find artifacts -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.AppImage" \) -exec mv {} release/ \;
+          find artifacts -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec mv {} release/ \;
           ls -la release
 
       - name: Generate release notes
@@ -234,7 +238,7 @@ jobs:
             printf -- '- 🪟 Windows: download `ForgeTools-Portable-%s.exe`\n' "$VERSION"
             printf -- '- 🍎 macOS Intel: download and unzip `ForgeTools-%s-mac-x64.zip`\n' "$VERSION"
             printf -- '- 🍎 macOS Apple Silicon: download and unzip `ForgeTools-%s-mac-arm64.zip`\n' "$VERSION"
-            printf -- '- 🐧 Linux: download `ForgeTools-%s.AppImage`\n\n' "$VERSION"
+            printf -- '- 🐧 Linux: download `ForgeTools-%s.AppImage` (any distro), `ForgeTools-%s-amd64.deb` (Debian/Ubuntu) or `ForgeTools-%s-x86_64.rpm` (Fedora/openSUSE)\n\n' "$VERSION" "$VERSION" "$VERSION"
 
             printf '## 🔍 SHA-256 Checksums\n\n```\n'
             (cd release && sha256sum *)

@@ -51,13 +51,15 @@ Get the latest build from [Releases](https://github.com/tengfone/forgetools/rele
 | Windows 10/11 | `ForgeTools-Portable-X.Y.Z.exe` | ~5 MB |
 | macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` | ~5 MB |
 | macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` | ~5 MB |
-| Linux | `ForgeTools-X.Y.Z.AppImage` | ~80 MB |
+| Linux (any distro) | `ForgeTools-X.Y.Z.AppImage` | ~80 MB |
+| Linux (Debian/Ubuntu) | `ForgeTools-X.Y.Z-amd64.deb` | ~5 MB |
+| Linux (Fedora/openSUSE) | `ForgeTools-X.Y.Z-x86_64.rpm` | ~5 MB |
 
 Platform notes:
 
 - **Windows**: needs the Microsoft Edge WebView2 runtime, which ships with Windows 10 and 11. The build is unsigned, so SmartScreen may warn on first launch: choose **More info** → **Run anyway**.
 - **macOS**: the build is unsigned. On first launch, right-click the app and choose **Open**.
-- **Linux**: make the file executable (`chmod +x ForgeTools-X.Y.Z.AppImage`) and run it. The AppImage bundles its own WebKitGTK, which is why it is larger. The tray icon has no click action on Linux; use its **Show** menu item. Some Wayland desktops block the global shortcut.
+- **Linux**: the `.deb` / `.rpm` install with your package manager (`sudo apt install ./ForgeTools-X.Y.Z-amd64.deb` or `sudo dnf install ./ForgeTools-X.Y.Z-x86_64.rpm`) and use the system WebKitGTK, so they are small. The AppImage runs anywhere: make it executable (`chmod +x ForgeTools-X.Y.Z.AppImage`) and run it. It bundles its own WebKitGTK, which is why it is larger. The tray icon has no click action on Linux; use its **Show** menu item. Some Wayland desktops block the global shortcut.
 
 ## Development
 
