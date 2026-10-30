@@ -71,7 +71,7 @@ Open an [issue](https://github.com/tengfone/forgetools/issues) with your OS, the
 
 ## Development
 
-Requires Node.js 24 (see `.nvmrc`).
+Requires Node.js 26 (see `.nvmrc`).
 
 ```bash
 git clone https://github.com/tengfone/forgetools.git
