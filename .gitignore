@@ -1,7 +1,5 @@
-# Playwright specific files
-playwright-report/
+# WDIO failure logs/screenshots (wdio.conf.mjs)
 test-results/
-playwright.env
 
 # Logs
 logs

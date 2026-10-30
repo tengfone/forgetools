@@ -1,24 +1,61 @@
-// Shared WDIO helpers: app launch and native window state.
-// The service launches the app per spec file; this waits for it to be ready the same
-// way v0.2.1 did (tools registry loaded, sidebar populated, window shown).
+// Shared WDIO helpers: app launch, error capture and native window state (Tauri APIs that
+// have no WebDriver equivalent). Element interaction lives in the specs, in plain WDIO.
+import fs from 'node:fs';
+
+// Default window size, read from the app config so the tests follow it.
+const conf = JSON.parse(fs.readFileSync(new URL('../../../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
+const mainWindow = conf.app.windows[0];
+const DEFAULT_SIZE = { width: mainWindow.width, height: mainWindow.height };
 
 /**
- * The service keeps ONE app process for all spec files (maxInstances 1), while the v0.2.1
- * suite launched a fresh app per file. Recreate that: default window size (tauri.conf.json)
- * and a reloaded webview, so no in-memory state (open tool, dialogs) leaks between files.
- * localStorage persists, exactly like the app data dir did across launches.
+ * Resize the webview's client area via the Tauri window API. WebDriver's setWindowSize sets the
+ * outer size, which on an undecorated window with an invisible resize frame is not the viewport.
  */
-async function freshStart() {
-  await browser.tauri.execute(async () => {
+export async function setInnerSize(width, height) {
+  await browser.tauri.execute(async (_t, w, h) => {
     const T = window.__TAURI__;
-    await T.window.getCurrentWindow().setSize(new T.dpi.LogicalSize(1000, 600));
-  });
-  await browser.execute(() => { window.__e2eStale = true; setTimeout(() => location.reload(), 0); });
-  await browser.waitUntil(() => browser.execute(() => !window.__e2eStale && document.readyState === 'complete').catch(() => false),
-    { timeout: 20000, timeoutMsg: 'webview did not reload' });
+    await T.window.getCurrentWindow().setSize(new T.dpi.LogicalSize(w, h));
+  }, width, height);
+  await browser.waitUntil(() => browser.execute((w, h) => innerWidth === w && innerHeight === h, width, height),
+    { timeout: 5000, timeoutMsg: `viewport never became ${width}x${height}` });
 }
 
-/** Wait until the app shell is initialised and the window is visible. */
+/** Record uncaught page errors, console errors and CSP violations in the page (window.__e2e). */
+async function captureErrors() {
+  await browser.execute(() => {
+    if (window.__e2e) return;
+    const e2e = (window.__e2e = { pageErrors: [], consoleErrors: [] });
+    window.addEventListener('error', ev => e2e.pageErrors.push(ev.message || String(ev.error)));
+    // A rejection the page handled (preventDefault) is not an error.
+    window.addEventListener('unhandledrejection', ev => ev.defaultPrevented || e2e.pageErrors.push(String(ev.reason && ev.reason.message || ev.reason)));
+    document.addEventListener('securitypolicyviolation', ev =>
+      e2e.consoleErrors.push(`Refused by Content Security Policy directive "${ev.violatedDirective}": ${ev.blockedURI}`));
+    const orig = console.error.bind(console);
+    console.error = (...a) => { e2e.consoleErrors.push(a.map(String).join(' ')); orig(...a); };
+  });
+}
+export const pageErrors = () => browser.execute(() => (window.__e2e ? window.__e2e.pageErrors : null));
+export const consoleErrors = () => browser.execute(() => (window.__e2e ? window.__e2e.consoleErrors : null));
+
+/**
+ * The service keeps ONE app process for all spec files (maxInstances 1). Give every spec file a
+ * fresh start: default window size (tauri.conf.json) and a reloaded webview, so no in-memory
+ * state leaks between files. localStorage persists, like the app data dir across launches.
+ */
+async function freshStart() {
+  await setInnerSize(DEFAULT_SIZE.width, DEFAULT_SIZE.height);
+  await browser.execute(() => { window.__e2eStale = true; setTimeout(() => location.reload(), 0); });
+  // While the page is unloading, execute can fail transiently; that just means "not ready yet".
+  await browser.waitUntil(async () => {
+    try { return await browser.execute(() => !window.__e2eStale && document.readyState === 'complete'); }
+    catch { return false; }
+  }, { timeout: 20000, timeoutMsg: 'webview did not reload' });
+  // Install error capture right after the reload, before the app finishes initialising,
+  // so startup errors are recorded too.
+  await captureErrors();
+}
+
+/** Fresh start, then wait until the app shell is initialised and the window is visible. */
 export async function waitForAppReady() {
   await freshStart();
   await browser.waitUntil(
@@ -29,13 +66,12 @@ export async function waitForAppReady() {
     { timeout: 20000, timeoutMsg: 'app did not initialise (window.tools / #toolsNav)' },
   );
   await $('#toolsNav [data-tool-id]').waitForDisplayed({ timeout: 10000 });
-  const visible = await browser.waitUntil(() => windowState().then((s) => s.visible), {
+  await browser.waitUntil(() => windowState().then((s) => s.visible), {
     timeout: 10000, timeoutMsg: 'window never became visible',
   });
-  return visible;
 }
 
-/** Native window state via the Tauri window API (replaces BrowserWindow in app.evaluate). */
+/** Native window state via the Tauri window API. */
 export function windowState() {
   // browser.tauri.execute injects only `core`; the window API comes from the global
   // (withGlobalTauri is enabled in the wdio build only).
@@ -61,3 +97,9 @@ export function nativeWindow() {
     };
   });
 }
+
+/** System clipboard via the Tauri clipboard plugin (the real OS clipboard the app writes to). */
+export const clipboard = {
+  readText: () => browser.tauri.execute(({ core }) => core.invoke('plugin:clipboard-manager|read_text')),
+  writeText: text => browser.tauri.execute(({ core }, t) => core.invoke('plugin:clipboard-manager|write_text', { text: t }), text),
+};

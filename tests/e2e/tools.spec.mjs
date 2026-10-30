@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
-import { page as window, expect, captureErrors, pageErrors as getPageErrors, clipboard } from "./helpers/pw.mjs";
-import { waitForAppReady } from "./helpers/tauriApp.mjs";
+import { expect } from "@wdio/globals";
+import { waitForAppReady, pageErrors, clipboard } from "./helpers/tauriApp.mjs";
+import { selectOption, typeText } from "./helpers/input.mjs";
 const require = createRequire(import.meta.url);
 
 // Smoke test: every tool must render without throwing, and shared
@@ -8,53 +9,54 @@ const require = createRequire(import.meta.url);
 
 before(async () => {
   await waitForAppReady();
-  await captureErrors();
-  await window.waitForSelector("#toolsNav [data-tool-id]", { timeout: 20000 });
+  await $("#toolsNav [data-tool-id]").waitForDisplayed({ timeout: 20000 });
 });
 
+after(async () => {
+  expect(await pageErrors()).toEqual([]);
+});
+
+const open = async (id) => {
+  await $(`#toolsNav [data-tool-id="${id}"]`).click();
+  await expect($(`#toolsNav [data-tool-id="${id}"]`)).toHaveAttribute("aria-current", "page");
+};
+const toolIds = async () => (await $$("#toolsNav [data-tool-id]")).map((e) => e.getAttribute("data-tool-id"));
+
 it("every tool opens without runtime errors", async () => {
-  const ids = await window.$$eval("#toolsNav [data-tool-id]", (els) =>
-    els.map((e) => e.getAttribute("data-tool-id"))
-  );
+  const ids = await toolIds();
   expect(ids.length).toBeGreaterThan(20);
-  for (const id of ids) {
-    await window.click(`#toolsNav [data-tool-id="${id}"]`);
-    await window.waitForTimeout(150);
-  }
-  expect(await getPageErrors()).toEqual([]);
+  for (const id of ids) await open(id);
+  expect(await pageErrors()).toEqual([]);
 });
 
 it("no inline styles or handlers leak into tool UIs", async () => {
-  const ids = await window.$$eval("#toolsNav [data-tool-id]", (els) =>
-    els.map((e) => e.getAttribute("data-tool-id"))
-  );
+  const ids = await toolIds();
   for (const id of ids) {
-    await window.click(`#toolsNav [data-tool-id="${id}"]`);
-    await window.waitForTimeout(100);
-    const inlineHandlers = await window.$$eval("#toolContainer [onclick]", (els) => els.length).catch(() => 0);
-    expect(inlineHandlers, id).toBe(0);
+    await open(id);
+    await expect($$("#toolContainer [onclick]")).toBeElementsArrayOfSize(0, { message: `inline handler in ${id}` });
   }
 });
 
 it("delegated copy writes to the clipboard", async () => {
-  await window.click('#toolsNav [data-tool-id="randomStringGenerator"]');
-  const chip = window.locator("#rand-results .copy-chip").first();
-  await chip.waitFor();
-  const text = (await chip.textContent()).trim();
+  await open("randomStringGenerator");
+  const chip = $("#rand-results .copy-chip");
+  await chip.waitForDisplayed();
+  const text = (await chip.getText()).trim();
   await chip.click();
-  await expect(window.locator(".toast").last()).toContainText("Copied");
-  const clip = await clipboard.readText();
-  expect(clip).toBe(text);
+  await expect($("#toastContainer .toast")).toHaveText(expect.stringContaining("Copied"));
+  expect(await clipboard.readText()).toBe(text);
 });
 
 it("JSON output Copy goes through the main-process clipboard", async () => {
-  await window.click('#toolsNav [data-tool-id="json"]');
-  await window.click("#sampleBtn");
-  await expect.poll(async () => (await window.evaluate(() =>
-    document.querySelector("#outputEditor .view-lines")?.textContent ?? "")).length, { timeout: 10000 }).toBeGreaterThan(5);
+  await open("json");
+  await $("#sampleBtn").click();
+  // Monaco renders lines as divs; .view-lines textContent is the rendered output.
+  await browser.waitUntil(async () => (await browser.execute(() =>
+    document.querySelector("#outputEditor .view-lines")?.textContent ?? "")).length > 5,
+  { timeout: 10000, timeoutMsg: "JSON output never rendered" });
   await clipboard.writeText("");
-  await window.click("#copyBtn");
-  await expect(window.locator(".toast").last()).toContainText("Copied output");
+  await $("#copyBtn").click();
+  await expect($("#toastContainer .toast")).toHaveText(expect.stringContaining("Copied output"));
   const clip = await clipboard.readText();
   expect(clip.length).toBeGreaterThan(5);
   expect(() => JSON.parse(clip)).not.toThrow();
@@ -63,178 +65,184 @@ it("JSON output Copy goes through the main-process clipboard", async () => {
 
 it("Paste button reads the main-process clipboard", async () => {
   await clipboard.writeText("hello paste");
-  await window.click('#toolsNav [data-tool-id="base64"]');
-  await window.click('[data-paste="b64-plain"]');
-  await expect(window.locator("#b64-plain")).toHaveValue("hello paste");
+  await open("base64");
+  await $('[data-paste="b64-plain"]').click();
+  await expect($("#b64-plain")).toHaveValue("hello paste");
 });
 
 it("sidebar search trigger opens the palette", async () => {
-  await window.click("#sidebarSearch");
-  await expect(window.locator("#cmdPalette")).toHaveClass(/visible/);
-  await expect(window.locator("#sidebarSearch kbd").first()).toBeVisible();
-  await window.keyboard.press("Escape");
-  await expect(window.locator("#cmdPalette")).not.toHaveClass(/visible/);
+  await $("#sidebarSearch").click();
+  await expect($("#cmdPalette")).toHaveElementClass("visible");
+  await expect($("#sidebarSearch kbd")).toBeDisplayed();
+  await browser.keys("Escape");
+  await expect($("#cmdPalette")).not.toHaveElementClass("visible");
 });
 
-it("diff tool supports word and char modes", async function () {
-  await window.click('#toolsNav [data-tool-id="textDiff"]');
-  await window.waitForSelector("#diff-mode");
-  const hasDiff = await window.locator("#diff-mode").count();
-  if (!hasDiff) this.skip(); // diff tool id differs
+it("diff tool supports word and char modes", async () => {
+  await open("textDiff");
+  await $("#diff-mode").waitForDisplayed();
   for (const mode of ["line", "word", "char"]) {
-    await window.selectOption("#diff-mode", mode);
-    await window.waitForTimeout(100);
+    await selectOption("#diff-mode", { value: mode });
+    await expect($("#diff-mode")).toHaveValue(mode);
   }
-  expect(await getPageErrors()).toEqual([]);
+  expect(await pageErrors()).toEqual([]);
 });
 
 it("custom tool errors land in the shared status bar", async () => {
-  await window.click('#toolsNav [data-tool-id="yamlFormatter"]');
-  await window.waitForSelector("#yaml-input");
-  await window.fill("#yaml-input", "a: [unclosed");
-  await expect(window.locator("#statusBar")).toHaveClass(/is-error/);
-  await window.fill("#yaml-input", "a: 1");
-  await expect(window.locator("#statusBar")).not.toHaveClass(/is-error/);
+  await open("yamlFormatter");
+  await $("#yaml-input").waitForDisplayed();
+  await $("#yaml-input").setValue("a: [unclosed");
+  await expect($("#statusBar")).toHaveElementClass("is-error");
+  await $("#yaml-input").setValue("a: 1");
+  await expect($("#statusBar")).not.toHaveElementClass("is-error");
   // switching tools resets the bar
-  await window.fill("#yaml-input", "a: [");
-  await window.click('#toolsNav [data-tool-id="hash"]');
-  await expect(window.locator("#statusMsg")).toHaveText("Ready");
+  await $("#yaml-input").setValue("a: [");
+  await expect($("#statusBar")).toHaveElementClass("is-error");
+  await $('#toolsNav [data-tool-id="hash"]').click();
+  await expect($("#statusMsg")).toHaveText("Ready");
 });
 
 it("number base rejects invalid digits instead of ignoring them", async () => {
-  await window.click('#toolsNav [data-tool-id="numberBaseConverter"]');
-  await window.waitForSelector("#num-binary");
-  await window.fill("#num-binary", "1012");
-  await expect(window.locator("#num-binary")).toHaveAttribute("aria-invalid", "true");
-  await expect(window.locator("#statusMsg")).toContainText(/base-2/i);
-  await window.fill("#num-binary", "1010");
-  await expect(window.locator("#num-decimal")).toHaveValue("10");
+  await open("numberBaseConverter");
+  await $("#num-binary").waitForDisplayed();
+  await $("#num-binary").setValue("1012");
+  await expect($("#num-binary")).toHaveAttribute("aria-invalid", "true");
+  await expect($("#statusMsg")).toHaveText(/base-2/i);
+  await $("#num-binary").setValue("1010");
+  await expect($("#num-decimal")).toHaveValue("10");
 });
 
 it("barcode validates format before generating", async () => {
-  await window.click('#toolsNav [data-tool-id="barcodeGenerator"]');
-  await window.waitForSelector("#barcode-input");
-  await window.fill("#barcode-input", "abc");
-  await window.selectOption("#barcode-format", "EAN13");
-  await window.click("#barcode-generate");
-  await expect(window.locator("#statusMsg")).toContainText("EAN-13");
+  await open("barcodeGenerator");
+  await $("#barcode-input").waitForDisplayed();
+  await $("#barcode-input").setValue("abc");
+  await selectOption("#barcode-format", { value: "EAN13" });
+  await $("#barcode-generate").click();
+  await expect($("#statusMsg")).toHaveText(expect.stringContaining("EAN-13"));
 });
 
 it("clear can be undone from the toast", async () => {
-  await window.click('#toolsNav [data-tool-id="yamlFormatter"]');
-  await window.waitForSelector("#yaml-input");
-  await window.fill("#yaml-input", "keep: me");
-  await window.click("#yaml-clear");
-  await expect(window.locator("#yaml-input")).toHaveValue("");
-  await window.click(".toast-action");
-  await expect(window.locator("#yaml-input")).toHaveValue("keep: me");
+  await open("yamlFormatter");
+  await $("#yaml-input").waitForDisplayed();
+  await $("#yaml-input").setValue("keep: me");
+  await $("#yaml-clear").click();
+  await expect($("#yaml-input")).toHaveValue("");
+  await $(".toast-action").click();
+  await expect($("#yaml-input")).toHaveValue("keep: me");
 });
 
 it("help popover opens per tool with syntax table", async () => {
-  await window.click('#toolsNav [data-tool-id="cronParser"]');
-  await window.click("#helpBtn");
-  await expect(window.locator("#helpPopover")).toBeVisible();
-  await expect(window.locator("#helpPopover .help-table")).toContainText("*/15");
-  await window.keyboard.press("Escape");
-  await expect(window.locator("#helpPopover")).toBeHidden();
-  await window.keyboard.press("F1");
-  await expect(window.locator("#helpPopover")).toBeVisible();
-  await window.click('#toolsNav [data-tool-id="hash"]');
-  await expect(window.locator("#helpPopover")).toBeHidden();
+  await open("cronParser");
+  await $("#helpBtn").click();
+  await expect($("#helpPopover")).toBeDisplayed();
+  await expect($("#helpPopover .help-table")).toHaveText(expect.stringContaining("*/15"));
+  await browser.keys("Escape");
+  await expect($("#helpPopover")).not.toBeDisplayed();
+  await browser.keys("F1");
+  await expect($("#helpPopover")).toBeDisplayed();
+  await $('#toolsNav [data-tool-id="hash"]').click();
+  await expect($("#helpPopover")).not.toBeDisplayed();
 });
 
 it("tool inputs survive switching tools within the session", async () => {
   const token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl";
-  await window.click('#toolsNav [data-tool-id="jwt"]');
-  const ta = window.locator("#customInterface textarea").first();
-  await ta.waitFor();
-  await ta.fill(token);
-  await window.click('#toolsNav [data-tool-id="json"]');
-  await window.waitForTimeout(200);
-  await window.click('#toolsNav [data-tool-id="jwt"]');
-  await expect(window.locator("#customInterface textarea").first()).toHaveValue(token);
-  await expect(window.locator("#statusSession")).toHaveText("memory only");
+  await open("jwt");
+  const ta = $("#customInterface textarea");
+  await ta.waitForDisplayed();
+  await ta.setValue(token);
+  await open("json");
+  await open("jwt");
+  await expect($("#customInterface textarea")).toHaveValue(token);
+  await expect($("#statusSession")).toHaveText("memory only");
 });
 
 it("url two-way: typing decoded encodes, swap flips direction", async () => {
-  await window.click('#toolsNav [data-tool-id="url"]');
-  await window.waitForSelector("#url-decoded");
-  await window.fill("#url-decoded", "");
-  await window.fill("#url-encoded", "");
-  await window.locator("#url-decoded").pressSequentially("a b&c");
-  await expect(window.locator("#url-encoded")).toHaveValue("a%20b%26c");
-  await expect(window.locator("#url-dir")).toContainText("Encode \u2192");
-  await window.click("#url-swap");
-  await expect(window.locator("#url-dir")).toContainText("Decode");
-  await expect(window.locator("#url-dir")).toHaveAttribute("data-direction", "backward");
-  await expect(window.locator("#url-encoded")).toHaveValue("a%20b%26c");
-  await expect(window.locator("#url-decoded")).toHaveValue("a b&c");
+  await open("url");
+  await $("#url-decoded").waitForDisplayed();
+  await typeText("#url-decoded", "");
+  await typeText("#url-encoded", "");
+  await expect($("#url-decoded")).toHaveValue("");
+  await typeText("#url-decoded", "a b&c"); // a user edit (trusted input event)
+  await expect($("#url-encoded")).toHaveValue("a%20b%26c");
+  await expect($("#url-dir")).toHaveText(expect.stringContaining("Encode \u2192"));
+  await $("#url-swap").click();
+  await expect($("#url-dir")).toHaveText(expect.stringContaining("Decode"));
+  await expect($("#url-dir")).toHaveAttribute("data-direction", "backward");
+  await expect($("#url-encoded")).toHaveValue("a%20b%26c");
+  await expect($("#url-decoded")).toHaveValue("a b&c");
 });
 
 it("palette fuzzy search finds Base64 for 'b64'", async () => {
-  await window.keyboard.press("Control+K");
-  await window.keyboard.type("b64");
-  await expect(window.locator("#cmdResults")).toContainText("Base64");
-  await window.keyboard.press("Escape");
+  await browser.keys(["Control", "k"]);
+  await expect($("#cmdPalette")).toHaveElementClass("visible");
+  await browser.keys("b64");
+  await expect($("#cmdResults")).toHaveText(expect.stringContaining("Base64"));
+  await browser.keys("Escape");
 });
 
 it("titlebar settings button opens the Settings dialog", async () => {
-  await window.click('button[aria-label="Settings"] >> nth=0');
-  await expect(window.locator("#settingsTitle")).toHaveText("Settings");
-  await expect(window.locator("#settingsOverlay")).toHaveClass(/visible/);
-  await window.keyboard.press("Escape");
+  await $('button[aria-label="Settings"]').click();
+  await expect($("#settingsTitle")).toHaveText("Settings");
+  await expect($("#settingsOverlay")).toHaveElementClass("visible");
+  await browser.keys("Escape");
+  await expect($("#settingsOverlay")).not.toHaveElementClass("visible");
 });
 
 it("palette 'about' opens Settings on the About section", async () => {
   const pkg = require("../../package.json");
-  await window.keyboard.press("Control+K");
-  await window.keyboard.type("about");
-  await window.locator(".cmd-item", { hasText: "About ForgeTools" }).first().click();
-  await expect(window.locator("#settingsOverlay")).toHaveClass(/visible/);
-  await expect(window.locator("#stab-about")).toHaveAttribute("aria-selected", "true");
-  await expect(window.locator("#aboutVersion")).toHaveText(`Version ${pkg.version}`);
-  await expect(window.locator('#settingsAbout [data-link]')).toHaveCount(4);
-  await expect(window.locator('#settingsAbout [data-link="coffee"]')).toBeVisible();
+  await browser.keys(["Control", "k"]);
+  await expect($("#cmdPalette")).toHaveElementClass("visible");
+  await browser.keys("about");
+  await $(".cmd-item*=About ForgeTools").click();
+  await expect($("#settingsOverlay")).toHaveElementClass("visible");
+  await expect($("#stab-about")).toHaveAttribute("aria-selected", "true");
+  await expect($("#aboutVersion")).toHaveText(`Version ${pkg.version}`);
+  await expect($$("#settingsAbout [data-link]")).toBeElementsArrayOfSize(4);
+  await expect($('#settingsAbout [data-link="coffee"]')).toBeDisplayed();
   // Auto update check is opt-in
-  await expect(window.locator("#setting-autoupdate")).not.toBeChecked();
-  await window.keyboard.press("Escape");
-  await expect(window.locator("#settingsOverlay")).not.toHaveClass(/visible/);
+  await expect($("#setting-autoupdate")).not.toBeSelected();
+  await browser.keys("Escape");
+  await expect($("#settingsOverlay")).not.toHaveElementClass("visible");
 });
 
 it("settings sections switch with tabs and arrow keys, and fit the window", async () => {
-  await window.click('button[aria-label="Settings"] >> nth=0');
-  await window.click("#stab-editor");
-  await expect(window.locator("#spane-editor")).toBeVisible();
-  await expect(window.locator("#spane-privacy")).toBeHidden();
-  await window.keyboard.press("ArrowDown");
-  await expect(window.locator("#spane-privacy")).toBeVisible();
-  await expect(window.locator("#stab-privacy")).toBeFocused();
-  const fits = await window.evaluate(() => {
-    const p = document.querySelector('#settingsOverlay .settings-panel').getBoundingClientRect();
+  await $('button[aria-label="Settings"]').click();
+  await $("#stab-editor").click();
+  await expect($("#spane-editor")).toBeDisplayed();
+  await expect($("#spane-privacy")).not.toBeDisplayed();
+  await expect($("#stab-editor")).toBeFocused();
+  await browser.keys("ArrowDown");
+  await expect($("#spane-privacy")).toBeDisplayed();
+  await expect($("#stab-privacy")).toBeFocused();
+  // Layout against the viewport (no WebDriver equivalent of innerHeight)
+  const fits = await browser.execute(() => {
+    const p = document.querySelector("#settingsOverlay .settings-panel").getBoundingClientRect();
     return p.bottom <= window.innerHeight;
   });
   expect(fits).toBe(true);
-  await window.click("#stab-editor");
-  await window.keyboard.press("Escape");
+  await $("#stab-editor").click();
+  await browser.keys("Escape");
+  await expect($("#settingsOverlay")).not.toHaveElementClass("visible");
 });
 
 it("editor mode segmented control switches mode", async () => {
-  await window.click('#toolsNav [data-tool-id="json"]');
-  const group = window.locator('#toolActions [role="radiogroup"]');
-  await group.waitFor();
-  const fmt = group.locator('[role="radio"][data-mode="format"]');
-  const min = group.locator('[role="radio"][data-mode="minify"]');
+  await open("json");
+  const group = $('#toolActions [role="radiogroup"]');
+  await group.waitForDisplayed();
+  const fmt = group.$('[role="radio"][data-mode="format"]');
+  const min = group.$('[role="radio"][data-mode="minify"]');
   await expect(fmt).toHaveAttribute("aria-checked", "true");
   await expect(min).toHaveAttribute("aria-checked", "false");
   await min.click();
   await expect(min).toHaveAttribute("aria-checked", "true");
   await expect(fmt).toHaveAttribute("aria-checked", "false");
-  await min.press("ArrowLeft");
+  await expect(min).toBeFocused();
+  await browser.keys("ArrowLeft");
   await expect(fmt).toHaveAttribute("aria-checked", "true");
   await expect(fmt).toBeFocused();
 });
 
 it("opening JWT focuses its input", async () => {
-  await window.click('#toolsNav [data-tool-id="jwt"]');
-  await expect(window.locator("#jwt-input")).toBeFocused({ timeout: 5000 });
+  await open("jwt");
+  await expect($("#jwt-input")).toBeFocused({ wait: 5000 });
 });

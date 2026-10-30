@@ -7,15 +7,26 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { arch, platform as osPlatform } from '@tauri-apps/plugin-os';
+import { EXTERNAL_LINKS, RELEASE_PREFIX, type ExternalLinkId } from './links';
+import { releaseUrl } from './updates';
 
 // ── Platform ────────────────────────────────────────────────────────────────
 export type Platform = 'mac' | 'win' | 'linux';
 let cachedPlatform: Platform | null = null;
+/** Browser-reported platform (outside Tauri): UA-CH when available, else the legacy field. */
+interface NavigatorUAData { platform?: string }
+function browserPlatform(): string {
+  const uaData = (navigator as Navigator & { userAgentData?: NavigatorUAData }).userAgentData;
+  return (uaData?.platform || navigator.platform || '').toLowerCase();
+}
+/** plugin-os values are injected by Tauri; outside it (plain browser, unit tests) they throw. */
+function safeOsPlatform(): string { try { return osPlatform(); } catch { return browserPlatform(); } }
+function safeArch(): string { try { return arch(); } catch { return 'unknown'; } }
+
 /** Synchronous: plugin-os injects the OS at startup. Falls back to the UA outside Tauri. */
 export function getPlatform(): Platform {
   if (cachedPlatform) return cachedPlatform;
-  let p: string;
-  try { p = osPlatform(); } catch { p = navigator.platform.toLowerCase(); }
+  const p = safeOsPlatform();
   cachedPlatform = /mac|darwin|ios/i.test(p) ? 'mac' : /linux|freebsd|openbsd|netbsd|android/i.test(p) ? 'linux' : 'win';
   return cachedPlatform;
 }
@@ -40,7 +51,6 @@ export const startHidden = (): Promise<boolean> => invoke<boolean>('start_hidden
 export const CLIPBOARD_MAX = 20 * 1024 * 1024;
 export const clipboard = {
   async writeText(text: string): Promise<void> {
-    if (typeof text !== 'string') throw new Error('clipboard text must be a string');
     if (text.length > CLIPBOARD_MAX) throw new Error('clipboard text is too large');
     await writeText(text);
   },
@@ -51,15 +61,8 @@ export const clipboard = {
 };
 
 // ── External links ──────────────────────────────────────────────────────────
-/** The only URLs the app may open in the browser (also scoped in the opener capability). */
-export const EXTERNAL_LINKS = {
-  github: 'https://github.com/tengfone/forgetools',
-  releases: 'https://github.com/tengfone/forgetools/releases',
-  issues: 'https://github.com/tengfone/forgetools/issues',
-  coffee: 'https://www.buymeacoffee.com/tengfone',
-} as const;
-export type ExternalLinkId = keyof typeof EXTERNAL_LINKS | 'latestRelease';
-export const RELEASE_PREFIX = 'https://github.com/tengfone/forgetools/releases/';
+/** The only URLs the app may open in the browser: see links.ts. */
+export { EXTERNAL_LINKS, RELEASE_PREFIX, type ExternalLinkId };
 
 /** Resolve an allowlisted link id to its URL; throws for anything else. */
 export function linkUrl(id: unknown, latestReleaseUrl: () => string): string {
@@ -73,7 +76,6 @@ export function linkUrl(id: unknown, latestReleaseUrl: () => string): string {
 }
 
 export async function openLink(id: ExternalLinkId): Promise<void> {
-  const { releaseUrl } = await import('./updates');
   await openUrl(linkUrl(id, releaseUrl));
 }
 
@@ -87,9 +89,7 @@ const webviewVersion = (): string => {
 
 export async function getAppInfo(): Promise<AppInfo> {
   const [version, tauri] = await Promise.all([getVersion(), getTauriVersion()]);
-  let a = 'unknown';
-  try { a = arch(); } catch { /* not in Tauri */ }
-  return { name: 'ForgeTools', version, tauri, webview: webviewVersion(), platform: osPlatform(), arch: a };
+  return { name: 'ForgeTools', version, tauri, webview: webviewVersion(), platform: safeOsPlatform(), arch: safeArch() };
 }
 
 // ── Background / tray (our Rust commands) ───────────────────────────────────

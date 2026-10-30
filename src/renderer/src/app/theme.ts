@@ -1,6 +1,8 @@
 // Theme management: app colour scheme, theme toggle button, and Monaco themes derived from CSS variables.
 import type { editor } from 'monaco-editor';
 import { appWindow, isTauri } from '../native';
+import { logger } from '../logger';
+import { getMonaco } from '../monacoEnv';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
 let currentTheme: ThemeChoice = (localStorage.getItem('theme') as ThemeChoice) || 'system';
@@ -28,12 +30,14 @@ export function setTheme(theme: 'system' | 'light' | 'dark'): void {
   }
   // Keep the native window theme (macOS title bar, WebView scrollbars) in step with the app theme
   // 'system' passes null so prefers-color-scheme keeps following the OS.
-  if (isTauri()) void appWindow.setTheme(theme === 'system' ? null : isDark ? 'dark' : 'light').catch(() => {});
+  if (isTauri()) void appWindow.setTheme(theme === 'system' ? null : isDark ? 'dark' : 'light')
+    .catch((e: unknown) => logger.warn('Native window theme sync failed:', e));
   
   // Update Monaco Theme (themes are rebuilt from the CSS variables now in effect)
-  if (window.monaco) {
+  const monaco = getMonaco();
+  if (monaco) {
     defineMonacoThemes();
-    window.monaco.editor.setTheme(isDark ? 'forge-dark' : 'forge-light');
+    monaco.editor.setTheme(isDark ? 'forge-dark' : 'forge-light');
   }
   syncThemeButton();
 }
@@ -72,7 +76,8 @@ function cssColor(varName: string, fallback: string): string {
 }
 
 export function defineMonacoThemes(): void {
-  if (!window.monaco) return;
+  const monaco = getMonaco();
+  if (!monaco) return;
   const build = (dark: boolean): editor.IStandaloneThemeData => {
     // Read tokens with the matching class applied, then restore
     const root = document.documentElement;
@@ -109,6 +114,6 @@ export function defineMonacoThemes(): void {
       }
     };
   };
-  window.monaco.editor.defineTheme('forge-light', build(false));
-  window.monaco.editor.defineTheme('forge-dark', build(true));
+  monaco.editor.defineTheme('forge-light', build(false));
+  monaco.editor.defineTheme('forge-dark', build(true));
 }

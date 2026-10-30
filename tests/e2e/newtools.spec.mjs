@@ -1,16 +1,17 @@
-import { page as window, expect, captureErrors, pageErrors as getPageErrors, consoleErrors as getConsoleErrors } from "./helpers/pw.mjs";
-import { waitForAppReady } from "./helpers/tauriApp.mjs";
+import { expect } from "@wdio/globals";
+import { waitForAppReady, pageErrors, consoleErrors } from "./helpers/tauriApp.mjs";
+import { selectOption, typeText } from "./helpers/input.mjs";
 
 // Every new tool: open it, click Sample, and assert the real output.
 
 before(async () => {
   await waitForAppReady();
-  await captureErrors();
-  await window.waitForSelector("#toolsNav [data-tool-id]", { timeout: 20000 });
+  await $("#toolsNav [data-tool-id]").waitForDisplayed({ timeout: 20000 });
 });
 
 async function open(id) {
-  await window.click(`#toolsNav [data-tool-id="${id}"]`);
+  await $(`#toolsNav [data-tool-id="${id}"]`).click();
+  await expect($(`#toolsNav [data-tool-id="${id}"]`)).toHaveAttribute("aria-current", "page");
 }
 
 // [tool id, element prefix, expected output pattern]
@@ -52,192 +53,214 @@ const CASES = [
 for (const [id, p, re, out] of CASES) {
   it(`${id}: Sample produces the expected output`, async () => {
     await open(id);
-    await window.click(`#${p}-sample`);
-    await expect.poll(async () => window.locator(`#${out ?? `${p}-output`}`).inputValue(), { timeout: 15000 }).toMatch(re);
-    await expect(window.locator("#statusBar")).not.toHaveClass(/is-error/);
+    await $(`#${p}-sample`).click();
+    await expect($(`#${out ?? `${p}-output`}`)).toHaveValue(re, { wait: 15000 });
+    await expect($("#statusBar")).not.toHaveElementClass("is-error");
   });
 }
 
 it("HTTP status reference: search filters a grouped table and rows copy", async () => {
   await open("httpStatus");
-  await window.fill("#http-input", "gateway");
-  await expect(window.locator("#http-output tr")).toHaveCount(2);
-  await expect(window.locator("#http-output")).toContainText("502");
-  await expect(window.locator("#http-output .ref-group")).toHaveText(["5xx Server error"]);
-  await expect(window.locator("#http-output .ref-copy").first()).toHaveAttribute("data-copy-text", "502 Bad Gateway");
+  await $("#http-input").setValue("gateway");
+  await expect($$("#http-output tr")).toBeElementsArrayOfSize(2);
+  await expect($("#http-output")).toHaveText(expect.stringContaining("502"));
+  await expect($$("#http-output .ref-group")).toBeElementsArrayOfSize(1);
+  await expect($("#http-output .ref-group")).toHaveText("5xx Server error");
+  await expect($("#http-output .ref-copy")).toHaveAttribute("data-copy-text", "502 Bad Gateway");
 });
 
 it("cheat sheets: search spans all sheets, sheet picker narrows", async () => {
   await open("cheatSheets");
-  await window.fill("#cheat-input", "stash");
-  await expect(window.locator("#cheat-output .ref-group")).toHaveText(["Git"]);
-  await window.click("#cheat-sample");
-  await expect(window.locator("#cheat-output")).toContainText("git rebase -i");
-  await expect(window.locator("#cheat-output .ref-group")).toHaveCount(1);
+  await $("#cheat-input").setValue("stash");
+  await expect($$("#cheat-output .ref-group")).toBeElementsArrayOfSize(1);
+  await expect($("#cheat-output .ref-group")).toHaveText("Git");
+  await $("#cheat-sample").click();
+  await expect($("#cheat-output")).toHaveText(expect.stringContaining("git rebase -i"));
+  await expect($$("#cheat-output .ref-group")).toBeElementsArrayOfSize(1);
 });
 
 it("key pair: comment edits never regenerate; type change clears", async () => {
   await open("keyPair");
-  await expect(window.locator("#kp-private")).toHaveValue("");
-  await window.click("#kp-sample");
-  await expect.poll(async () => window.locator("#kp-private").inputValue(), { timeout: 15000 }).toMatch(/BEGIN PRIVATE KEY/);
-  const priv = await window.locator("#kp-private").inputValue();
-  await window.fill("#kp-input", "ci@build");
-  await expect(window.locator("#kp-ssh")).toHaveValue(/ ci@build$/);
-  await expect(window.locator("#kp-private")).toHaveValue(priv);
-  await window.selectOption("#kp-type", "ec-p256");
-  await expect(window.locator("#kp-private")).toHaveValue("");
+  await expect($("#kp-private")).toHaveValue("");
+  await $("#kp-sample").click();
+  await expect($("#kp-private")).toHaveValue(/BEGIN PRIVATE KEY/, { wait: 15000 });
+  const priv = await $("#kp-private").getValue();
+  await $("#kp-input").setValue("ci@build");
+  await expect($("#kp-ssh")).toHaveValue(/ ci@build$/);
+  await expect($("#kp-private")).toHaveValue(priv);
+  await selectOption("#kp-type", { value: "ec-p256" });
+  await expect($("#kp-private")).toHaveValue("");
 });
 
 it("cron builder: shows only relevant fields and rejects bad values", async () => {
   await open("cronBuilder");
-  await window.selectOption("#cronb-freq", "minute");
-  await expect(window.locator("#cronb-time")).toBeHidden();
-  await expect(window.locator("#cronb-output")).toHaveValue("* * * * *");
-  await window.selectOption("#cronb-freq", "interval-minutes");
-  await expect(window.locator("#cronb-every")).toBeVisible();
-  await window.fill("#cronb-every", "90");
-  await expect(window.locator("#cronb-every")).toHaveAttribute("aria-invalid", "true");
-  await expect(window.locator("#cronb-output")).toHaveValue("");
-  await window.fill("#cronb-every", "10");
-  await expect(window.locator("#cronb-output")).toHaveValue("*/10 * * * *");
-  await expect(window.locator("#cronb-next li")).toHaveCount(3);
+  await selectOption("#cronb-freq", { value: "minute" });
+  await expect($("#cronb-time")).not.toBeDisplayed();
+  await expect($("#cronb-output")).toHaveValue("* * * * *");
+  await selectOption("#cronb-freq", { value: "interval-minutes" });
+  await expect($("#cronb-every")).toBeDisplayed();
+  await $("#cronb-every").setValue("90");
+  await expect($("#cronb-every")).toHaveAttribute("aria-invalid", "true");
+  await expect($("#cronb-output")).toHaveValue("");
+  await $("#cronb-every").setValue("10");
+  await expect($("#cronb-output")).toHaveValue("*/10 * * * *");
+  await expect($$("#cronb-next li")).toBeElementsArrayOfSize(3);
 });
 
 it("fake data: chips pick fields; table name only for SQL", async () => {
   await open("fakeData");
-  await expect(window.locator("#fake-table-wrap")).toBeHidden();
-  await window.click("#fake-none");
-  await window.click("label:has(#fake-f-email)");
-  await window.selectOption("#fake-fmt", "sql");
-  await expect(window.locator("#fake-table-wrap")).toBeVisible();
-  await expect.poll(async () => window.locator("#fake-output").inputValue()).toMatch(/^INSERT INTO users \(email\) VALUES/);
+  await expect($("#fake-table-wrap")).not.toBeDisplayed();
+  await $("#fake-none").click();
+  await expect($("#fake-f-email")).not.toBeSelected();
+  await $("#fake-f-email").$("..").click(); // the chip label wrapping the checkbox
+  await expect($("#fake-f-email")).toBeSelected();
+  await selectOption("#fake-fmt", { value: "sql" });
+  await expect($("#fake-table-wrap")).toBeDisplayed();
+  await expect($("#fake-output")).toHaveValue(/^INSERT INTO users \(email\) VALUES/);
 });
 
 it("pipeline: recipe replaces steps; failing step is marked", async () => {
   await open("pipeline");
-  await window.selectOption("#chain-recipe", { label: "JSON → minify → Base64" });
-  await expect(window.locator("#chain-steps .step-label")).toHaveText(["JSON minify", "Base64 encode"]);
-  await window.fill("#chain-input", "not json");
-  await expect(window.locator("#chain-steps .step-row.is-error")).toHaveCount(1);
-  await expect(window.locator("#chain-warn")).toBeVisible();
-  await expect(window.locator("#chain-steps .step-error")).toHaveCount(1);
-  await window.fill("#chain-input", '{ "a": 1 }');
-  await expect.poll(async () => window.locator("#chain-output").inputValue()).toBe("eyJhIjoxfQ==");
-  await window.click('[data-step-remove="1"]');
-  await expect.poll(async () => window.locator("#chain-output").inputValue()).toBe('{"a":1}');
+  await selectOption("#chain-recipe", { label: "JSON → minify → Base64" });
+  await expect($$("#chain-steps .step-label")).toBeElementsArrayOfSize(2);
+  await expect($$("#chain-steps .step-label")).toHaveText(["JSON minify", "Base64 encode"],
+    { featureFlags: { useToHaveTextStrictMultiElementsCompareStrategy: true } }); // element-wise, not "any of"
+  await $("#chain-input").setValue("not json");
+  await expect($$("#chain-steps .step-row.is-error")).toBeElementsArrayOfSize(1);
+  await expect($("#chain-warn")).toBeDisplayed();
+  await expect($$("#chain-steps .step-error")).toBeElementsArrayOfSize(1);
+  await $("#chain-input").setValue('{ "a": 1 }');
+  await expect($("#chain-output")).toHaveValue("eyJhIjoxfQ==");
+  await $('[data-step-remove="1"]').click();
+  await expect($("#chain-output")).toHaveValue('{"a":1}');
 });
 
 it("password inputs are masked with a reveal toggle", async () => {
   await open("passwordStrength");
-  await expect(window.locator("#pws-input")).toHaveAttribute("type", "password");
-  await window.click("#pws-reveal");
-  await expect(window.locator("#pws-input")).toHaveAttribute("type", "text");
+  await expect($("#pws-input")).toHaveAttribute("type", "password");
+  await $("#pws-reveal").click();
+  await expect($("#pws-input")).toHaveAttribute("type", "text");
 });
 
 it("JS minify (terser, lazy-loaded) works in the packaged renderer", async () => {
   await open("cssJsFormat");
-  await window.selectOption("#cjs-lang", "js");
-  await window.selectOption("#cjs-mode", "min");
-  await window.fill("#cjs-input", "function add(first, second) {\n  return first + second;\n}\nconsole.log(add(1, 2));");
-  await expect.poll(async () => window.locator("#cjs-output").inputValue(), { timeout: 15000 }).toMatch(/^console\.log\(3\)|function add\(\w,\w\)/);
+  await selectOption("#cjs-lang", { value: "js" });
+  await selectOption("#cjs-mode", { value: "min" });
+  await $("#cjs-input").setValue("function add(first, second) {\n  return first + second;\n}\nconsole.log(add(1, 2));");
+  await expect($("#cjs-output")).toHaveValue(/^console\.log\(3\)|function add\(\w,\w\)/, { wait: 15000 });
 });
 
 it("Argon2 (WASM) hashes and verifies", async () => {
   await open("passwordHash");
-  await window.selectOption("#pwh-algo", "argon2id");
-  await window.selectOption("#pwh-cost", "low");
-  await window.fill("#pwh-input", "hunter2");
-  await expect.poll(async () => window.locator("#pwh-output").inputValue(), { timeout: 15000 }).toMatch(/^\$argon2id\$v=19\$/);
-  const hash = await window.locator("#pwh-output").inputValue();
-  await window.fill("#pwh-hash", hash);
-  await expect.poll(async () => window.locator("#pwh-output").inputValue(), { timeout: 15000 }).toMatch(/MATCH ✓/);
+  await selectOption("#pwh-algo", { value: "argon2id" });
+  await selectOption("#pwh-cost", { value: "low" });
+  await $("#pwh-input").setValue("hunter2");
+  await expect($("#pwh-output")).toHaveValue(/^\$argon2id\$v=19\$/, { wait: 15000 });
+  const hash = await $("#pwh-output").getValue();
+  await $("#pwh-hash").setValue(hash);
+  await expect($("#pwh-output")).toHaveValue(/MATCH ✓/, { wait: 15000 });
 });
 
 it("invalid input is reported, not thrown", async () => {
   await open("jsonYaml");
-  await window.fill("#jy-input", "{bad json");
-  await expect(window.locator("#jy-input")).toHaveAttribute("aria-invalid", "true", { timeout: 5000 });
+  await $("#jy-input").setValue("{bad json");
+  await expect($("#jy-input")).toHaveAttribute("aria-invalid", "true", { wait: 5000 });
 });
 
 it("favicon renders previews and the HTML snippet", async () => {
   await open("favicon");
-  await window.click("#fav-sample");
-  await expect(window.locator("#fav-preview canvas")).toHaveCount(4);
-  await expect(window.locator("#fav-output")).toHaveValue(/favicon\.ico/);
+  await $("#fav-sample").click();
+  await expect($$("#fav-preview canvas")).toBeElementsArrayOfSize(4);
+  await expect($("#fav-output")).toHaveValue(/favicon\.ico/);
 });
 
 it("pasting a cURL command on Home hands it to the cURL tool", async () => {
   const cmd = "curl -X POST https://api.example.com/v1 -H 'Content-Type: application/json' -d '{\"a\":1}'";
-  await window.click("#homeLogo");
-  await window.fill("#homeSearch", cmd);
-  await expect(window.locator("#homeDetect .btn-primary")).toContainText("cURL");
-  await window.press("#homeSearch", "Enter");
-  await expect(window.locator("#curl-input")).toHaveValue(cmd, { timeout: 10000 });
-  await expect.poll(async () => window.locator("#curl-output").inputValue(), { timeout: 10000 }).toContain("api.example.com/v1");
+  await $("#homeLogo").click();
+  await $("#homeSearch").setValue(cmd);
+  await expect($("#homeDetect .btn-primary")).toHaveText(expect.stringContaining("cURL"));
+  await browser.keys("Enter"); // focus is still in #homeSearch
+  await expect($("#curl-input")).toHaveValue(cmd);
+  await expect($("#curl-output")).toHaveValue(expect.stringContaining("api.example.com/v1"));
 });
 
 it("opt-in history: live toggle, restore, hidden on Home, never records secrets", async () => {
-  const stored = tool => window.evaluate(t => JSON.parse(localStorage.getItem(`tool-history:${t}`) || "null"), tool);
-  const setHistory = on => window.evaluate(v => { const c = document.getElementById("setting-history"); c.checked = v; c.dispatchEvent(new Event("change")); }, on);
+  // localStorage contents are app state with no WebDriver equivalent.
+  const stored = tool => browser.execute(t => JSON.parse(localStorage.getItem(`tool-history:${t}`) || "null"), tool);
+  const storedIs = async (tool, want) => browser.waitUntil(async () => JSON.stringify(await stored(tool)) === JSON.stringify(want),
+    { timeout: 5000, timeoutMsg: `tool-history:${tool} never became ${JSON.stringify(want)}` });
+  // Toggle the setting through the Settings dialog, like a user.
+  const setHistory = async on => {
+    await $('button[aria-label="Settings"]').click();
+    await expect($("#settingsOverlay")).toHaveElementClass("visible");
+    await $("#stab-privacy").click();
+    await expect($("#spane-privacy")).toBeDisplayed();
+    const box = $("#setting-history");
+    if ((await box.isSelected()) !== on) await $('label[for="setting-history"]').click();
+    await expect(box).toHaveElementProperty("checked", on);
+    await browser.keys("Escape");
+    await expect($("#settingsOverlay")).not.toHaveElementClass("visible");
+  };
   await open("chmod");
-  await expect(window.locator("#toolHistory")).toBeHidden();
+  await expect($("#toolHistory")).not.toBeDisplayed();
   await setHistory(true);
   try {
-    await expect(window.locator("#toolHistory")).toBeVisible(); // no reopen needed
-    await window.fill("#chmod-input", "644");
-    await expect.poll(async () => window.evaluate(() => localStorage.getItem("tool-history:chmod")), { timeout: 5000 }).toContain("644");
-    await expect(window.locator("#toolHistory option")).toHaveCount(2);
+    await expect($("#toolHistory")).toBeDisplayed(); // no reopen needed
+    await typeText("#chmod-input", "644");
+    await storedIs("chmod", ["644"]);
+    await expect($$("#toolHistory option")).toBeElementsArrayOfSize(2);
     // Picking an older entry restores it and moves it to the top
-    await window.fill("#chmod-input", "755");
-    await expect.poll(() => stored("chmod"), { timeout: 5000 }).toEqual(["755", "644"]);
-    await window.selectOption("#toolHistory", "1");
-    await expect(window.locator("#chmod-input")).toHaveValue("644");
-    await expect.poll(() => stored("chmod")).toEqual(["644", "755"]);
+    await typeText("#chmod-input", "755");
+    await storedIs("chmod", ["755", "644"]);
+    await selectOption("#toolHistory", { value: "1" });
+    await expect($("#chmod-input")).toHaveValue("644");
+    await storedIs("chmod", ["644", "755"]);
     // An edit is flushed to its own tool when switching away before the debounce fires
-    await window.fill("#chmod-input", "600");
+    await typeText("#chmod-input", "600");
     await open("pipeline");
     expect((await stored("chmod"))[0]).toBe("600");
     // Secret-looking input is never stored, even in tools that allow history
     await open("chmod");
-    await window.fill("#chmod-input", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJlLXZhbHVl");
-    await window.click("#homeLogo"); // flushes the pending entry
+    await typeText("#chmod-input", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJlLXZhbHVl");
+    await $("#homeLogo").click(); // flushes the pending entry
     expect(await stored("chmod")).not.toContainEqual(expect.stringContaining("eyJ"));
     // Hidden on Home
-    await window.click("#homeLogo");
-    await expect(window.locator("#toolHistory")).toBeHidden();
+    await $("#homeLogo").click();
+    await expect($("#toolHistory")).not.toBeDisplayed();
     // Secret-bearing tools never show or store history
     await open("hmac");
-    await expect(window.locator("#toolHistory")).toBeHidden();
-    await window.fill("#hmac-input", "secret body");
+    await expect($("#toolHistory")).not.toBeDisplayed();
+    await typeText("#hmac-input", "secret body");
     await open("pipeline"); // switching flushes any pending entry
-    await expect(window.locator("#toolHistory")).toBeHidden();
-    await window.fill("#chain-input", "token-abc");
-    await window.click("#homeLogo");
+    await expect($("#toolHistory")).not.toBeDisplayed();
+    await typeText("#chain-input", "token-abc");
+    await $("#homeLogo").click();
     expect(await stored("hmac")).toBeNull();
     expect(await stored("pipeline")).toBeNull();
   } finally {
     await setHistory(false);
   }
-  expect(await window.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("tool-history:")))).toEqual([]);
+  expect(await browser.execute(() => Object.keys(localStorage).filter(k => k.startsWith("tool-history:")))).toEqual([]);
 });
 
 it("undo is dropped after a tool switch (no stale action on removed DOM)", async () => {
   await open("pipeline");
-  await window.click("#chain-sample");
-  await window.click('[data-step-remove="0"]');
-  await expect(window.locator("#toastContainer .toast-action")).toBeVisible();
+  await $("#chain-sample").click();
+  await $('[data-step-remove="0"]').click();
+  await expect($("#toastContainer .toast-action")).toBeDisplayed();
   await open("cronBuilder");
-  await expect(window.locator("#toastContainer .toast-action")).toHaveCount(0);
-  await window.focus("#cronb-sample");
-  await window.keyboard.press("Control+z");
+  await expect($$("#toastContainer .toast-action")).toBeElementsArrayOfSize(0);
+  // Focus a non-text control without activating it (WebDriver has no focus command).
+  await browser.execute(el => el.focus(), await $("#cronb-sample"));
+  await expect($("#cronb-sample")).toBeFocused();
+  await browser.keys(["Control", "z"]);
   await open("pipeline");
   // The rendered steps and the hidden ops field agree
-  const ops = (await window.inputValue("#chain-ops")).split(",").filter(Boolean);
-  await expect(window.locator("#chain-steps li")).toHaveCount(ops.length);
+  const ops = (await $("#chain-ops").getValue()).split(",").filter(Boolean);
+  await expect($$("#chain-steps li")).toBeElementsArrayOfSize(ops.length);
 });
 
 it("no runtime errors across the new tools", async () => {
-  expect(await getPageErrors()).toEqual([]);
-  expect((await getConsoleErrors()).filter((e) => /Content Security Policy|WebAssembly|wasm/i.test(e))).toEqual([]);
+  expect(await pageErrors()).toEqual([]);
+  expect((await consoleErrors()).filter((e) => /Content Security Policy|WebAssembly|wasm/i.test(e))).toEqual([]);
 });

@@ -6,8 +6,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { page as win } from '../tests/e2e/helpers/pw.mjs';
 import { waitForAppReady } from '../tests/e2e/helpers/tauriApp.mjs';
+import { typeText } from '../tests/e2e/helpers/input.mjs';
+
+// Pacing pauses are the point of a recording (the viewer must see each scene), not test waits.
+const hold = ms => browser.pause(ms);
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const frameDir = path.join(root, '.demo-frames');
@@ -27,7 +30,7 @@ it('records the demo', async () => {
   // Start from a clean welcome screen
   await browser.execute(() => { localStorage.removeItem('recent-tools'); window.__e2eStale = true; setTimeout(() => location.reload(), 0); });
   await browser.waitUntil(() => browser.execute(() => !window.__e2eStale && !!document.querySelector('#toolsNav [data-tool-id]')).catch(() => false), { timeout: 20000 });
-  await win.waitForTimeout(800);
+  await hold(800);
 
   fs.rmSync(frameDir, { recursive: true, force: true });
   fs.mkdirSync(frameDir);
@@ -37,45 +40,44 @@ it('records the demo', async () => {
     while (recording) frames.push({ t: Date.now(), data: await browser.takeScreenshot() });
   })();
 
-  const typeSlow = async (text, delay) => { for (const ch of text) { await browser.keys(ch); await win.waitForTimeout(delay); } };
+  const typeSlow = async (text, delay) => { for (const ch of text) { await browser.keys(ch); await hold(delay); } };
   const palette = async (query) => {
-    await win.keyboard.press('Control+K');
-    await win.waitForTimeout(350);
+    await browser.keys(['Control', 'k']);
+    await hold(350);
     await typeSlow(query, 80);
-    await win.waitForTimeout(600);
-    await win.keyboard.press('Enter');
-    await win.waitForTimeout(900);
+    await hold(600);
+    await browser.keys('Enter');
+    await hold(900);
   };
 
-  await win.waitForTimeout(1200);
+  await hold(1200);
   // 1. Paste anything -> auto-detect -> Enter opens the right tool
-  await win.focus('#homeSearch');
-  await win.fill('#homeSearch', JWT);
-  await win.waitForTimeout(1600);
-  await win.keyboard.press('Enter');
-  await win.waitForSelector('#jwt-header-out');
-  await win.waitForTimeout(2800);
+  await typeText('#homeSearch', JWT);
+  await hold(1600);
+  await browser.keys('Enter');
+  await $('#jwt-header-out').waitForDisplayed();
+  await hold(2800);
   // 2. Command palette -> Hash
   await palette('hash');
-  await win.focus('#hash-input');
+  await $('#hash-input').click();
   await typeSlow('hello forgetools', 55);
-  await win.waitForTimeout(2200);
+  await hold(2200);
   // 3. Timestamp
   await palette('timestamp');
-  await win.click('#ts-now-btn').catch(() => {});
-  await win.waitForTimeout(2200);
+  await $('#ts-now-btn').click();
+  await hold(2200);
   // 4. Pipeline: chain decode -> format in one recipe
   await palette('pipeline');
-  await win.click('#chain-sample');
-  await win.waitForTimeout(2400);
+  await $('#chain-sample').click();
+  await hold(2400);
   // 5. Cron builder: plain-English schedule + next runs
   await palette('cron builder');
-  await win.click('#cronb-sample');
-  await win.waitForTimeout(2400);
+  await $('#cronb-sample').click();
+  await hold(2400);
   // 6. Fake data
   await palette('fake data');
-  await win.click('#fake-sample');
-  await win.waitForTimeout(2400);
+  await $('#fake-sample').click();
+  await hold(2400);
 
   recording = false;
   await recorder;

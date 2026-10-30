@@ -18,7 +18,7 @@ Offline developer utilities in one desktop app. Format, decode, convert and gene
 - **Light and dark themes** that follow your system.
 - **Lives in the tray**: closing the window keeps it running, with an optional global shortcut and start at login (see [Background mode](#background-mode)).
 - **Locked down**: system WebView with no Node.js, least-privilege Tauri permissions, strict Content Security Policy, sanitized Markdown preview, and no network access. The one exception is an opt-in update check (a button in Settings → About, plus an optional daily check that is off by default) that only asks GitHub for the latest release number.
-- **Small and fast**: about 5 MB to download on Windows and macOS, opens in about a third of a second, and each tool loads its libraries only when you open it.
+- **Small and fast**: a portable Windows exe of about 5 MB (measured: 5.2 MiB), a window on screen in well under a second (median 0.6 s on a Windows 11 dev machine via `scripts/measure.cjs`), and each tool loads its libraries only when you open it.
 - Runs on **Windows, macOS (Intel & Apple Silicon) and Linux**.
 
 ## Tools
@@ -49,11 +49,11 @@ Get the latest build from [Releases](https://github.com/tengfone/forgetools/rele
 | Platform | File | Size |
 | --- | --- | --- |
 | Windows 10/11 | `ForgeTools-Portable-X.Y.Z.exe` | ~5 MB |
-| macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` | ~5 MB |
-| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` | ~5 MB |
+| macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` | a few MB |
+| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` | a few MB |
 | Linux (any distro) | `ForgeTools-X.Y.Z.AppImage` | ~80 MB |
-| Linux (Debian/Ubuntu) | `ForgeTools-X.Y.Z-amd64.deb` | ~5 MB |
-| Linux (Fedora/openSUSE) | `ForgeTools-X.Y.Z-x86_64.rpm` | ~5 MB |
+| Linux (Debian/Ubuntu) | `ForgeTools-X.Y.Z-amd64.deb` | a few MB |
+| Linux (Fedora/openSUSE) | `ForgeTools-X.Y.Z-x86_64.rpm` | a few MB |
 
 Platform notes:
 

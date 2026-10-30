@@ -5,11 +5,10 @@ description = "Offline Developer Utilities"
 authors = ["tengfone"]
 license = "MIT"
 edition = "2021"
-rust-version = "1.77.2"
 
 [lib]
 name = "forgetools_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["rlib"] # desktop-only; mobile would need staticlib/cdylib
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -27,6 +26,8 @@ tauri-plugin-notification = "2.4.0"
 tauri-plugin-clipboard-manager = "2.3.3"
 tauri-plugin-opener = "2.5.5"
 tauri-plugin-os = "2.3.2"
+log = "0.4.34"
+tauri-plugin-log = "2"
 
 [profile.release]
 codegen-units = 1

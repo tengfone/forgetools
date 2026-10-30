@@ -1,4 +1,5 @@
-// Phase 1 harness smoke tests. Full ports of the six Playwright specs follow in phase 2.
+// Harness smoke tests: fast sanity checks that the WDIO/Tauri harness itself works
+// (launch, window state, a tool, the palette). Feature coverage lives in the other specs.
 import { expect } from '@wdio/globals';
 import { waitForAppReady, windowState } from './helpers/tauriApp.mjs';
 

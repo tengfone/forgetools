@@ -3,7 +3,6 @@ mod background;
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
 
@@ -23,6 +22,20 @@ pub fn run() {
             .plugin(tauri_plugin_wdio_webdriver::init());
     }
 
+    // The wdio plugins install their own global logger; a second one panics at startup.
+    #[cfg(not(feature = "wdio"))]
+    {
+        builder = builder.plugin(
+            tauri_plugin_log::Builder::new()
+                .level(if cfg!(debug_assertions) {
+                    log::LevelFilter::Debug
+                } else {
+                    log::LevelFilter::Info
+                })
+                .build(),
+        );
+    }
+
     builder
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -33,7 +46,11 @@ pub fn run() {
                 })
                 .build(),
         )
-        .plugin(tauri_plugin_autostart::Builder::new().args(["--hidden"]).build())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args(["--hidden"])
+                .build(),
+        )
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
@@ -45,7 +62,7 @@ pub fn run() {
             start_hidden,
         ])
         .setup(|app| {
-            background::init(app.handle())?;
+            background::init(app.handle());
             Ok(())
         })
         .on_window_event(|w, e| {
@@ -55,10 +72,19 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while building ForgeTools")
-        .run(|app, e| {
-            if let tauri::RunEvent::ExitRequested { .. } = e {
-                app.state::<background::State>().quitting.store(true, std::sync::atomic::Ordering::SeqCst);
+        .run(|app, e| match e {
+            tauri::RunEvent::ExitRequested { .. } => {
+                app.state::<background::State>()
+                    .quitting
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
             }
+            // Dock icon clicked while the window is hidden in the tray
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } => background::show_window(app, false),
+            _ => {}
         });
 }
 

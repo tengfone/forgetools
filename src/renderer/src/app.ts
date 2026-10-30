@@ -1,15 +1,16 @@
 import './fonts.css';
-import './monacoEnv'; // must run before Monaco's AMD loader requests editor.main
+import { getMonaco, loadMonaco } from './monacoEnv';
 import type { Tool } from '../../types/tools';
 import type { editor } from 'monaco-editor';
-import { appWindow, background, getPlatform, isMac as isMacPlatform, isTauri, startHidden } from './native';
+import { getPlatform, isMac as isMacPlatform } from './native';
+import { revealWindow, setupWindowControls, setupGoHome } from './app/windowShell';
 import { logger } from './logger';
 import { detect, type Candidate } from './detect';
 import './tools';
 import { getHelp } from './tools/help';
 import { CATEGORY_ORDER } from './tools';
 import { scoreTool } from './search';
-import { esc, bumpToolEpoch } from './ui';
+import { esc, bumpToolEpoch, nextFrameOrTimeout } from './ui';
 import { captureFields, restoreFields, clearableFieldIds, clearWithUndo, type FieldSnapshot } from './ui';
 import { showToast, copyText, readClipboardText, wireClipboardActions, setStatus, openModal, closeModal, getIndent, getIndentChoice, setIndentChoice, type IndentChoice } from './ui';
 import { getTheme, setTheme, syncThemeButton, isDarkActive, defineMonacoThemes } from './app/theme';
@@ -18,17 +19,6 @@ import { setupAbout } from './app/about';
 import { setupSettingsTabs, type SettingsSection } from './app/settingsDialog';
 import { historyEnabled, HISTORY_FLAG, clearAllHistory, getHistory, pushHistory, historyLabel, MAX_ENTRY } from './tools/lib/history';
 import { resultCache, resultCacheKey, MAX_CACHEABLE_INPUT, debounce } from './app/cache';
-
-// Configure Monaco loader (using requirejs for Monaco)
-// Monaco Editor uses AMD/RequireJS which is loaded via script tag
-declare global {
-  interface Window {
-    require?: {
-      config: (config: { paths: Record<string, string> }) => void;
-      (deps: string[], callback: (monaco: typeof import('monaco-editor')) => void, errback?: (err: Error) => void): void;
-    };
-  }
-}
 
 // Global State
 let inputEditor: editor.IStandaloneCodeEditor | null = null;
@@ -84,48 +74,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set theme immediately on load
   setTheme(getTheme());
   initApp();
-  // The window is created hidden (no white flash); reveal it once the first frame is painted.
-  // Launched at login with --hidden: stay in the tray until the user opens it.
-  // WebKit (macOS/Linux) does not run rAF for a hidden window, so a timer is the fallback.
-  if (isTauri()) {
-    let done = false;
-    const reveal = (): void => {
-      if (done) return;
-      done = true;
-      void startHidden().then(hidden => hidden ? undefined : appWindow.show()).catch(() => {});
-    };
-    requestAnimationFrame(() => requestAnimationFrame(reveal));
-    setTimeout(reveal, 100);
-  }
+  revealWindow();
 });
 
 // Monaco is loaded lazily the first time an editor-based tool opens.
 let monacoPromise: Promise<void> | null = null;
 function ensureMonaco(): Promise<void> {
-  if (window.monaco && inputEditor) return Promise.resolve();
+  if (getMonaco() && inputEditor) return Promise.resolve();
   if (monacoPromise) return monacoPromise;
   setStatus('idle', 'Loading editor\u2026');
-  monacoPromise = new Promise<void>((resolve, reject) => {
-    const attempt = (retryCount: number): void => {
-      const req = window.require;
-      if (window.monacoPath && req) {
-        try {
-          req.config({ paths: { vs: window.monacoPath } });
-          req(['vs/editor/editor.main'], (monaco: typeof import('monaco-editor')) => {
-            window.monaco = monaco;
-            initMonaco();
-            resolve();
-          }, (error: Error) => reject(error));
-        } catch (e) {
-          reject(e instanceof Error ? e : new Error(String(e)));
-        }
-      } else if (retryCount < 30) {
-        setTimeout(() => attempt(retryCount + 1), Math.min(100 * Math.pow(1.2, retryCount), 500));
-      } else {
-        reject(new Error('Editor loader unavailable'));
-      }
-    };
-    attempt(0);
+  monacoPromise = loadMonaco().then(() => {
+    initMonaco();
   }).catch(err => {
     logger.error('Monaco Editor failed to load:', err);
     setStatus('error', 'Editor failed to load', 'restart the app');
@@ -146,7 +105,8 @@ function applyIndentToModels(): void {
 }
 
 function initMonaco(): void {
-  if (!window.monaco) return;
+  const monaco = getMonaco();
+  if (!monaco) return;
 
   defineMonacoThemes();
   const isDark = isDarkActive();
@@ -176,9 +136,9 @@ function initMonaco(): void {
   const inputContainer = document.getElementById('inputEditor');
   const outputContainer = document.getElementById('outputEditor');
 
-  if (inputContainer && window.monaco) {
+  if (inputContainer) {
     inputContainer.innerHTML = '';
-    inputEditor = window.monaco.editor.create(inputContainer, {
+    inputEditor = monaco.editor.create(inputContainer, {
       ...commonOptions,
       value: '',
       ariaLabel: 'Input'
@@ -201,9 +161,9 @@ function initMonaco(): void {
     });
   }
 
-  if (outputContainer && window.monaco) {
+  if (outputContainer) {
     outputContainer.innerHTML = '';
-    outputEditor = window.monaco.editor.create(outputContainer, {
+    outputEditor = monaco.editor.create(outputContainer, {
       ...commonOptions,
       value: '',
       readOnly: true,
@@ -258,16 +218,6 @@ function setupHelp(): void {
       if (wasInside) document.getElementById('helpBtn')?.focus();
     }
   });
-}
-
-/** Windows/Linux: our own minimize / maximize / close buttons (macOS keeps native traffic lights). */
-function setupWindowControls(isMac: boolean): void {
-  const box = document.getElementById('windowControls');
-  if (!box || isMac || !isTauri()) return;
-  box.hidden = false;
-  document.getElementById('wcMinimize')?.addEventListener('click', () => void appWindow.minimize());
-  document.getElementById('wcMaximize')?.addEventListener('click', () => void appWindow.toggleMaximize());
-  document.getElementById('wcClose')?.addEventListener('click', () => void appWindow.close());
 }
 
 let openSettingsSheet: (opener?: HTMLElement | null) => void = () => {};
@@ -475,7 +425,7 @@ function initApp(): void {
   setupHomeSearch();
   setupBackgroundSettings();
   setupAbout();
-  if (isTauri()) void background.onGoHome(() => {
+  setupGoHome(() => {
     if (currentTool) goHome();
     focusHomeSearch();
   });
@@ -778,12 +728,13 @@ function switchTool(toolId: string): void {
 
       void ensureMonaco().then(() => {
         if (token !== renderToken || currentTool !== tool) return;
-        if (!(inputEditor && outputEditor && window.monaco)) return;
+        const monaco = getMonaco();
+        if (!(inputEditor && outputEditor && monaco)) return;
         setStatus('idle', 'Ready');
         const inputModel = inputEditor.getModel();
         const outputModel = outputEditor.getModel();
-        if (inputModel) window.monaco.editor.setModelLanguage(inputModel, tool.language || 'plaintext');
-        if (outputModel) window.monaco.editor.setModelLanguage(outputModel, tool.language || 'plaintext');
+        if (inputModel) monaco.editor.setModelLanguage(inputModel, tool.language || 'plaintext');
+        if (outputModel) monaco.editor.setModelLanguage(outputModel, tool.language || 'plaintext');
         applyIndentToModels();
 
         // Double RAF ensures layout is complete after visibility change
@@ -1172,10 +1123,7 @@ function focusToolStart(tool: Tool): void {
   const live = document.getElementById('toolAnnounce');
   if (live) { live.textContent = ''; setTimeout(() => { live.textContent = `${tool.title} opened`; }, 50); }
   // Next frame, or a timer when WebKit pauses rAF (window occluded or not yet shown).
-  let done = false;
   const run = (): void => {
-    if (done) return;
-    done = true;
     if (currentTool !== tool) return;
     const active = document.activeElement;
     // Don't steal focus from the palette while it's still handling input
@@ -1193,8 +1141,7 @@ function focusToolStart(tool: Tool): void {
     }
     document.getElementById('currentToolTitle')?.focus({ preventScroll: true });
   };
-  requestAnimationFrame(run);
-  setTimeout(run, 100);
+  nextFrameOrTimeout(run);
 }
 
 
@@ -1219,7 +1166,8 @@ function locateError(message: string, input: string): { line: number; col: numbe
 
 function clearMarkers(): void {
   const model = inputEditor?.getModel();
-  if (model && window.monaco) window.monaco.editor.setModelMarkers(model, 'forgetools', []);
+  const monaco = getMonaco();
+  if (model && monaco) monaco.editor.setModelMarkers(model, 'forgetools', []);
 }
 
 function showOutput(text: string, input: string): void {
@@ -1268,11 +1216,12 @@ async function processInput(): Promise<void> {
     const loc = locateError(error.message, input);
     setStatus('error', error.message, loc ? `Ln ${loc.line}, Col ${loc.col}` : 'previous output kept');
     const model = inputEditor?.getModel();
-    if (model && window.monaco) {
+    const monaco = getMonaco();
+    if (model && monaco) {
       const line = loc ? Math.max(1, Math.min(loc.line, model.getLineCount())) : 1;
       const col = loc ? Math.max(1, loc.col) : 1;
-      window.monaco.editor.setModelMarkers(model, 'forgetools', [{
-        severity: window.monaco.MarkerSeverity.Error,
+      monaco.editor.setModelMarkers(model, 'forgetools', [{
+        severity: monaco.MarkerSeverity.Error,
         message: error.message,
         startLineNumber: line,
         startColumn: col,
@@ -1361,7 +1310,14 @@ function setupEventListeners(): void {
     }
     
     if (!inputEditor) {
-      showToast('Editor is still loading. Try again in a moment.', 'error');
+      // Editor chunk still loading (lazy import): apply the sample once it is ready.
+      const tool = currentTool;
+      void ensureMonaco().then(() => {
+        if (currentTool !== tool || !inputEditor) return;
+        inputEditor.setValue(sampleData);
+        inputEditor.focus();
+        if (tool.autoRun) setTimeout(() => processInput(), 100);
+      });
       return;
     }
     

@@ -27,8 +27,9 @@ Always run `npm run test:unit`, `npm run test:e2e` and `cargo test --lib` (in sr
 - `src/renderer/src/tools/index.ts`: **tool registry**. Every tool is declared here.
 - `src/renderer/src/tools/ui/*.ts`: custom tool UIs, each lazily loaded and exporting `render(container)`
 - `src/renderer/src/ui.ts` and `tools/ui/common.ts`: shared helpers (status bar, toasts, copy, input actions, `twoWay`, `emptyState`)
-- `src/renderer/vs/`: Monaco files **generated** by `scripts/setup-monaco.js` on postinstall. Don't edit them by hand.
+- `src/renderer/src/monaco.ts`: Monaco, bundled by Vite as ESM and loaded lazily (`loadMonaco()`/`getMonaco()` in `monacoEnv.ts`). Only the editor core, the real `editor.worker`, and the tokenizers the tools use are imported. Add a language there before using it as a tool's `language`.
 - `DESIGN.md` and `PRODUCT.md`: the visual system and product principles. Follow them for any UI work.
+- `tests/e2e/`: WebdriverIO specs in plain WDIO (`$`, `$$`, `browser.keys`, expect-webdriverio matchers). `helpers/tauriApp.mjs` does app-ready, error capture and Tauri window/clipboard calls; `helpers/input.mjs` holds the few documented workarounds for the embedded driver (`<select>` choice, trusted text input, focus on clicking non-focusable elements). Use native commands everywhere else.
 
 ## Adding a tool
 

@@ -35,8 +35,6 @@ export interface ToolsRegistry {
 declare global {
   interface Window {
     tools?: ToolsRegistry;
-    monaco?: typeof import('monaco-editor');
-    monacoPath?: string;
   }
 }
 

@@ -25,9 +25,7 @@ export type HashAlgo = 'md5' | 'sha1' | 'sha256' | 'sha512';
 const HASHERS = { md5: createMD5, sha1: createSHA1, sha256: createSHA256, sha512: createSHA512 } as const;
 
 async function digest(algo: HashAlgo, data: string | Uint8Array): Promise<string> {
-    const make = HASHERS[algo];
-    if (!make) throw new Error('Unsupported hash algorithm');
-    const h = await make();
+    const h = await HASHERS[algo]();
     h.init();
     h.update(data);
     return h.digest('hex');
@@ -134,8 +132,8 @@ export interface QRCodeGenerateOptions {
 const QR_MAX_TEXT = 4296; // max alphanumeric capacity of a version-40 QR code
 export async function generateQr(text: string, options: QRCodeGenerateOptions = {}): Promise<string> {
     const t = requireString(text, 'QR text', QR_MAX_TEXT);
-    const o = (options ?? {}) as Record<string, unknown>;
-    const c = (o.color && typeof o.color === 'object' ? o.color : {}) as Record<string, unknown>;
+    const o: QRCodeGenerateOptions = options ?? {};
+    const c = o.color && typeof o.color === 'object' ? o.color : {};
     const QRCode = (await import('qrcode')).default;
     return await QRCode.toDataURL(t, {
         errorCorrectionLevel: oneOf(o.errorCorrectionLevel, ['L', 'M', 'Q', 'H'] as const) ?? 'M',
@@ -161,7 +159,7 @@ const BARCODE_FORMATS = [
 /** Barcode as an SVG string. Uses an XML document (not the page DOM) so output is deterministic. */
 export async function generateBarcode(text: string, options: BarcodeGenerateOptions = {}): Promise<string> {
     const t = requireString(text, 'Barcode text', 512);
-    const o = (options ?? {}) as Record<string, unknown>;
+    const o: BarcodeGenerateOptions = options ?? {};
     const [{ default: JsBarcode }, { DOMImplementation, XMLSerializer }] = await Promise.all([import('jsbarcode'), import('@xmldom/xmldom')]);
     try {
         const doc = new DOMImplementation().createDocument('http://www.w3.org/1999/xhtml', 'html', null);
@@ -185,7 +183,7 @@ export async function generateBarcode(text: string, options: BarcodeGenerateOpti
                 marginLeft: clampNum(o.marginLeft, 0, 100),
                 marginRight: clampNum(o.marginRight, 0, 100),
             }),
-        } as unknown as Parameters<typeof JsBarcode>[2]);
+        });
         return new XMLSerializer().serializeToString(svgNode);
     } catch (error) {
         throw new Error(`Failed to generate barcode: ${error instanceof Error ? error.message : String(error)}`);

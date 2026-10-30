@@ -1,6 +1,7 @@
 // Settings > About: version, update check (manual + opt-in daily), links and runtime details.
 import { clipboard, getAppInfo, openLink, type ExternalLinkId } from '../native';
-import { updates, type UpdateCheckResult } from '../updates';
+import { updates, type UpdateCheckResult, type UpdatePrefs } from '../updates';
+import { logger } from '../logger';
 import { showToast } from '../ui';
 
 /** Flag "update available" on the titlebar Settings button and the About tab. */
@@ -81,14 +82,20 @@ export function setupAbout(): void {
     auto.checked = updates().getPrefs().autoCheck;
     auto.addEventListener('change', () => {
       const want = auto.checked;
-      void Promise.resolve().then(() => updates().setPrefs({ autoCheck: want })).then(p => {
-        auto.checked = p.autoCheck;
-        if (p.autoCheck) void updates().auto().then(r => { if (r) show(r); }).catch(() => {});
-      }).catch(() => { auto.checked = !want; showToast('Could not save setting', 'error'); });
+      let p: UpdatePrefs;
+      try {
+        p = updates().setPrefs({ autoCheck: want });
+      } catch {
+        auto.checked = !want;
+        showToast('Could not save setting', 'error');
+        return;
+      }
+      auto.checked = p.autoCheck;
+      if (p.autoCheck) void updates().auto().then(r => { if (r) show(r); }).catch((e: unknown) => logger.warn('Auto update check failed:', e));
     });
   }
   // Startup: updates.ts decides whether to touch the network (opt-in, once a day).
-  void updates().auto().then(r => { if (r?.available) show(r); }).catch(() => {});
+  void updates().auto().then(r => { if (r?.available) show(r); }).catch((e: unknown) => logger.warn('Auto update check failed:', e));
 
   meta?.addEventListener('click', () => {
     if (!details) return;

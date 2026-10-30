@@ -36,3 +36,17 @@ macOS and Linux were not measured (no machines available); the published downloa
 bundled sample cert plus 3 extra certs in `certs/` (RSA-2048 with a long serial and 7-RDN subject,
 EC P-384 with an escaped comma in O, Ed25519), QR data URLs, barcode SVGs (EAN-13, UPC, CODE39,
 CODE128) and SVGO output for 2 inputs. Parity unit tests compare the Tauri implementation against it.
+
+## Tauri build (measured)
+
+Windows 11 x64 dev machine, `npx tauri build --no-bundle` release exe, `node scripts/measure.cjs <exe> 3` (median of 3; informational, not a gate):
+
+| Metric | Value |
+|---|---|
+| Portable exe size | 5,437,440 B (5.19 MiB) |
+| Cold start to window shown | 614 ms |
+| Cold start to app ready | 806 ms |
+| Idle memory (private / working set, process tree) | 196 MB / 369 MB |
+| After opening 5 tools (private / working set) | 228 MB / 418 MB |
+| Processes (incl. WebView2) | 7 |
+

@@ -1,7 +1,7 @@
 // Release smoke test for the shipped (non-wdio) binary.
 // Usage: node scripts/smoke-release.cjs [path-to-exe]
 // Checks: process starts and stays alive; the embedded WebDriver server is NOT present
-// (TAURI_WEBDRIVER_PORT is ignored); no wdio plugin code in the binary or frontend dist.
+// (TAURI_WEBDRIVER_PORT, the port env var read by tauri-plugin-wdio-webdriver, is ignored); no wdio plugin code in the binary or frontend dist.
 const { spawn } = require('child_process');
 const fs = require('fs');
 const net = require('net');
@@ -40,9 +40,12 @@ const check = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`); if 
   const child = spawn(exe, [], { env: { ...process.env, TAURI_WEBDRIVER_PORT: String(PORT) }, stdio: 'ignore' });
   let exited = null;
   child.on('exit', (code) => { exited = code; });
-  await sleep(5000);
-  check(exited === null, 'app still running after 5 s');
-  check(!(await portOpen(PORT)), `no WebDriver server on :${PORT}`);
-  child.kill();
+  try {
+    await sleep(5000);
+    check(exited === null, 'app still running after 5 s');
+    check(!(await portOpen(PORT)), `no WebDriver server on :${PORT}`);
+  } finally {
+    child.kill();
+  }
   process.exit(failed ? 1 : 0);
-})();
+})().catch((e) => { console.error(e); process.exit(1); });

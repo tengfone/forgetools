@@ -70,6 +70,26 @@ export function showToast(msg: string, type: 'success' | 'error' = 'success', ac
   toastTimer = setTimeout(dismiss, action ? 5000 : type === 'error' ? 3200 : 1600);
 }
 
+/** Fallback delay when rAF is throttled (WebKit skips frames for hidden windows). */
+export const REVEAL_FALLBACK_MS = 100;
+
+/**
+ * Run `fn` exactly once: after `frames` animation frames, or after `ms` if frames never fire.
+ */
+export function nextFrameOrTimeout(fn: () => void, ms = REVEAL_FALLBACK_MS, frames = 1): void {
+  let done = false;
+  const once = (): void => {
+    if (done) return;
+    done = true;
+    fn();
+  };
+  const frame = (left: number): void => {
+    requestAnimationFrame(() => (left > 1 ? frame(left - 1) : once()));
+  };
+  frame(Math.max(1, frames));
+  setTimeout(once, ms);
+}
+
 /** Ctrl/Cmd+Z triggers the pending toast action (Undo) when focus is not inside an editable field. */
 document.addEventListener('keydown', e => {
   if (!toastAction || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;

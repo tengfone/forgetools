@@ -24,6 +24,7 @@
         { "url": "https://www.buymeacoffee.com/tengfone" }
       ]
     },
-    "os:default"
+    "os:allow-platform",
+    "os:allow-arch"
   ]
 }

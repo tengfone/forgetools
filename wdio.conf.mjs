@@ -1,6 +1,7 @@
 // WebdriverIO config for the Tauri E2E suite.
 // The app under test is the `--features wdio` build (npm run build:e2e), which embeds
 // the W3C WebDriver server (tauri-plugin-wdio-webdriver) — no tauri-driver/msedgedriver.
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,14 +28,24 @@ export const config = {
     captureFrontendLogs: true,
     frontendLogLevel: 'error',
   }]],
-  // Playwright's waitForSelector/$$eval resolved the first match; keep that for 1:1 ports.
+  // `$` resolves the first match when a selector matches several elements.
   strictSelectors: false,
   logLevel: 'warn',
   bail: 0,
+  // Also the default `wait` of expect-webdriverio matchers (set by the runner).
   waitforTimeout: 10000,
   connectionRetryTimeout: 90000,
   connectionRetryCount: 2,
   framework: 'mocha',
   mochaOpts: { ui: 'bdd', timeout: 60000 },
   reporters: ['spec'],
+  outputDir: path.join(root, 'test-results', 'logs'),
+  // On failure, keep a screenshot for the CI artifact (test-results/).
+  afterTest: async (test, _context, { passed }) => {
+    if (passed) return;
+    const dir = path.join(root, 'test-results', 'screenshots');
+    fs.mkdirSync(dir, { recursive: true });
+    const name = `${test.parent} ${test.title}`.replace(/[^\w.-]+/g, '_').slice(0, 150);
+    await browser.saveScreenshot(path.join(dir, `${name}.png`)).catch((e) => console.warn('screenshot failed:', e.message));
+  },
 };

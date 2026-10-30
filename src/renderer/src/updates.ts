@@ -3,6 +3,7 @@
 // latest *published* release (drafts/pre-releases excluded) and compares versions.
 // No in-place install: the user is linked to the release page.
 import { isNewer, parseVersion } from './version';
+import { RELEASE_PREFIX } from './links';
 
 export interface UpdatePrefs { autoCheck: boolean }
 export interface UpdateCheckResult {
@@ -15,7 +16,6 @@ export interface UpdateCheckResult {
 
 declare const __APP_VERSION__: string;
 const LATEST_URL = 'https://api.github.com/repos/tengfone/forgetools/releases/latest';
-const RELEASE_PREFIX = 'https://github.com/tengfone/forgetools/releases/';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KEY = 'forge-updates';
 
@@ -39,7 +39,18 @@ const defaultEnv = (): UpdateEnv => ({
   isE2E: () => import.meta.env.VITE_WDIO === '1',
 });
 
-export function createUpdates(env: UpdateEnv = defaultEnv()) {
+export interface Updates {
+  /** Manual check: always asks GitHub, rejects on failure. */
+  check(): Promise<UpdateCheckResult>;
+  getPrefs(): UpdatePrefs;
+  setPrefs(patch: Partial<UpdatePrefs>): UpdatePrefs;
+  /** Startup check: only hits the network when opted in and >24h since the last check. */
+  auto(): Promise<UpdateCheckResult | null>;
+  /** The release page to open: the cached latest release, else /releases/latest. */
+  releaseUrl(): string;
+}
+
+export function createUpdates(env: UpdateEnv = defaultEnv()): Updates {
   const load = (): Stored => {
     try {
       const raw = JSON.parse(env.storage.getItem(KEY) ?? 'null') as Partial<Stored> | null;
@@ -106,6 +117,6 @@ export function createUpdates(env: UpdateEnv = defaultEnv()) {
   };
 }
 
-let instance: ReturnType<typeof createUpdates> | null = null;
-export const updates = (): ReturnType<typeof createUpdates> => (instance ??= createUpdates());
+let instance: Updates | null = null;
+export const updates = (): Updates => (instance ??= createUpdates());
 export const releaseUrl = (): string => updates().releaseUrl();
