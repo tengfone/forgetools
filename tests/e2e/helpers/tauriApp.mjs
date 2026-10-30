@@ -1,6 +1,9 @@
 // Shared WDIO helpers: app launch, error capture and native window state (Tauri APIs that
 // have no WebDriver equivalent). Element interaction lives in the specs, in plain WDIO.
 
+/** Identifier of the E2E build (tauri.wdio.conf.json); never the production one. */
+const E2E_IDENTIFIER = 'com.tengfone.forgetools.e2e';
+
 /** Record uncaught page errors, console errors and CSP violations in the page (window.__e2e). */
 async function captureErrors() {
   await browser.execute(() => {
@@ -31,8 +34,14 @@ export const consoleErrors = () => browser.execute(() => (window.__e2e ? window.
  * The service keeps ONE app process for all spec files (maxInstances 1). Give every spec file a
  * fresh start: empty localStorage/sessionStorage and a reloaded webview, so no state leaks
  * between files. The reload is detected by performance.timeOrigin changing (a new document).
+ * Storage is keyed by the app identifier, so refuse to clear it unless this is the E2E build
+ * (tauri.wdio.conf.json); clearing the production identifier's storage would wipe real user data.
  */
 async function freshStart() {
+  const id = await browser.tauri.execute(() => window.__TAURI__.app.getIdentifier());
+  if (id !== E2E_IDENTIFIER) {
+    throw new Error(`refusing to clear storage: app identifier is "${id}", expected "${E2E_IDENTIFIER}"`);
+  }
   const origin = await browser.execute(() => {
     localStorage.clear();
     sessionStorage.clear();

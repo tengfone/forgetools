@@ -161,7 +161,10 @@ fn load<R: Runtime>(app: &AppHandle<R>) -> Stored {
     let Some(f) = prefs_file(app) else {
         return Stored::default();
     };
-    migrate_legacy(app, &f);
+    // E2E runs under its own identifier and must not pick up the developer's v0.2.1 prefs.
+    if !is_e2e() {
+        migrate_legacy(app, &f);
+    }
     match std::fs::read_to_string(&f) {
         Ok(s) => parse_prefs(&s),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Stored::default(),
