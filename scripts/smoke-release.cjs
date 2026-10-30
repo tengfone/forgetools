@@ -8,18 +8,26 @@ const net = require('net');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const exe = process.argv[2] || path.join(root, 'src-tauri', 'target', 'release',
-  process.platform === 'win32' ? 'forgetools.exe' : 'forgetools');
+const exe =
+  process.argv[2] ||
+  path.join(root, 'src-tauri', 'target', 'release', process.platform === 'win32' ? 'forgetools.exe' : 'forgetools');
 const PORT = 4499;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const portOpen = (port) => new Promise((resolve) => {
-  const s = net.connect(port, '127.0.0.1');
-  s.once('connect', () => { s.destroy(); resolve(true); });
-  s.once('error', () => resolve(false));
-});
+const portOpen = (port) =>
+  new Promise((resolve) => {
+    const s = net.connect(port, '127.0.0.1');
+    s.once('connect', () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.once('error', () => resolve(false));
+  });
 
 let failed = 0;
-const check = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`); if (!ok) failed++; };
+const check = (ok, msg) => {
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`);
+  if (!ok) failed++;
+};
 
 (async () => {
   check(fs.existsSync(exe), `binary exists: ${exe}`);
@@ -30,16 +38,21 @@ const check = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`); if 
 
   const dist = path.join(root, 'out', 'renderer');
   const leaks = [];
-  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-    const p = path.join(d, e.name);
-    if (e.isDirectory()) { if (e.name !== 'vs') walk(p); } else if (/\.js$/.test(e.name) && fs.readFileSync(p, 'utf8').includes('wdioTauri')) leaks.push(p);
-  } };
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.js$/.test(e.name) && fs.readFileSync(p, 'utf8').includes('wdioTauri')) leaks.push(p);
+    }
+  };
   if (fs.existsSync(dist)) walk(dist);
   check(leaks.length === 0, `no @wdio/tauri-plugin in out/renderer ${leaks.join(', ')}`);
 
   const child = spawn(exe, [], { env: { ...process.env, TAURI_WEBDRIVER_PORT: String(PORT) }, stdio: 'ignore' });
   let exited = null;
-  child.on('exit', (code) => { exited = code; });
+  child.on('exit', (code) => {
+    exited = code;
+  });
   try {
     await sleep(5000);
     check(exited === null, 'app still running after 5 s');
@@ -48,4 +61,7 @@ const check = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${msg}`); if 
     child.kill();
   }
   process.exit(failed ? 1 : 0);
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

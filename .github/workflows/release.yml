@@ -1,13 +1,13 @@
-name: Release
+name: CI
 
-# Tests on every branch push and PR. Builds and releases only when a version tag is pushed, e.g.:
-#   npm version patch   (bumps package.json, commits, creates tag vX.Y.Z)
-#   git push --follow-tags
+# Tests on every push to tauri/main and on PRs. A v* tag additionally builds all platforms
+# and creates a DRAFT GitHub release, published by hand. Tag with:
+#   npm run release:patch|minor|major   (bumps package.json + Cargo files, commits, tags, pushes)
 on:
   # Branch pushes and PRs run the test job only; build and release need a v* tag.
   push:
     tags:
-      - "v*"
+      - 'v*'
     branches: [tauri, main]
   pull_request:
   workflow_dispatch:
@@ -16,13 +16,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: ci-${{ github.ref }}
   # Never cancel a tag (release) run; superseded branch/PR runs are cancelled.
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
   # Keep in sync with src-tauri/rust-toolchain.toml.
-  RUST_TOOLCHAIN: "1.97.0"
+  RUST_TOOLCHAIN: '1.97.0'
 
 jobs:
   test:
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
-          cache: "npm"
+          cache: 'npm'
 
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
@@ -59,11 +59,23 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf xdg-utils xvfb
 
       - name: Install dependencies
-        run: npm ci # also runs the postinstall script
+        run: npm ci
 
       - name: Lint gate
         if: runner.os == 'Linux'
         run: npm run lint:gate
+
+      - name: Typecheck
+        if: runner.os == 'Linux'
+        run: npm run typecheck
+
+      - name: Lint
+        if: runner.os == 'Linux'
+        run: npm run lint
+
+      - name: Format check
+        if: runner.os == 'Linux'
+        run: npm run format:check
 
       - name: Install cargo-audit
         if: runner.os == 'Linux'
@@ -130,11 +142,21 @@ jobs:
       matrix:
         include:
           # Windows ships only the raw (portable) exe, so no installer bundle is built.
-          - { os: windows-latest, name: win, args: "--no-bundle" }
-          - { os: macos-latest, name: mac-arm64, target: aarch64-apple-darwin, args: "--target aarch64-apple-darwin --bundles app" }
+          - { os: windows-latest, name: win, args: '--no-bundle' }
+          - {
+              os: macos-latest,
+              name: mac-arm64,
+              target: aarch64-apple-darwin,
+              args: '--target aarch64-apple-darwin --bundles app',
+            }
           # Cross-compiled on the arm64 runner; this build is NOT smoke-tested (the test job runs arm64 only).
-          - { os: macos-latest, name: mac-x64, target: x86_64-apple-darwin, args: "--target x86_64-apple-darwin --bundles app" }
-          - { os: ubuntu-22.04, name: linux, args: "--bundles appimage,deb,rpm" }
+          - {
+              os: macos-latest,
+              name: mac-x64,
+              target: x86_64-apple-darwin,
+              args: '--target x86_64-apple-darwin --bundles app',
+            }
+          - { os: ubuntu-22.04, name: linux, args: '--bundles appimage,deb,rpm' }
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -143,7 +165,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
-          cache: "npm"
+          cache: 'npm'
 
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
@@ -168,6 +190,11 @@ jobs:
         shell: bash
         run: |
           VERSION="$(node -p "require('./package.json').version")"
+          CARGO_VERSION="$(awk '/^\[/{p=($0=="[package]")} p && /^version *=/{gsub(/.*= *"|".*/,""); print; exit}' src-tauri/Cargo.toml)"
+          if [[ "$CARGO_VERSION" != "$VERSION" ]]; then
+            echo "::error::src-tauri/Cargo.toml version '$CARGO_VERSION' does not match package.json version $VERSION"
+            exit 1
+          fi
           if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$VERSION" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $VERSION"
             exit 1
@@ -288,24 +315,28 @@ jobs:
 
           cat release-notes.md
 
+      # Created as a draft: review notes and assets, then publish by hand. A draft can't be
+      # "latest" yet; leave "Set as the latest release" ticked when publishing (the default for
+      # the highest semver), so /releases/latest (used by the in-app update check) moves to it.
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
+            --draft \
             --title "ForgeTools ${GITHUB_REF_NAME#v}" \
             --notes-file release-notes.md \
-            --latest \
             release/*
 
-      # Keep only the 10 newest releases. Git tags are kept, so any version can be rebuilt.
+      # Keep only the 10 newest published releases; drafts are never counted or deleted.
+      # Git tags are kept, so any version can be rebuilt.
       - name: Prune old releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release list --limit 1000 --exclude-drafts --json tagName,createdAt \
-            --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
+          gh release list --limit 1000 --exclude-drafts --json tagName,createdAt,isDraft \
+            --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
           while read -r tag; do
             echo "Deleting release $tag"
             gh release delete "$tag" --yes

@@ -1,0 +1,23 @@
+node_modules/
+out/
+dist/
+build/
+logs/
+test-results/
+docs-shots/
+assets/
+src-tauri/target/
+src-tauri/gen/
+package-lock.json
+*.tsbuildinfo
+.opencode/
+.pi/
+.impeccable/
+.demo-frames/
+# golden fixtures are captured byte-for-byte from v0.2.1
+tests/fixtures/*.json
+tests/fixtures/certs/
+# markdown is hand-formatted prose
+*.md
+# Tauri side: JSON rewritten by sync-version.cjs (JSON.stringify style), Rust via rustfmt
+src-tauri/
