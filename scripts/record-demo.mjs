@@ -7,29 +7,32 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { waitForAppReady } from '../tests/e2e/helpers/tauriApp.mjs';
-import { typeText } from '../tests/e2e/helpers/input.mjs';
 
 // Pacing pauses are the point of a recording (the viewer must see each scene), not test waits.
-const hold = ms => browser.pause(ms);
+const hold = (ms) => browser.pause(ms);
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const frameDir = path.join(root, '.demo-frames');
 const out = path.join(root, 'assets', 'demo.gif');
-const W = 1200, H = 760, FPS = 15;
+const W = 1200,
+  H = 760,
+  FPS = 15;
 const JWT =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
 it('records the demo', async () => {
+  await browser.tauri.execute(
+    async (_t, w, h) => {
+      const T = window.__TAURI__;
+      const win = T.window.getCurrentWindow();
+      await win.setSize(new T.dpi.LogicalSize(w, h));
+      await win.center();
+    },
+    W,
+    H,
+  );
+  // Clean storage and a reloaded webview: starts on a clean welcome screen at the new size.
   await waitForAppReady();
-  await browser.tauri.execute(async (_t, w, h) => {
-    const T = window.__TAURI__;
-    const win = T.window.getCurrentWindow();
-    await win.setSize(new T.dpi.LogicalSize(w, h));
-    await win.center();
-  }, W, H);
-  // Start from a clean welcome screen
-  await browser.execute(() => { localStorage.removeItem('recent-tools'); window.__e2eStale = true; setTimeout(() => location.reload(), 0); });
-  await browser.waitUntil(() => browser.execute(() => !window.__e2eStale && !!document.querySelector('#toolsNav [data-tool-id]')).catch(() => false), { timeout: 20000 });
   await hold(800);
 
   fs.rmSync(frameDir, { recursive: true, force: true });
@@ -40,7 +43,12 @@ it('records the demo', async () => {
     while (recording) frames.push({ t: Date.now(), data: await browser.takeScreenshot() });
   })();
 
-  const typeSlow = async (text, delay) => { for (const ch of text) { await browser.keys(ch); await hold(delay); } };
+  const typeSlow = async (text, delay) => {
+    for (const ch of text) {
+      await browser.keys(ch);
+      await hold(delay);
+    }
+  };
   const palette = async (query) => {
     await browser.keys(['Control', 'k']);
     await hold(350);
@@ -52,7 +60,7 @@ it('records the demo', async () => {
 
   await hold(1200);
   // 1. Paste anything -> auto-detect -> Enter opens the right tool
-  await typeText('#homeSearch', JWT);
+  await $('#homeSearch').setValue(JWT);
   await hold(1600);
   await browser.keys('Enter');
   await $('#jwt-header-out').waitForDisplayed();
@@ -84,7 +92,8 @@ it('records the demo', async () => {
   if (!frames.length) throw new Error('No frames captured');
 
   // Resample to constant FPS (hold the latest screenshot)
-  const start = frames[0].t, end = frames[frames.length - 1].t;
+  const start = frames[0].t,
+    end = frames[frames.length - 1].t;
   const count = Math.floor(((end - start) / 1000) * FPS);
   let j = 0;
   for (let i = 0; i < count; i++) {
@@ -98,8 +107,17 @@ it('records the demo', async () => {
   const pal = path.join(frameDir, 'palette.png');
   const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,scale=960:-1:flags=lanczos`;
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...input, '-vf', `${vf},palettegen=stats_mode=diff`, pal]);
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...input, '-i', pal, '-lavfi',
-    `${vf}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`, out]);
+  execFileSync('ffmpeg', [
+    '-y',
+    '-loglevel',
+    'error',
+    ...input,
+    '-i',
+    pal,
+    '-lavfi',
+    `${vf}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`,
+    out,
+  ]);
   fs.rmSync(frameDir, { recursive: true, force: true });
   console.log('Wrote', out, (fs.statSync(out).size / 1e6).toFixed(2), 'MB');
 });

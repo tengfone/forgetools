@@ -1,5 +1,6 @@
 // Harness smoke tests: fast sanity checks that the WDIO/Tauri harness itself works
 // (launch, window state, a tool, the palette). Feature coverage lives in the other specs.
+import fs from 'node:fs';
 import { expect } from '@wdio/globals';
 import { waitForAppReady, windowState } from './helpers/tauriApp.mjs';
 
@@ -15,6 +16,13 @@ describe('Harness smoke', () => {
     await expect($('.titlebar')).toBeDisplayed();
     await expect($('aside')).toBeDisplayed();
     await expect($('main')).toBeDisplayed();
+    await expect($('#loadingScreen')).not.toBeDisplayed();
+  });
+
+  it('opens at the configured window size (no runtime resizing)', async () => {
+    const conf = JSON.parse(fs.readFileSync(new URL('../../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
+    const { width, height } = conf.app.windows[0];
+    expect(await browser.execute(() => [innerWidth, innerHeight])).toEqual([width, height]);
   });
 
   it('shows the home screen with tools in the sidebar', async () => {

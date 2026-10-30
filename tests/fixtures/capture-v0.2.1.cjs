@@ -1,16 +1,27 @@
-// One-off: captures golden outputs from the v0.2.1 build (commit cbcd8b9) by calling the
-// app's own bridge in the running window. Run on `main` after `npm run build`:
-//   node tests/fixtures/capture-v0.2.1.cjs
-// Kept for provenance only; the parity unit tests read tests/fixtures/golden-v0.2.1.json.
+// PROVENANCE ONLY. Does not run on this branch or any later commit: it needs the v0.2.1
+// (pre-Tauri) app and its test dependencies, which no longer exist here.
+// It captured golden outputs from the v0.2.1 build (commit cbcd8b9, tag v0.2.1) by calling
+// the app's own bridge in the running window. To reproduce, check out that commit, then:
+//   npm ci && npm run build && node tests/fixtures/capture-v0.2.1.cjs
+// The parity unit tests read the committed result, tests/fixtures/golden-v0.2.1.json.
 const { _electron } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
 
 const certDir = path.join(__dirname, 'certs');
-const SAMPLE_PEM = ['-----BEGIN CERTIFICATE-----', ...'MIIBZjCCAQygAwIBAgIIEcBl3aNnzGMwCgYIKoZIzj0EAwIwOTEaMBgGA1UEChMRRm9yZ2VUb29scyBTYW1wbGUxGzAZBgNVBAMTEmZvcmdldG9vbHMuZXhhbXBsZTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAwMDBaMDkxGjAYBgNVBAoTEUZvcmdlVG9vbHMgU2FtcGxlMRswGQYDVQQDExJmb3JnZXRvb2xzLmV4YW1wbGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQMXZBm9vug99sUWouBXZ7COPT6TBRcm4jp9fL5v1O9UQwIWAVQ8Ej4lu/vm8b/i5LpS3UNmw5uXW4i3J6OAmpuMAoGCCqGSM49BAMCA0gAMEUCIQDiy7FOmMV/nRLm/gY6KIekXla7ooTHCGiKilb9I+HiJQIgWWPMBd1DmfKrnwgaLQWjaj+NRjocp3e7KHcHCtIc72s='.match(/.{1,64}/g), '-----END CERTIFICATE-----'].join('\n');
+const SAMPLE_PEM = [
+  '-----BEGIN CERTIFICATE-----',
+  ...'MIIBZjCCAQygAwIBAgIIEcBl3aNnzGMwCgYIKoZIzj0EAwIwOTEaMBgGA1UEChMRRm9yZ2VUb29scyBTYW1wbGUxGzAZBgNVBAMTEmZvcmdldG9vbHMuZXhhbXBsZTAeFw0yNTAxMDEwMDAwMDBaFw0zNTAxMDEwMDAwMDBaMDkxGjAYBgNVBAoTEUZvcmdlVG9vbHMgU2FtcGxlMRswGQYDVQQDExJmb3JnZXRvb2xzLmV4YW1wbGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQMXZBm9vug99sUWouBXZ7COPT6TBRcm4jp9fL5v1O9UQwIWAVQ8Ej4lu/vm8b/i5LpS3UNmw5uXW4i3J6OAmpuMAoGCCqGSM49BAMCA0gAMEUCIQDiy7FOmMV/nRLm/gY6KIekXla7ooTHCGiKilb9I+HiJQIgWWPMBd1DmfKrnwgaLQWjaj+NRjocp3e7KHcHCtIc72s='.match(
+    /.{1,64}/g,
+  ),
+  '-----END CERTIFICATE-----',
+].join('\n');
 
 const certs = { sample: SAMPLE_PEM };
-for (const f of fs.readdirSync(certDir).filter(f => f.endsWith('.pem')).sort()) {
+for (const f of fs
+  .readdirSync(certDir)
+  .filter((f) => f.endsWith('.pem'))
+  .sort()) {
   certs[f.replace(/\.pem$/, '')] = fs.readFileSync(path.join(certDir, f), 'utf8').trim();
 }
 
@@ -21,8 +32,11 @@ const qrInputs = [
   ['Hello, 世界! ünïcödé', { width: 128, margin: 2 }],
 ];
 const barcodeInputs = [
-  ['123456789012', 'EAN13'], ['1234567890128', 'EAN13'], ['12345678901', 'UPC'],
-  ['FORGE-123', 'CODE39'], ['ForgeTools 128', 'CODE128'],
+  ['123456789012', 'EAN13'],
+  ['1234567890128', 'EAN13'],
+  ['12345678901', 'UPC'],
+  ['FORGE-123', 'CODE39'],
+  ['ForgeTools 128', 'CODE128'],
 ];
 const svgInputs = [
   `<?xml version="1.0" encoding="UTF-8"?>
@@ -48,23 +62,39 @@ const svgInputs = [
   });
   const win = await app.firstWindow();
   await win.waitForSelector('#toolsNav [data-tool-id]');
-  const out = await win.evaluate(async ({ certs, hashInputs, qrInputs, barcodeInputs, svgInputs }) => {
-    const api = window.electronAPI;
-    const res = { hash: [], x509: {}, qrcode: [], barcode: [], svg: [] };
-    for (const text of hashInputs) {
-      res.hash.push({ text, md5: await api.crypto.md5(text), sha1: await api.crypto.sha1(text), sha256: await api.crypto.sha256(text), sha512: await api.crypto.sha512(text) });
-    }
-    for (const [name, pem] of Object.entries(certs)) res.x509[name] = { pem, decoded: await api.x509.decode(pem) };
-    for (const [text, options] of qrInputs) res.qrcode.push({ text, options, dataUrl: await api.qrcode.generate(text, options) });
-    for (const [text, format] of barcodeInputs) {
-      const options = { format, width: 2, height: 100, displayValue: true };
-      res.barcode.push({ text, options, svg: await api.barcode.generate(text, options) });
-    }
-    for (const input of svgInputs) res.svg.push({ input, output: await api.svg.optimize(input) });
-    return res;
-  }, { certs, hashInputs, qrInputs, barcodeInputs, svgInputs });
+  const out = await win.evaluate(
+    async ({ certs, hashInputs, qrInputs, barcodeInputs, svgInputs }) => {
+      const api = globalThis.electronAPI; // runs in the v0.2.1 Electron page
+      const res = { hash: [], x509: {}, qrcode: [], barcode: [], svg: [] };
+      for (const text of hashInputs) {
+        res.hash.push({
+          text,
+          md5: await api.crypto.md5(text),
+          sha1: await api.crypto.sha1(text),
+          sha256: await api.crypto.sha256(text),
+          sha512: await api.crypto.sha512(text),
+        });
+      }
+      for (const [name, pem] of Object.entries(certs)) res.x509[name] = { pem, decoded: await api.x509.decode(pem) };
+      for (const [text, options] of qrInputs)
+        res.qrcode.push({ text, options, dataUrl: await api.qrcode.generate(text, options) });
+      for (const [text, format] of barcodeInputs) {
+        const options = { format, width: 2, height: 100, displayValue: true };
+        res.barcode.push({ text, options, svg: await api.barcode.generate(text, options) });
+      }
+      for (const input of svgInputs) res.svg.push({ input, output: await api.svg.optimize(input) });
+      return res;
+    },
+    { certs, hashInputs, qrInputs, barcodeInputs, svgInputs },
+  );
   await app.close();
   const file = path.join(__dirname, 'golden-v0.2.1.json');
-  fs.writeFileSync(file, JSON.stringify({ source: 'ForgeTools v0.2.1 (cbcd8b9), captured through the running app', ...out }, null, 2) + '\n');
+  fs.writeFileSync(
+    file,
+    JSON.stringify({ source: 'ForgeTools v0.2.1 (cbcd8b9), captured through the running app', ...out }, null, 2) + '\n',
+  );
   console.log('wrote', file);
-})().catch(e => { console.error(e); process.exit(1); });
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
