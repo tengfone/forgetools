@@ -181,11 +181,7 @@ export async function processInput(): Promise<void> {
       }
     }
 
-    let outputStr = String(await tool.format(input, getIndent(), mode || undefined));
-    if (indentChoice === 'tab') {
-      // Formatters indent with 4 spaces in tab mode; convert leading runs to tabs
-      outputStr = outputStr.replace(/^(?: {4})+/gm, (m) => '\t'.repeat(m.length / 4));
-    }
+    const outputStr = String(await tool.format(input, getIndent(), mode || undefined));
     if (cacheable) resultCache.set(cacheKey, outputStr);
     showOutput(outputStr, input);
   } catch (e) {

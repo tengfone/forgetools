@@ -1,5 +1,8 @@
 export type ToolCategory = 'Inspect & Decode' | 'Format' | 'Convert' | 'Text & Utilities' | 'Generate' | 'Compare';
 
+/** One indentation level for formatters: a width in spaces, or a tab. */
+export type Indent = number | '\t';
+
 export interface Tool {
   id: string;
   title: string;
@@ -23,7 +26,7 @@ export interface Tool {
   sampleData?: string;
   /** Editor tools with alternate modes (e.g. Format | Minify); first is the default. */
   modes?: { id: string; label: string }[];
-  format?: (input: string, indent?: number, mode?: string) => string | Promise<string>;
+  format?: (input: string, indent?: Indent, mode?: string) => string | Promise<string>;
   /**
    * Lazily loaded custom UI module (code-split per tool). `render` may return a dispose
    * function; the shell calls it when the tool is closed (switch, Home).

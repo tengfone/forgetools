@@ -1,7 +1,7 @@
 import type { Tool } from '../types/tools';
 import { getMonaco } from '../monacoEnv';
 import { logger } from '../logger';
-import { bumpToolEpoch, nextFrameOrTimeout, setStatus, showToast, copyText, announce } from '../ui';
+import { bumpToolEpoch, nextFrameOrTimeout, setStatus, showToast, copyText, announce, textOf } from '../ui';
 import { resultCache } from './cache';
 import { state, toolById, currentMode, setMode, disposeCurrentTool } from './state';
 import { editors, ensureMonaco, applyIndentToModels, clearMarkers, processInput, runSoon } from './editors';
@@ -259,14 +259,7 @@ export function copyCurrentOutput(): void {
     const root = document.getElementById('customInterface');
     const out = root?.querySelector<HTMLElement>('[data-output]');
     const copyId = root?.querySelector<HTMLElement>('[data-copy]')?.dataset.copy;
-    const target = out ?? (copyId ? document.getElementById(copyId) : null);
-    if (target) {
-      const v =
-        target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
-          ? target.value
-          : (target.textContent ?? '');
-      text = v.trim();
-    }
+    text = textOf(out ?? (copyId ? document.getElementById(copyId) : null));
   }
   void copyText(text, 'Copied output');
 }

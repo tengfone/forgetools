@@ -136,6 +136,57 @@ function collect(root: Shape, rootName: string): { order: Named[]; names: Map<Sh
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 
+const PY_KEYWORDS = new Set(
+  'False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(
+    ' ',
+  ),
+);
+const RUST_KEYWORDS = new Set(
+  'as async await break const continue crate dyn else enum extern false fn for gen if impl in let loop match mod move mut pub ref return self static struct super trait true try type unsafe use where while abstract become box do final macro override priv typeof unsized virtual yield'.split(
+    ' ',
+  ),
+);
+/** Rust keywords that cannot be raw identifiers (`r#self` is invalid). */
+const RUST_NO_RAW = new Set(['crate', 'self', 'super']);
+
+/**
+ * One identifier per JSON key within a struct: convert, de-duplicate (`a-b` and `a_b` both convert
+ * to `a_b`, so the second becomes `a_b2`), then escape keywords. `taken` holds names already in use.
+ */
+function fieldIdents(
+  keys: Iterable<string>,
+  conv: (k: string) => string,
+  escape: (id: string) => string = (id) => id,
+  taken: string[] = [],
+): (key: string) => string {
+  const used = new Set(taken);
+  const out = new Map<string, string>();
+  for (const k of keys) {
+    const base = conv(k);
+    let id = base;
+    for (let i = 2; used.has(id); i++) id = base + i;
+    used.add(id);
+    out.set(k, escape(id));
+  }
+  return (k) => out.get(k) ?? k;
+}
+
+/** Rust string literal (JSON's \u0001 form is not valid Rust). */
+const rustStr = (s: string): string => {
+  const body = [...s].map((c) => {
+    const n = c.charCodeAt(0);
+    return c === '\\' || c === '"' ? '\\' + c : n < 0x20 || n === 0x7f ? `\\u{${n.toString(16)}}` : c;
+  });
+  return `"${body.join('')}"`;
+};
+
+/** Go struct tag; a key containing a backtick needs an interpreted string literal instead of a raw one. */
+const goTag = (key: string, omit: boolean): string => {
+  const name = key === '-' && !omit ? '-,' : key; // a bare "-" means "skip this field" to encoding/json
+  const tag = `json:${JSON.stringify(name + (omit ? ',omitempty' : ''))}`;
+  return tag.includes('`') ? JSON.stringify(tag) : `\`${tag}\``;
+};
+
 export function jsonToTypes(json: string, lang: TypeLang, rootName = 'Root'): string {
   let data: unknown;
   try {
@@ -205,10 +256,11 @@ export function jsonToTypes(json: string, lang: TypeLang, rootName = 'Root'): st
   } else if (lang === 'go') {
     for (const { name, shape } of order) {
       out.push(`type ${name} struct {`);
+      const id = fieldIdents(shape.fields.keys(), pascal);
       for (const [key, f] of shape.fields) {
         let t = ref(f.shape, lang);
         if (f.optional && f.shape.k === 'object' && !t.startsWith('*')) t = '*' + t;
-        out.push(`\t${pascal(key)} ${t} \`json:"${key}${f.optional ? ',omitempty' : ''}"\``);
+        out.push(`\t${id(key)} ${t} ${goTag(key, f.optional)}`);
       }
       out.push('}', '');
     }
@@ -216,33 +268,19 @@ export function jsonToTypes(json: string, lang: TypeLang, rootName = 'Root'): st
     out.push('use serde::{Deserialize, Serialize};', '');
     for (const { name, shape } of order) {
       out.push('#[derive(Debug, Clone, Serialize, Deserialize)]', `pub struct ${name} {`);
+      const id = fieldIdents(shape.fields.keys(), snake, (id) =>
+        RUST_NO_RAW.has(id) ? id + '_' : RUST_KEYWORDS.has(id) ? 'r#' + id : id,
+      );
       for (const [key, f] of shape.fields) {
-        const field = snake(key);
-        const kw = [
-          'type',
-          'match',
-          'ref',
-          'struct',
-          'enum',
-          'fn',
-          'impl',
-          'move',
-          'self',
-          'use',
-          'mod',
-          'loop',
-          'where',
-          'async',
-          'await',
-          'dyn',
-        ].includes(field);
-        if (field !== key || kw) out.push(`    #[serde(rename = "${key}")]`);
+        const field = id(key);
+        // serde strips the r# prefix itself, so only a changed name needs a rename.
+        if (field.replace(/^r#/, '') !== key) out.push(`    #[serde(rename = ${rustStr(key)})]`);
         let t = ref(f.shape, lang);
         if (f.optional && !t.startsWith('Option<')) {
           t = `Option<${t}>`;
           out.push('    #[serde(default, skip_serializing_if = "Option::is_none")]');
         }
-        out.push(`    pub ${kw ? 'r#' + field : field}: ${t},`);
+        out.push(`    pub ${field}: ${t},`);
       }
       out.push('}', '');
     }
@@ -250,10 +288,12 @@ export function jsonToTypes(json: string, lang: TypeLang, rootName = 'Root'): st
     out.push('using System.Collections.Generic;', 'using System.Text.Json.Serialization;', '');
     for (const { name, shape } of order) {
       out.push(`public class ${name}`, '{');
+      // A member may not share its class's name (CS0542), so the class name counts as taken.
+      const id = fieldIdents(shape.fields.keys(), pascal, undefined, [name]);
       for (const [key, f] of shape.fields) {
         let t = ref(f.shape, lang);
         if (f.optional && !t.endsWith('?')) t += '?';
-        out.push(`    [JsonPropertyName("${key}")]`, `    public ${t} ${pascal(key)} { get; set; }`, '');
+        out.push(`    [JsonPropertyName(${JSON.stringify(key)})]`, `    public ${t} ${id(key)} { get; set; }`, '');
       }
       if (out[out.length - 1] === '') out.pop();
       out.push('}', '');
@@ -268,12 +308,13 @@ export function jsonToTypes(json: string, lang: TypeLang, rootName = 'Root'): st
     );
     for (const { name, shape } of order) {
       out.push('@dataclass', `class ${name}:`);
+      const id = fieldIdents(shape.fields.keys(), snake, (id) => (PY_KEYWORDS.has(id) ? id + '_' : id));
       const req = [...shape.fields].filter(([, f]) => !f.optional);
       const opt = [...shape.fields].filter(([, f]) => f.optional);
-      for (const [key, f] of req) out.push(`    ${snake(key)}: ${ref(f.shape, lang)}`);
+      for (const [key, f] of req) out.push(`    ${id(key)}: ${ref(f.shape, lang)}`);
       for (const [key, f] of opt) {
         const t = ref(f.shape, lang);
-        out.push(`    ${snake(key)}: ${t.startsWith('Optional[') ? t : `Optional[${t}]`} = None`);
+        out.push(`    ${id(key)}: ${t.startsWith('Optional[') ? t : `Optional[${t}]`} = None`);
       }
       if (!shape.fields.size) out.push('    pass');
       out.push('', '');
@@ -485,13 +526,12 @@ function step(cur: unknown[], s: Seg): unknown[] {
         const norm = (x: number | undefined, d: number): number =>
           x === undefined ? d : x < 0 ? Math.max(0, n + x) : Math.min(n, x);
         if (st > 0) for (let i = norm(s.start, 0); i < norm(s.end, n); i += st) out.push(v[i]);
-        else
-          for (
-            let i = s.start === undefined ? n - 1 : norm(s.start, n - 1);
-            i > (s.end === undefined ? -1 : norm(s.end, -1));
-            i += st
-          )
-            out.push(v[i]);
+        else {
+          // RFC 9535: for a negative step, clamp both bounds to [-1, n - 1] (never past the last element).
+          const clampRev = (x: number | undefined, d: number): number =>
+            x === undefined ? d : Math.min(Math.max(x < 0 ? n + x : x, -1), n - 1);
+          for (let i = clampRev(s.start, n - 1); i > clampRev(s.end, -1); i += st) out.push(v[i]);
+        }
         break;
       }
       case 'filter':

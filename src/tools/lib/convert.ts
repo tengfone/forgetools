@@ -33,6 +33,23 @@ const containsNull = (v: unknown): boolean =>
 
 // ── .env ───────────────────────────────────────────────────────────────────
 
+/** Index of the quote that closes `s`, or -1. Single quotes are literal; the others honour `\`. */
+function closingQuote(s: string, q: string): number {
+  for (let j = 0; j < s.length; j++) {
+    if (q !== "'" && s[j] === '\\') j++;
+    else if (s[j] === q) return j;
+  }
+  return -1;
+}
+
+const ENV_ESCAPES: Record<string, string> = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '"': '"', '\\': '\\' };
+
+/** Decode a double-quoted value in one pass, so `\\n` stays a backslash followed by `n`. */
+const unescapeDouble = (s: string): string =>
+  s.replace(/\\(u[0-9a-fA-F]{4}|[\s\S])/g, (m, c: string) =>
+    c.length === 5 ? String.fromCharCode(parseInt(c.slice(1), 16)) : (ENV_ESCAPES[c] ?? m),
+  );
+
 export function parseEnv(src: string): Record<string, string> {
   const out: Record<string, string> = {};
   const lines = src.split(/\r?\n/);
@@ -46,18 +63,14 @@ export function parseEnv(src: string): Record<string, string> {
     if (q === '"' || q === "'" || q === '`') {
       // multi-line quoted values
       let body = v.slice(1);
-      while (!new RegExp(`(^|[^\\\\])${q === '`' ? '`' : q}\\s*(#.*)?$`).test(body) && i + 1 < lines.length)
+      let end = closingQuote(body, q);
+      while (end === -1 && i + 1 < lines.length) {
         body += '\n' + lines[++i];
-      const end = body.lastIndexOf(q);
+        end = closingQuote(body, q);
+      }
       if (end === -1) throw new Error(`Line ${i + 1}: unterminated ${q} quote`);
       v = body.slice(0, end);
-      if (q === '"')
-        v = v
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\');
+      if (q === '"') v = unescapeDouble(v);
     } else {
       v = v.replace(/\s+#.*$/, '').trim();
     }
@@ -343,13 +356,17 @@ export function curlToCode(cmd: string, target: CurlTarget): string {
       const cfg: string[] = [`  method: ${jsStr(r.method.toLowerCase())},`, `  url: ${jsStr(r.url)},`];
       if (headers.length)
         cfg.push(`  headers: {\n${headers.map(([k, v]) => `    ${jsStr(k)}: ${jsStr(v)},`).join('\n')}\n  },`);
-      if (r.body !== undefined)
+      if (r.form) cfg.push('  data: form,');
+      else if (r.body !== undefined)
         cfg.push(
           json
             ? `  data: ${JSON.stringify(JSON.parse(r.body), null, 2).replace(/\n/g, '\n  ')},`
             : `  data: ${jsStr(r.body)},`,
         );
-      return `import axios from 'axios';\n\nconst response = await axios({\n${cfg.join('\n')}\n});\n\nconsole.log(response.data);\n`;
+      const pre = r.form
+        ? `const form = new FormData();\n${r.form.map(([k, v]) => `form.append(${jsStr(k)}, ${jsStr(v)});`).join('\n')}\n\n`
+        : '';
+      return `import axios from 'axios';\n\n${pre}const response = await axios({\n${cfg.join('\n')}\n});\n\nconsole.log(response.data);\n`;
     }
     case 'python': {
       const lines = ['import requests', ''];
@@ -371,26 +388,37 @@ export function curlToCode(cmd: string, target: CurlTarget): string {
       }
       if (r.insecure) args.push('verify=False');
       lines.push(
-        `response = requests.${['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].includes(r.method) ? r.method.toLowerCase() : `request(${pyStr(r.method)}, `}(${args.join(', ')})`
-          .replace('(, ', '(')
-          .replace(', (', '('),
+        PY_METHODS.has(r.method)
+          ? `response = requests.${r.method.toLowerCase()}(${args.join(', ')})`
+          : `response = requests.request(${[pyStr(r.method), ...args].join(', ')})`,
       );
       lines.push('print(response.status_code)', 'print(response.text)');
       return lines.join('\n') + '\n';
     }
     case 'go': {
-      const body = r.body !== undefined ? `strings.NewReader(${goStr(r.body)})` : 'nil';
-      const lines = ['package main', '', 'import (', '\t"fmt"', '\t"io"', '\t"net/http"'];
-      if (r.body !== undefined) lines.push('\t"strings"');
+      const body = r.form ? '&buf' : r.body !== undefined ? `strings.NewReader(${goStr(r.body)})` : 'nil';
+      const lines = ['package main', '', 'import ('];
+      if (r.form) lines.push('\t"bytes"');
+      lines.push('\t"fmt"', '\t"io"');
+      if (r.form) lines.push('\t"mime/multipart"');
+      lines.push('\t"net/http"');
+      if (!r.form && r.body !== undefined) lines.push('\t"strings"');
+      lines.push(')', '', 'func main() {');
+      if (r.form)
+        lines.push(
+          '\tvar buf bytes.Buffer',
+          '\tmw := multipart.NewWriter(&buf)',
+          ...r.form.map(([k, v]) => `\tmw.WriteField(${goStr(k)}, ${goStr(v)})`),
+          '\tmw.Close()',
+          '',
+        );
       lines.push(
-        ')',
-        '',
-        'func main() {',
         `\treq, err := http.NewRequest(${goStr(r.method)}, ${goStr(r.url)}, ${body})`,
         '\tif err != nil {',
         '\t\tpanic(err)',
         '\t}',
       );
+      if (r.form) lines.push('\treq.Header.Set("Content-Type", mw.FormDataContentType())');
       for (const [k, v] of headers) lines.push(`\treq.Header.Set(${goStr(k)}, ${goStr(v)})`);
       lines.push(
         '',
@@ -411,6 +439,7 @@ export function curlToCode(cmd: string, target: CurlTarget): string {
       return lines.join('\n') + '\n';
     }
     case 'node-http': {
+      if (r.form) throw new Error('Multipart forms (-F) are not supported for Node http; use fetch or axios');
       const u = new URL(r.url);
       const mod = u.protocol === 'https:' ? 'https' : 'http';
       const opts = [`  method: ${jsStr(r.method)},`, `  hostname: ${jsStr(u.hostname)},`];
@@ -434,14 +463,19 @@ export function curlToCode(cmd: string, target: CurlTarget): string {
         lines.push(
           `curl_setopt($ch, CURLOPT_HTTPHEADER, [\n${headers.map(([k, v]) => `    ${phpStr(`${k}: ${v}`)},`).join('\n')}\n]);`,
         );
-      if (r.body !== undefined) lines.push(`curl_setopt($ch, CURLOPT_POSTFIELDS, ${phpStr(r.body)});`);
+      // An array for POSTFIELDS makes curl send multipart/form-data.
+      if (r.form)
+        lines.push(
+          `curl_setopt($ch, CURLOPT_POSTFIELDS, [\n${r.form.map(([k, v]) => `    ${phpStr(k)} => ${phpStr(v)},`).join('\n')}\n]);`,
+        );
+      else if (r.body !== undefined) lines.push(`curl_setopt($ch, CURLOPT_POSTFIELDS, ${phpStr(r.body)});`);
       if (r.insecure) lines.push('curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);');
       lines.push('', '$response = curl_exec($ch);', 'curl_close($ch);', '', 'echo $response;');
       return lines.join('\n') + '\n';
     }
     case 'rust': {
       const lines = [
-        '// Cargo.toml: reqwest = { version = "0.12", features = ["blocking"] }',
+        `// Cargo.toml: reqwest = { version = "0.12", features = ["blocking"${r.form ? ', "multipart"' : ''}] }`,
         '',
         'fn main() -> Result<(), Box<dyn std::error::Error>> {',
       ];
@@ -452,7 +486,11 @@ export function curlToCode(cmd: string, target: CurlTarget): string {
         `    let res = client\n        .request(reqwest::Method::from_bytes(b${goStr(r.method)})?, ${goStr(r.url)})`,
       ];
       for (const [k, v] of headers) chain.push(`        .header(${goStr(k)}, ${goStr(v)})`);
-      if (r.body !== undefined) chain.push(`        .body(${rustRaw(r.body)})`);
+      if (r.form)
+        chain.push(
+          `        .multipart(\n            reqwest::blocking::multipart::Form::new()${r.form.map(([k, v]) => `\n                .text(${goStr(k)}, ${goStr(v)})`).join('')},\n        )`,
+        );
+      else if (r.body !== undefined) chain.push(`        .body(${rustRaw(r.body)})`);
       chain.push('        .send()?;');
       lines.push(
         chain.join('\n'),
@@ -467,6 +505,7 @@ export function curlToCode(cmd: string, target: CurlTarget): string {
   }
 }
 
+const PY_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const goStr = (s: string): string => JSON.stringify(s);
 const phpStr = (s: string): string => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const rustRaw = (s: string): string => (s.includes('"#') ? JSON.stringify(s) : `r#"${s}"#`);
@@ -686,7 +725,9 @@ function readVarint(b: Uint8Array, p: { i: number }): bigint {
   }
 }
 
-const vnum = (v: bigint): number | string => (v <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(v) : v.toString());
+/** Exact JS number when it fits, otherwise the decimal string (never a rounded number). */
+const vnum = (v: bigint): number | string =>
+  v <= BigInt(Number.MAX_SAFE_INTEGER) && v >= BigInt(Number.MIN_SAFE_INTEGER) ? Number(v) : v.toString();
 
 export function decodeProtobuf(b: Uint8Array, depth = 0): PbField[] {
   const out: PbField[] = [];
@@ -938,7 +979,7 @@ export function encodeMsgpack(v: unknown): Uint8Array {
         out.push(0xdb);
         w32(b.length);
       }
-      out.push(...b);
+      for (const byte of b) out.push(byte); // a spread push overflows the call stack on large strings
     } else if (Array.isArray(x)) {
       if (x.length < 16) out.push(0x90 | x.length);
       else if (x.length < 65536) {

@@ -5,6 +5,7 @@
 //   data-copy-text="..."    copy a literal string
 //   data-paste="elementId"  paste clipboard into that field and fire `input`
 import { clipboard, isTauri } from './native';
+import type { Indent } from './types/tools';
 
 type Field = HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement;
 
@@ -16,10 +17,14 @@ export function $<T extends HTMLElement = HTMLElement>(id: string): T {
 /** Form field getter (input, textarea or select). */
 export const $f = (id: string): Field => $<Field>(id);
 
-const textOf = (el: Element | null): string => {
+/**
+ * What Copy takes from an element: a field's value exactly as it is (leading/trailing newlines and
+ * whitespace-only output are data), or a display element's text without template indentation.
+ */
+export const textOf = (el: Element | null): string => {
   if (!el) return '';
   const v = (el as Partial<Field>).value;
-  return (typeof v === 'string' ? v : (el.textContent ?? '')).trim();
+  return typeof v === 'string' ? v : (el.textContent ?? '').trim();
 };
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -357,10 +362,10 @@ export function getIndentChoice(): IndentChoice {
   const v = localStorage.getItem(INDENT_KEY);
   return v === '4' ? 4 : v === 'tab' ? 'tab' : 2;
 }
-/** Indent width in spaces for formatters (tab => 4; app.ts converts leading spaces to tabs afterwards). */
-export function getIndent(): number {
+/** One indentation level for formatters: spaces, or a tab in tab mode. */
+export function getIndent(): Indent {
   const c = getIndentChoice();
-  return c === 'tab' ? 4 : c;
+  return c === 'tab' ? '\t' : c;
 }
 export function getIndentString(): string {
   const c = getIndentChoice();

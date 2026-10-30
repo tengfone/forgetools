@@ -41,6 +41,20 @@ describe('Tools', () => {
     expect(await clipboard.readText()).toBe(text);
   });
 
+  it('Copy keeps leading and trailing newlines', async () => {
+    await open('backslashEscape');
+    await selectOption('#escape-mode', { value: 'unescape' });
+    await $('#escape-input').setValue('\\nhello\\n');
+    // toHaveValue trims by default, which is exactly what this test must not do.
+    await browser.waitUntil(async () => (await $('#escape-output').getValue()) === '\nhello\n', {
+      timeoutMsg: 'unescape did not produce the exact output',
+    });
+    await $('[data-copy="escape-output"]').click();
+    await browser.waitUntil(async () => (await clipboard.readText()) === '\nhello\n', {
+      timeoutMsg: 'clipboard did not get the exact output',
+    });
+  });
+
   it('JSON output Copy goes through the main-process clipboard', async () => {
     await open('json');
     await $('#sampleBtn').click();

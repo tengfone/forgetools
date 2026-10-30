@@ -1,4 +1,4 @@
-import type { ToolCategory, ToolsRegistry } from '../types/tools';
+import type { Indent, ToolCategory, ToolsRegistry } from '../types/tools';
 
 /** Sidebar category order. The registry below is declared in this same order. */
 export const CATEGORY_ORDER: ToolCategory[] = [
@@ -11,10 +11,17 @@ export const CATEGORY_ORDER: ToolCategory[] = [
 ];
 
 const DEFAULT_INDENT = 2;
-const clampIndent = (indent?: number): number =>
-  typeof indent === 'number' && Number.isFinite(indent) && indent > 0
-    ? Math.min(Math.floor(indent), 8)
-    : DEFAULT_INDENT;
+const clampIndent = (indent?: Indent): Indent =>
+  indent === '\t'
+    ? indent
+    : typeof indent === 'number' && Number.isFinite(indent) && indent > 0
+      ? Math.min(Math.floor(indent), 8)
+      : DEFAULT_INDENT;
+/** js-beautify options for one indentation level. */
+const beautifyIndent = (indent?: Indent): { indent_size: number; indent_char?: string } => {
+  const i = clampIndent(indent);
+  return i === '\t' ? { indent_size: 1, indent_char: '\t' } : { indent_size: i };
+};
 
 // ---------------------------------------------------------------------------
 // SQL formatter: tokenizer-based. Uppercases keywords, breaks major clauses,
@@ -126,9 +133,10 @@ function tokenizeSql(input: string): SqlToken[] {
   return tokens;
 }
 
-function formatSql(input: string, indent?: number): string {
+function formatSql(input: string, indent?: Indent): string {
   if (!input.trim()) return '';
-  const unit = ' '.repeat(clampIndent(indent));
+  const i = clampIndent(indent);
+  const unit = i === '\t' ? i : ' '.repeat(i);
   const tokens = tokenizeSql(input).map((t) =>
     t.type === 'word' && SQL_KEYWORDS.has(t.value.toLowerCase()) ? { ...t, value: t.value.toUpperCase() } : t,
   );
@@ -460,7 +468,7 @@ const tools: ToolsRegistry = {
       { id: 'format', label: 'Format' },
       { id: 'minify', label: 'Minify' },
     ],
-    format: (input: string, indent?: number, mode?: string): string => {
+    format: (input: string, indent?: Indent, mode?: string): string => {
       if (!input.trim()) return '';
       try {
         return JSON.stringify(JSON.parse(input), null, mode === 'minify' ? 0 : clampIndent(indent));
@@ -481,8 +489,8 @@ const tools: ToolsRegistry = {
     category: 'Format',
     icon: 'code',
     language: 'xml',
-    format: async (input: string, indent?: number) =>
-      (await import('js-beautify')).default.html(input, { indent_size: clampIndent(indent) }),
+    format: async (input: string, indent?: Indent) =>
+      (await import('js-beautify')).default.html(input, beautifyIndent(indent)),
     placeholder: '<root><child>value</child></root>',
     sampleData:
       '<?xml version="1.0" encoding="UTF-8"?>\n<note>\n  <to>Tove</to>\n  <from>Jani</from>\n  <heading>Reminder</heading>\n  <body>Don\'t forget me this weekend!</body>\n</note>',
@@ -508,8 +516,8 @@ const tools: ToolsRegistry = {
     category: 'Format',
     icon: 'web',
     language: 'html',
-    format: async (input: string, indent?: number) =>
-      (await import('js-beautify')).default.html(input, { indent_size: clampIndent(indent) }),
+    format: async (input: string, indent?: Indent) =>
+      (await import('js-beautify')).default.html(input, beautifyIndent(indent)),
     placeholder: '<div><p>Hello</p></div>',
     sampleData:
       '<!DOCTYPE html>\n<html>\n<head>\n<title>Page Title</title>\n</head>\n<body>\n<h1>My First Heading</h1>\n<p>My first paragraph.</p>\n</body>\n</html>',

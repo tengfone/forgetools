@@ -1,6 +1,6 @@
 // Formatters: CSS/SCSS/JS beautify + minify, GraphQL, Dockerfile lint, docker run <-> compose.
 import beautify from 'js-beautify';
-import { parse as gqlParse, print as gqlPrint } from 'graphql';
+import { parse as gqlParse, print as gqlPrint, stripIgnoredCharacters } from 'graphql';
 import yaml from 'js-yaml';
 import { shellSplit } from './convert';
 
@@ -19,9 +19,14 @@ export function beautifyJs(src: string, indent = 2): string {
   });
 }
 
-/** Comment/whitespace-stripping CSS minifier that leaves strings and url() alone. */
+/**
+ * Comment/whitespace-stripping CSS minifier that leaves strings and url() alone. Inside parentheses
+ * (calc(), min(), :not(), media queries) `+ - * / > ~` are operators or must stay separated, so
+ * only whitespace next to `( , :` and `)` is dropped there.
+ */
 export function minifyCss(src: string): string {
   let out = '';
+  let depth = 0;
   let i = 0;
   while (i < src.length) {
     const c = src[i]!;
@@ -45,13 +50,19 @@ export function minifyCss(src: string): string {
       while (i < src.length && /\s/.test(src[i]!)) i++;
       const prev = out.slice(-1),
         next = src[i] ?? '';
-      if (prev && next && !/[{}:;,>~+(]/.test(prev) && !/[{}:;,>~+)!]/.test(next)) out += ' ';
+      const keep =
+        depth > 0 ? !/[(,:]/.test(prev) && !/[),]/.test(next) : !/[{}:;,>~+(]/.test(prev) && !/[{}:;,>~+)!]/.test(next);
+      if (prev && next && keep) out += ' ';
       continue;
     }
+    if (c === '(') depth++;
+    else if (c === ')') depth = Math.max(0, depth - 1);
+    // Drop the last declaration's `;` (this only sees code; strings are copied above).
+    else if (c === '}' && out.endsWith(';')) out = out.slice(0, -1);
     out += c;
     i++;
   }
-  return out.replace(/;}/g, '}').trim();
+  return out.trim();
 }
 
 export async function minifyJs(src: string): Promise<string> {
@@ -75,13 +86,9 @@ export function formatGraphql(src: string): string {
   }
 }
 
+/** Token-aware: strings and block strings are kept byte for byte. */
 export function minifyGraphql(src: string): string {
-  return formatGraphql(src)
-    .replace(/"""[\s\S]*?"""|"(?:[^"\\]|\\.)*"|#[^\n]*|\s+/g, (m) =>
-      m.startsWith('"') ? m : m.startsWith('#') ? '' : ' ',
-    )
-    .replace(/ ?([{}():,=@!$[\]|]) ?/g, '$1')
-    .trim();
+  return stripIgnoredCharacters(formatGraphql(src));
 }
 
 // ── Dockerfile lint ────────────────────────────────────────────────────────
@@ -260,7 +267,7 @@ interface ComposeService {
   ports?: string[];
   environment?: Record<string, string>;
   env_file?: string[];
-  volumes?: string[];
+  volumes?: Array<string | ComposeMount>;
   networks?: string[];
   restart?: string;
   command?: string[] | string;
@@ -280,6 +287,67 @@ interface ComposeService {
   cpus?: string;
   depends_on?: string[];
   healthcheck?: Record<string, string | string[]>;
+}
+
+/** Compose long-syntax volume entry (what `docker run --mount` maps to). */
+interface ComposeMount {
+  type: string;
+  source?: string;
+  target?: string;
+  read_only?: boolean;
+  bind?: { propagation?: string };
+  volume?: { nocopy?: boolean; subpath?: string };
+  tmpfs?: { size?: string; mode?: string };
+}
+
+const mountFlag = (v: string | undefined): boolean => v === undefined || v === '1' || v === 'true';
+
+/** `type=bind,source=/tmp,target=/data,readonly` -> Compose long syntax; unknown keys are rejected. */
+function parseMount(spec: string): ComposeMount {
+  const m: ComposeMount = { type: 'volume' };
+  for (const part of spec.split(',')) {
+    if (!part) continue;
+    const eq = part.indexOf('=');
+    const k = (eq === -1 ? part : part.slice(0, eq)).trim().toLowerCase();
+    const v = eq === -1 ? undefined : part.slice(eq + 1);
+    switch (k) {
+      case 'type':
+        m.type = v ?? m.type;
+        break;
+      case 'source':
+      case 'src':
+        m.source = v;
+        break;
+      case 'target':
+      case 'destination':
+      case 'dst':
+        m.target = v;
+        break;
+      case 'readonly':
+      case 'ro':
+        m.read_only = mountFlag(v);
+        break;
+      case 'bind-propagation':
+        m.bind = { ...m.bind, propagation: v };
+        break;
+      case 'volume-nocopy':
+        m.volume = { ...m.volume, nocopy: mountFlag(v) };
+        break;
+      case 'volume-subpath':
+        m.volume = { ...m.volume, subpath: v };
+        break;
+      case 'tmpfs-size':
+        m.tmpfs = { ...m.tmpfs, size: v };
+        break;
+      case 'tmpfs-mode':
+        m.tmpfs = { ...m.tmpfs, mode: v };
+        break;
+      default:
+        throw new Error(`Unsupported --mount option: ${k}`);
+    }
+  }
+  if (!m.target) throw new Error(`--mount needs a target: ${spec}`);
+  return m;
 }
 
 export function dockerRunToCompose(cmd: string): string {
@@ -352,9 +420,12 @@ export function dockerRunToCompose(cmd: string): string {
         if (!/^[./~]|^[A-Za-z]:\\|^\$/.test(src) && v.includes(':')) named.add(src);
         break;
       }
-      case '--mount':
-        (svc.volumes ??= []).push(next());
+      case '--mount': {
+        const m = parseMount(next());
+        (svc.volumes ??= []).push(m);
+        if (m.type === 'volume' && m.source) named.add(m.source);
         break;
+      }
       case '--network':
       case '--net': {
         const n = next();
@@ -436,6 +507,25 @@ export function dockerRunToCompose(cmd: string): string {
 /** Stringify a YAML scalar; structured values become JSON rather than "[object Object]". */
 const str = (v: unknown): string => (v !== null && typeof v === 'object' ? JSON.stringify(v) : String(v));
 
+/** Compose long-syntax volume -> `--mount` value. */
+function mountSpec(v: Record<string, unknown>): string {
+  const sub = (o: unknown): Record<string, unknown> =>
+    o && typeof o === 'object' ? (o as Record<string, unknown>) : {};
+  const parts = [`type=${str(v.type ?? 'volume')}`];
+  if (v.source !== undefined) parts.push(`source=${str(v.source)}`);
+  if (v.target !== undefined) parts.push(`target=${str(v.target)}`);
+  if (v.read_only) parts.push('readonly');
+  const bind = sub(v.bind),
+    vol = sub(v.volume),
+    tmp = sub(v.tmpfs);
+  if (bind.propagation !== undefined) parts.push(`bind-propagation=${str(bind.propagation)}`);
+  if (vol.nocopy) parts.push('volume-nocopy');
+  if (vol.subpath !== undefined) parts.push(`volume-subpath=${str(vol.subpath)}`);
+  if (tmp.size !== undefined) parts.push(`tmpfs-size=${str(tmp.size)}`);
+  if (tmp.mode !== undefined) parts.push(`tmpfs-mode=${str(tmp.mode)}`);
+  return parts.join(',');
+}
+
 const q = (s: string): string => (/^[\w./:@%+=,-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
 
 export function composeToDockerRun(src: string): string {
@@ -460,7 +550,10 @@ export function composeToDockerRun(src: string): string {
     for (const p of list(s.ports)) parts.push(`-p ${q(p)}`);
     for (const e of list(s.environment)) parts.push(`-e ${q(e)}`);
     for (const e of list(s.env_file)) parts.push(`--env-file ${q(e)}`);
-    for (const v of list(s.volumes)) parts.push(`-v ${q(v)}`);
+    for (const v of Array.isArray(s.volumes) ? (s.volumes as unknown[]) : [])
+      parts.push(
+        v && typeof v === 'object' ? `--mount ${q(mountSpec(v as Record<string, unknown>))}` : `-v ${q(String(v))}`,
+      );
     for (const n of Array.isArray(s.networks) ? s.networks : s.networks ? Object.keys(s.networks) : [])
       parts.push(`--network ${q(String(n))}`);
     if (s.network_mode) parts.push(`--network ${q(str(s.network_mode))}`);
