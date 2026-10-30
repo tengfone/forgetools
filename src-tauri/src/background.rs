@@ -7,7 +7,9 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewWindow};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+use tauri_plugin_notification::NotificationExt;
 
 pub const TRAY_ID: &str = "main";
 const IS_MAC: bool = cfg!(target_os = "macos");
@@ -38,6 +40,9 @@ pub struct BackgroundSettings {
     keep_in_background: bool,
     open_at_login: bool,
     global_shortcut: Option<String>,
+    /// Set only when enabling/disabling the login item failed (the pref was reverted).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
 }
 
 #[derive(Default, Deserialize)]
@@ -72,7 +77,7 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// E2E mode only exists in `--features wdio` builds; release builds ignore FORGE_E2E.
+/// E2E mode only exists in `--features wdio` builds; release builds ignore `FORGE_E2E`.
 pub fn is_e2e() -> bool {
     cfg!(feature = "wdio") && std::env::var_os("FORGE_E2E").is_some_and(|v| !v.is_empty())
 }
@@ -91,15 +96,18 @@ pub fn parse_prefs(raw: &str) -> Stored {
     Stored {
         keep_in_background: v
             .get("keepInBackground")
-            .and_then(|x| x.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(d.keep_in_background),
-        open_at_login: v.get("openAtLogin").and_then(|x| x.as_bool()) == Some(true),
+        open_at_login: v.get("openAtLogin").and_then(serde_json::Value::as_bool) == Some(true),
         global_shortcut: v
             .get("globalShortcut")
-            .and_then(|x| x.as_str())
+            .and_then(serde_json::Value::as_str)
             .filter(|s| !s.is_empty())
             .map(String::from),
-        tray_notice_shown: v.get("trayNoticeShown").and_then(|x| x.as_bool()) == Some(true),
+        tray_notice_shown: v
+            .get("trayNoticeShown")
+            .and_then(serde_json::Value::as_bool)
+            == Some(true),
     }
 }
 
@@ -115,9 +123,13 @@ fn prefs_file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     }
 }
 
-/// Where the v0.2.1 build kept its preferences: `<data_dir>/ForgeTools/background.json`.
-pub fn legacy_prefs_path(data_dir: &Path) -> PathBuf {
-    data_dir.join("ForgeTools").join(PREFS_NAME)
+/// Where the v0.2.1 build kept its preferences: `<userData>/background.json`.
+/// v0.2.1's userData is `<appData>/ForgeTools`, where appData is `$XDG_CONFIG_HOME`
+/// (`config_dir`) on Linux and `data_dir` (`%APPDATA%`, `~/Library/Application Support`)
+/// on Windows/macOS. Pure: `os` is `std::env::consts::OS`.
+pub fn legacy_prefs_path(os: &str, config_dir: &Path, data_dir: &Path) -> PathBuf {
+    let base = if os == "linux" { config_dir } else { data_dir };
+    base.join("ForgeTools").join(PREFS_NAME)
 }
 
 /// Migrate only when the new file is absent and the legacy one exists (and they differ).
@@ -126,26 +138,22 @@ pub fn needs_migration(new: &Path, legacy: &Path, new_exists: bool, legacy_exist
 }
 
 fn migrate_legacy<R: Runtime>(app: &AppHandle<R>, new: &Path) {
-    let Ok(data) = app.path().data_dir() else {
+    let (Ok(config), Ok(data)) = (app.path().config_dir(), app.path().data_dir()) else {
         return;
     };
-    let legacy = legacy_prefs_path(&data);
+    let legacy = legacy_prefs_path(std::env::consts::OS, &config, &data);
     if !needs_migration(new, &legacy, new.exists(), legacy.exists()) {
         return;
     }
     if let Some(dir) = new.parent() {
         if let Err(e) = std::fs::create_dir_all(dir) {
-            log::error!("migration: cannot create {}: {e}", dir.display());
+            log::error!("migration: cannot create app data dir: {e}");
             return;
         }
     }
     match std::fs::copy(&legacy, new) {
-        Ok(_) => log::info!(
-            "migrated preferences from {} to {}",
-            legacy.display(),
-            new.display()
-        ),
-        Err(e) => log::error!("migration from {} failed: {e}", legacy.display()),
+        Ok(_) => log::info!("migrated legacy {PREFS_NAME} from the v0.2.1 build"),
+        Err(e) => log::error!("migrating legacy {PREFS_NAME} failed: {e}"),
     }
 }
 
@@ -158,19 +166,27 @@ fn load<R: Runtime>(app: &AppHandle<R>) -> Stored {
         Ok(s) => parse_prefs(&s),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Stored::default(),
         Err(e) => {
-            log::error!("reading {}: {e}", f.display());
+            log::error!("reading {PREFS_NAME}: {e}");
             Stored::default()
         }
     }
 }
 
 fn write_atomic(f: &Path, s: &str) -> std::io::Result<()> {
+    use std::io::Write;
     if let Some(dir) = f.parent() {
         std::fs::create_dir_all(dir)?;
     }
     let tmp = f.with_extension("json.tmp");
-    std::fs::write(&tmp, s)?;
-    std::fs::rename(&tmp, f)
+    let written = std::fs::File::create(&tmp).and_then(|mut file| {
+        file.write_all(s.as_bytes())?;
+        file.sync_all()
+    });
+    let res = written.and_then(|()| std::fs::rename(&tmp, f));
+    if res.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    res
 }
 
 /// Persist the current preferences. Snapshot is taken under the io lock (prefs lock is
@@ -184,7 +200,7 @@ fn save<R: Runtime>(app: &AppHandle<R>) {
         .map_err(std::io::Error::other)
         .and_then(|s| write_atomic(&f, &s));
     if let Err(e) = res {
-        log::error!("saving {}: {e}", f.display());
+        log::error!("saving {PREFS_NAME}: {e}");
     }
 }
 
@@ -193,6 +209,7 @@ fn public(p: &Stored) -> BackgroundSettings {
         keep_in_background: p.keep_in_background,
         open_at_login: p.open_at_login,
         global_shortcut: p.global_shortcut.clone(),
+        error: None,
     }
 }
 
@@ -235,7 +252,6 @@ fn apply_login_item<R: Runtime>(app: &AppHandle<R>, on: bool) -> Result<(), Stri
     if is_e2e() || cfg!(debug_assertions) {
         return Ok(());
     }
-    use tauri_plugin_autostart::ManagerExt;
     let al = app.autolaunch();
     let r = if on { al.enable() } else { al.disable() };
     r.map_err(|e| {
@@ -245,21 +261,43 @@ fn apply_login_item<R: Runtime>(app: &AppHandle<R>, on: bool) -> Result<(), Stri
 }
 
 /// Set the login preference; on OS failure revert it so the UI reflects reality.
-fn set_login<R: Runtime>(app: &AppHandle<R>, on: bool) {
+fn set_login<R: Runtime>(app: &AppHandle<R>, on: bool) -> Result<(), String> {
     let st = app.state::<State>();
     lock(&st.prefs).open_at_login = on;
-    if apply_login_item(app, on).is_err() {
+    let res = apply_login_item(app, on);
+    if res.is_err() {
         lock(&st.prefs).open_at_login = !on;
     }
     save(app);
+    res
+}
+
+/// Make the OS login item match the stored preference (it may have been removed by the
+/// user or an OS cleanup, or left behind by an old install).
+fn reconcile_login_item<R: Runtime>(app: &AppHandle<R>) {
+    if is_e2e() || cfg!(debug_assertions) {
+        return;
+    }
+    let want = lock(&app.state::<State>().prefs).open_at_login;
+    match app.autolaunch().is_enabled() {
+        Ok(have) if have == want => {}
+        Ok(_) => {
+            log::info!("login item out of sync, setting to {want}");
+            let _ = apply_login_item(app, want);
+        }
+        Err(e) => log::warn!("querying login item: {e}"),
+    }
 }
 
 fn display_mod(tok: &str, mac: bool) -> Option<&'static str> {
     let t = tok.to_ascii_lowercase();
     Some(match (t.as_str(), mac) {
-        ("commandorcontrol" | "commandorctrl" | "cmdorctrl" | "cmdorcontrol", true) => "\u{2318}",
         ("commandorcontrol" | "commandorctrl" | "cmdorctrl" | "cmdorcontrol", false) => "Ctrl",
-        ("command" | "cmd" | "super" | "meta", true) => "\u{2318}",
+        (
+            "commandorcontrol" | "commandorctrl" | "cmdorctrl" | "cmdorcontrol" | "command" | "cmd"
+            | "super" | "meta",
+            true,
+        ) => "\u{2318}",
         ("ctrl" | "control", true) => "\u{2303}",
         ("alt" | "option", true) => "\u{2325}",
         ("shift", true) => "\u{21E7}",
@@ -283,11 +321,7 @@ pub fn format_accel(a: &str, mac: bool) -> String {
     let mut parts: Vec<String> = mods
         .split('+')
         .filter(|t| !t.is_empty())
-        .map(|t| {
-            display_mod(t, mac)
-                .map(String::from)
-                .unwrap_or_else(|| t.to_string())
-        })
+        .map(|t| display_mod(t, mac).map_or_else(|| t.to_string(), String::from))
         .collect();
     parts.push(key.to_string());
     parts.join(if mac { "" } else { "+" })
@@ -348,7 +382,8 @@ fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             "open" => show_window(app, true),
             "login" => {
                 let on = !lock(&app.state::<State>().prefs).open_at_login;
-                set_login(app, on);
+                // Failure is logged and the checkmark reverts via the rebuilt menu
+                let _ = set_login(app, on);
                 rebuild_tray_menu(app);
             }
             "quit" => {
@@ -413,7 +448,6 @@ pub fn on_close_requested<R: Runtime>(w: &tauri::Window<R>, api: &tauri::CloseRe
     api.prevent_close();
     log_err("hide", w.hide());
     if notify {
-        use tauri_plugin_notification::NotificationExt;
         let body = if IS_MAC {
             "Find it in the menu bar. Press \u{2318}Q to quit."
         } else {
@@ -434,7 +468,7 @@ fn register_shortcut<R: Runtime>(app: &AppHandle<R>, accel: Option<String>) -> S
     let gs = app.global_shortcut();
     let st = app.state::<State>();
     // Held for the whole operation so concurrent calls can't interleave unregister/register.
-    let _op = lock(&st.shortcut_op);
+    let op = lock(&st.shortcut_op);
     let prev = lock(&st.prefs).global_shortcut.clone();
     let parsed = match accel.as_deref().map(str::parse::<Shortcut>) {
         Some(Err(e)) => {
@@ -469,8 +503,8 @@ fn register_shortcut<R: Runtime>(app: &AppHandle<R>, accel: Option<String>) -> S
         }
         _ => None,
     };
-    lock(&st.prefs).global_shortcut = result.clone();
-    drop(_op);
+    lock(&st.prefs).global_shortcut.clone_from(&result);
+    drop(op);
     save(app);
     rebuild_tray_menu(app);
     ShortcutResult {
@@ -485,11 +519,13 @@ pub fn clean_accel(a: Option<String>) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+#[allow(clippy::needless_pass_by_value)] // tauri::State must be taken by value
 #[tauri::command]
 pub fn get_background_settings(state: tauri::State<'_, State>) -> BackgroundSettings {
     public(&lock(&state.prefs))
 }
 
+#[allow(clippy::needless_pass_by_value)] // Tauri commands take AppHandle by value
 #[tauri::command]
 pub fn set_background_settings(
     app: AppHandle,
@@ -500,16 +536,21 @@ pub fn set_background_settings(
     if let Some(k) = patch.keep_in_background {
         lock(&st.prefs).keep_in_background = k;
     }
-    match patch.open_at_login {
-        // set_login saves; a failure is reported by returning the reverted value
-        Some(o) => set_login(&app, o),
-        None => save(&app),
-    }
+    // set_login saves; on failure the reverted value plus `error` is returned
+    let error = if let Some(o) = patch.open_at_login {
+        set_login(&app, o)
+            .err()
+            .map(|_| "Could not update the login item".to_string())
+    } else {
+        save(&app);
+        None
+    };
     rebuild_tray_menu(&app);
     let out = public(&lock(&st.prefs));
-    out
+    BackgroundSettings { error, ..out }
 }
 
+#[allow(clippy::needless_pass_by_value)] // Tauri commands take AppHandle by value
 #[tauri::command]
 pub fn set_global_shortcut(app: AppHandle, accelerator: Option<String>) -> ShortcutResult {
     register_shortcut(&app, clean_accel(accelerator))
@@ -528,6 +569,7 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) {
         io: Mutex::new(()),
         shortcut_op: Mutex::new(()),
     });
+    reconcile_login_item(app);
     if !is_e2e() {
         match create_tray(app) {
             Ok(()) => app
@@ -614,9 +656,18 @@ mod tests {
 
     #[test]
     fn migration_paths() {
-        let data = Path::new("data");
-        let legacy = legacy_prefs_path(data);
-        assert_eq!(legacy, data.join("ForgeTools").join("background.json"));
+        let (cfg, data) = (Path::new("cfg"), Path::new("data"));
+        assert_eq!(
+            legacy_prefs_path("linux", cfg, data),
+            cfg.join("ForgeTools").join("background.json")
+        );
+        for os in ["windows", "macos"] {
+            assert_eq!(
+                legacy_prefs_path(os, cfg, data),
+                data.join("ForgeTools").join("background.json")
+            );
+        }
+        let legacy = legacy_prefs_path("windows", cfg, data);
         let new = Path::new("appdata").join("background.json");
         assert!(needs_migration(&new, &legacy, false, true));
         assert!(!needs_migration(&new, &legacy, true, true));

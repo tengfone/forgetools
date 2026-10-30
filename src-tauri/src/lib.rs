@@ -2,14 +2,41 @@ mod background;
 
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
+#[cfg(not(feature = "wdio"))]
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 
+/// Route panics into the log file (release builds abort, so this is the only trace), then
+/// defer to the default hook.
+fn install_panic_hook() {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info
+            .payload()
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| info.payload().downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("<non-string payload>");
+        let loc = info
+            .location()
+            .map_or_else(|| "<unknown>".to_string(), ToString::to_string);
+        log::error!("panic at {loc}: {payload}");
+        prev(info);
+    }));
+}
+
+/// # Panics
+/// If the Tauri application fails to build.
 pub fn run() {
+    install_panic_hook();
     let mut builder = tauri::Builder::default();
 
     // Single instance must be registered first. Tests run their own instances.
     if !background::is_e2e() {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            background::show_window(app, false);
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // A second `--hidden` launch (login item racing a running instance) stays in the tray
+            if !args.iter().any(|a| a == "--hidden") {
+                background::show_window(app, false);
+            }
         }));
     }
 
@@ -27,6 +54,16 @@ pub fn run() {
     {
         builder = builder.plugin(
             tauri_plugin_log::Builder::new()
+                // Log files live in the OS log dir for the app identifier:
+                //   Windows: %LOCALAPPDATA%\com.tengfone.forgetools\logs
+                //   macOS:   ~/Library/Logs/com.tengfone.forgetools
+                //   Linux:   ~/.local/share/com.tengfone.forgetools/logs
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir { file_name: None }),
+                ])
+                .rotation_strategy(RotationStrategy::KeepSome(3))
+                .max_file_size(1_000_000)
                 .level(if cfg!(debug_assertions) {
                     log::LevelFilter::Debug
                 } else {
