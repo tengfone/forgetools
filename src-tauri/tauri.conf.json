@@ -62,11 +62,6 @@
       "appimage": {
         "bundleMediaFramework": false
       },
-      "deb": {
-        "depends": [
-          "libayatana-appindicator3-1"
-        ]
-      },
       "rpm": {
         "depends": [
           "libayatana-appindicator-gtk3"
