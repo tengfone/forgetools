@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    './src/renderer/index.html',
-    './src/renderer/src/**/*.{js,ts,jsx,tsx}'
-  ],
+  content: ['./src/renderer/index.html', './src/renderer/src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
@@ -24,39 +21,44 @@ module.exports = {
           fill: 'var(--accent-fill)',
           'fill-hover': 'var(--accent-fill-hover)',
           text: 'var(--accent-text)',
-          on: 'var(--on-accent)'
+          on: 'var(--on-accent)',
         },
         border: {
           DEFAULT: 'var(--border-color)',
           hover: 'var(--border-hover)',
-          field: 'var(--field-border)'
+          field: 'var(--field-border)',
         },
         success: {
           DEFAULT: 'var(--success-color)',
-          text: 'var(--success-text)'
+          text: 'var(--success-text)',
         },
         error: {
           DEFAULT: 'var(--error-color)',
-          text: 'var(--error-text)'
+          text: 'var(--error-text)',
         },
-        warning: 'var(--warning-color)'
+        warning: 'var(--warning-color)',
       },
       fontFamily: {
         sans: ['"Inter Variable"', 'Inter', '"Segoe UI Variable Text"', '"Segoe UI"', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono Variable"', '"JetBrains Mono"', '"Cascadia Mono"', '"SF Mono"', 'Consolas', 'monospace']
+        mono: [
+          '"JetBrains Mono Variable"',
+          '"JetBrains Mono"',
+          '"Cascadia Mono"',
+          '"SF Mono"',
+          'Consolas',
+          'monospace',
+        ],
       },
       borderRadius: {
         sm: '6px',
         md: '8px',
-        lg: '10px'
+        lg: '10px',
       },
       spacing: {
-        'sidebar': '232px',
-        'header': '36px'
-      }
-    }
+        sidebar: '232px',
+        header: '36px',
+      },
+    },
   },
-  plugins: []
+  plugins: [],
 };
-
-

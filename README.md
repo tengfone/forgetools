@@ -58,12 +58,20 @@ Get the latest build from [Releases](https://github.com/tengfone/forgetools/rele
 Platform notes:
 
 - **Windows**: needs the Microsoft Edge WebView2 runtime, which ships with Windows 10 and 11. The build is unsigned, so SmartScreen may warn on first launch: choose **More info** → **Run anyway**.
-- **macOS**: the build is unsigned. On first launch, right-click the app and choose **Open**.
+- **macOS**: the build is unsigned and not notarized, so macOS 15 says it "can't be opened" on first launch. Move ForgeTools.app to Applications and open it once, then go to **System Settings** → **Privacy & Security**, scroll to Security and click **Open Anyway** (then confirm). Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/ForgeTools.app`.
 - **Linux**: the `.deb` / `.rpm` install with your package manager (`sudo apt install ./ForgeTools-X.Y.Z-amd64.deb` or `sudo dnf install ./ForgeTools-X.Y.Z-x86_64.rpm`) and use the system WebKitGTK, so they are small. The AppImage runs anywhere: make it executable (`chmod +x ForgeTools-X.Y.Z.AppImage`) and run it. It bundles its own WebKitGTK, which is why it is larger. The tray icon has no click action on Linux; use its **Show** menu item. Some Wayland desktops block the global shortcut.
+
+## Reporting bugs
+
+Open an [issue](https://github.com/tengfone/forgetools/issues) with your OS, the ForgeTools version (Settings → About) and, if possible, the log file from:
+
+- Windows: `%LOCALAPPDATA%\com.tengfone.forgetools\logs`
+- macOS: `~/Library/Logs/com.tengfone.forgetools`
+- Linux: `~/.local/share/com.tengfone.forgetools/logs`
 
 ## Development
 
-Requires Node.js 26 (see `.nvmrc`).
+Requires Node.js 24 (see `.nvmrc`).
 
 ```bash
 git clone https://github.com/tengfone/forgetools.git
@@ -77,7 +85,7 @@ npm run dist       # installers in src-tauri/target/release/bundle
 
 You also need the Rust toolchain and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS. `npm run demo` re-records `assets/demo.gif` (needs `npm run build:e2e` first and ffmpeg on PATH).
 
-To release, run `npm run release:patch` (or `release:minor` / `release:major`). It tags the version, and once tests and all platform builds pass, CI publishes the GitHub release automatically. Only the 10 newest releases are kept; older ones are deleted (their git tags stay).
+CI runs the tests on every push and pull request. To release, run `npm run release:patch` (or `release:minor` / `release:major`): it bumps and tags the version, and once tests and all platform builds pass, CI creates a **draft** GitHub release that a maintainer reviews and publishes. Only the 10 newest published releases are kept (their git tags stay). See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
