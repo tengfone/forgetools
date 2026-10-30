@@ -11,17 +11,20 @@ export const getMonaco = (): Monaco | null => instance;
 let loading: Promise<Monaco> | null = null;
 /** Load Monaco once (separate chunk). Rejections reset so a later call can retry. */
 export function loadMonaco(): Promise<Monaco> {
-  loading ??= import('./monaco').then(m => (instance = m.monaco)).catch((e: unknown) => {
-    loading = null;
-    throw e;
-  });
+  loading ??= import('./monaco')
+    .then((m) => (instance = m.monaco))
+    .catch((e: unknown) => {
+      loading = null;
+      throw e;
+    });
   return loading;
 }
 
 // Monaco cancels its own pending work (hover, word highlight, layout) when an editor is disposed
 // or re-laid out, rejecting with Error('Canceled'). Monaco treats that as expected; WebKit can
 // surface it as an unhandled rejection, so drop exactly that error and nothing else.
+// Still needed with monaco-editor 0.57 (vs/base/common/errors.js: CancellationError, name === message === 'Canceled').
 window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
-  const r = ev.reason as { name?: string; message?: string } | null;
-  if (r && r.name === 'Canceled' && r.message === 'Canceled') ev.preventDefault();
+  const r: unknown = ev.reason;
+  if (r instanceof Error && r.name === 'Canceled' && r.message === 'Canceled') ev.preventDefault();
 });

@@ -5,7 +5,9 @@
 import { isNewer, parseVersion } from './version';
 import { RELEASE_PREFIX } from './links';
 
-export interface UpdatePrefs { autoCheck: boolean }
+export interface UpdatePrefs {
+  autoCheck: boolean;
+}
 export interface UpdateCheckResult {
   current: string;
   /** Latest published version without the "v" (null when never checked). */
@@ -19,7 +21,12 @@ const LATEST_URL = 'https://api.github.com/repos/tengfone/forgetools/releases/la
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KEY = 'forge-updates';
 
-interface Stored { autoCheck: boolean; lastCheck: number; latest: string | null; latestUrl: string | null }
+interface Stored {
+  autoCheck: boolean;
+  lastCheck: number;
+  latest: string | null;
+  latestUrl: string | null;
+}
 const DEFAULTS: Stored = { autoCheck: false, lastCheck: 0, latest: null, latestUrl: null };
 
 export interface UpdateEnv {
@@ -31,12 +38,18 @@ export interface UpdateEnv {
   isE2E: () => boolean;
 }
 
+/** Process-wide options; set once at bootstrap (app.ts) before any update check runs. */
+const options = { isE2E: false };
+export function configureUpdates(o: Partial<typeof options>): void {
+  Object.assign(options, o);
+}
+
 const defaultEnv = (): UpdateEnv => ({
   storage: localStorage,
   fetch: (...a) => fetch(...a),
   now: () => Date.now(),
   current: () => (typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0'),
-  isE2E: () => import.meta.env.VITE_WDIO === '1',
+  isE2E: () => options.isE2E,
 });
 
 export interface Updates {
@@ -61,10 +74,18 @@ export function createUpdates(env: UpdateEnv = defaultEnv()): Updates {
         latest: typeof raw.latest === 'string' ? raw.latest : null,
         latestUrl: typeof raw.latestUrl === 'string' && raw.latestUrl.startsWith(RELEASE_PREFIX) ? raw.latestUrl : null,
       };
-    } catch { return { ...DEFAULTS }; }
+    } catch {
+      return { ...DEFAULTS };
+    }
   };
   let prefs = load();
-  const save = (): void => { try { env.storage.setItem(KEY, JSON.stringify(prefs)); } catch { /* non-fatal */ } };
+  const save = (): void => {
+    try {
+      env.storage.setItem(KEY, JSON.stringify(prefs));
+    } catch {
+      /* non-fatal */
+    }
+  };
 
   const result = (checkedAt: number): UpdateCheckResult => ({
     current: env.current(),
@@ -93,22 +114,31 @@ export function createUpdates(env: UpdateEnv = defaultEnv()): Updates {
 
   let inflight: Promise<UpdateCheckResult> | null = null;
   /** Manual check: always asks GitHub, rejects on failure. */
-  const check = (): Promise<UpdateCheckResult> => (inflight ??= fetchLatest().finally(() => { inflight = null; }));
+  const check = (): Promise<UpdateCheckResult> =>
+    (inflight ??= fetchLatest().finally(() => {
+      inflight = null;
+    }));
 
   return {
     check,
     getPrefs: (): UpdatePrefs => ({ autoCheck: prefs.autoCheck }),
     setPrefs: (patch: Partial<UpdatePrefs>): UpdatePrefs => {
-      if (typeof patch?.autoCheck === 'boolean') { prefs = { ...prefs, autoCheck: patch.autoCheck }; save(); }
+      if (typeof patch?.autoCheck === 'boolean') {
+        prefs = { ...prefs, autoCheck: patch.autoCheck };
+        save();
+      }
       return { autoCheck: prefs.autoCheck };
     },
     /** Startup check: only hits the network when opted in and >24h since the last check. */
     async auto(): Promise<UpdateCheckResult | null> {
       if (!prefs.autoCheck || env.isE2E()) return prefs.latest ? result(prefs.lastCheck) : null;
       if (env.now() - prefs.lastCheck < DAY_MS) return prefs.latest ? result(prefs.lastCheck) : null;
-      try { return await check(); } catch {
+      try {
+        return await check();
+      } catch {
         // Silent when automatic; still count the attempt so a failing check isn't retried every launch.
-        prefs = { ...prefs, lastCheck: env.now() }; save();
+        prefs = { ...prefs, lastCheck: env.now() };
+        save();
         return null;
       }
     },

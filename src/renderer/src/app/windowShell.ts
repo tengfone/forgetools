@@ -10,11 +10,15 @@ import { nextFrameOrTimeout } from '../ui';
  */
 export function revealWindow(): void {
   if (!isTauri()) return;
-  nextFrameOrTimeout(() => {
-    void startHidden()
-      .then(hidden => (hidden ? undefined : appWindow.show()))
-      .catch((e: unknown) => logger.warn('Window reveal failed:', e));
-  }, undefined, 2);
+  nextFrameOrTimeout(
+    () => {
+      void startHidden()
+        .then((hidden) => (hidden ? undefined : appWindow.show()))
+        .catch((e: unknown) => logger.warn('Window reveal failed:', e));
+    },
+    undefined,
+    2,
+  );
 }
 
 const windowCall = (name: string, fn: () => Promise<void>) => (): void => {

@@ -1,5 +1,6 @@
 // Settings > Background: keep-in-background, open-at-login and the global show/hide shortcut recorder.
-import { background, isMac as isMacPlatform, isTauri } from '../native';
+import { background, isMac as isMacPlatform, isTauri, type BackgroundSettings } from '../native';
+import { showToast, errorMessage } from '../ui';
 
 /** KeyboardEvent -> global-shortcut accelerator ("Ctrl+Alt+Space"). Null while only modifiers are held. */
 export function toAccelerator(e: KeyboardEvent): string | null {
@@ -18,11 +19,31 @@ export function toAccelerator(e: KeyboardEvent): string | null {
   else if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) key = code;
   else {
     const map: Record<string, string> = {
-      Space: 'Space', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete', Insert: 'Insert',
-      Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown',
-      ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
-      Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\',
-      Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
+      Space: 'Space',
+      Enter: 'Enter',
+      Tab: 'Tab',
+      Backspace: 'Backspace',
+      Delete: 'Delete',
+      Insert: 'Insert',
+      Home: 'Home',
+      End: 'End',
+      PageUp: 'PageUp',
+      PageDown: 'PageDown',
+      ArrowUp: 'Up',
+      ArrowDown: 'Down',
+      ArrowLeft: 'Left',
+      ArrowRight: 'Right',
+      Backquote: '`',
+      Minus: '-',
+      Equal: '=',
+      BracketLeft: '[',
+      BracketRight: ']',
+      Backslash: '\\',
+      Semicolon: ';',
+      Quote: "'",
+      Comma: ',',
+      Period: '.',
+      Slash: '/',
     };
     key = map[code] ?? null;
   }
@@ -35,13 +56,20 @@ export function toAccelerator(e: KeyboardEvent): string | null {
 /** Pretty label for an accelerator: mac glyphs, otherwise as-is. */
 export function accelLabel(a: string): string {
   if (!isMacPlatform()) return a.replace(/\+/g, ' + ');
-  return a.replace(/Command\+?/g, '\u2318').replace(/Control\+?/g, '\u2303').replace(/Option\+?|Alt\+?/g, '\u2325').replace(/Shift\+?/g, '\u21e7');
+  return a
+    .replace(/Command\+?/g, '\u2318')
+    .replace(/Control\+?/g, '\u2303')
+    .replace(/Option\+?|Alt\+?/g, '\u2325')
+    .replace(/Shift\+?/g, '\u21e7');
 }
 
 export function setupBackgroundSettings(): void {
   const api = isTauri() ? background : null;
   const group = document.getElementById('settingsBackground');
-  if (!api || !group) { group?.setAttribute('hidden', ''); return; }
+  if (!api || !group) {
+    group?.setAttribute('hidden', '');
+    return;
+  }
   const bg = document.getElementById('setting-background') as HTMLInputElement | null;
   const login = document.getElementById('setting-login') as HTMLInputElement | null;
   const rec = document.getElementById('shortcutRec') as HTMLButtonElement | null;
@@ -56,6 +84,7 @@ export function setupBackgroundSettings(): void {
   const paint = (): void => {
     rec.classList.toggle('is-recording', recording);
     rec.setAttribute('aria-pressed', String(recording));
+    rec.dataset.capturesEscape = String(recording);
     rec.textContent = recording ? 'Press a key combination\u2026' : current ? accelLabel(current) : 'Not set';
     rec.classList.toggle('is-empty', !current && !recording);
     clearBtn.disabled = !current;
@@ -74,35 +103,81 @@ export function setupBackgroundSettings(): void {
 
   const isMac = isMacPlatform();
   const suggestions = isMac ? ['Option+Space', 'Control+Shift+Option+F'] : ['Ctrl+Alt+Space', 'Ctrl+Shift+Alt+F'];
-  suggestions.forEach(s => {
+  suggestions.forEach((s) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'home-chip shortcut-chip';
     b.dataset.accel = s;
     b.textContent = accelLabel(s);
-    b.onclick = () => { recording = false; void apply(s); };
+    b.onclick = () => {
+      recording = false;
+      void apply(s);
+    };
     chips.appendChild(b);
   });
 
-  rec.addEventListener('click', () => { recording = !recording; if (recording) say('Press the combination, or Esc to cancel.'); else say(HINT); paint(); });
-  rec.addEventListener('blur', () => { if (recording) { recording = false; say(HINT); paint(); } });
-  rec.addEventListener('keydown', e => {
+  rec.addEventListener('click', () => {
+    recording = !recording;
+    if (recording) say('Press the combination, or Esc to cancel.');
+    else say(HINT);
+    paint();
+  });
+  rec.addEventListener('blur', () => {
+    if (recording) {
+      recording = false;
+      say(HINT);
+      paint();
+    }
+  });
+  rec.addEventListener('keydown', (e) => {
     if (!recording) return;
-    if (e.key === 'Tab') { recording = false; paint(); return; }
+    if (e.key === 'Tab') {
+      recording = false;
+      paint();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
-    if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) { recording = false; say(HINT); paint(); return; }
+    if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+      recording = false;
+      say(HINT);
+      paint();
+      return;
+    }
     const accel = toAccelerator(e);
-    if (!accel) { if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) say('Add Ctrl, Alt or Shift to the key.', true); return; }
+    if (!accel) {
+      if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) say('Add Ctrl, Alt or Shift to the key.', true);
+      return;
+    }
     recording = false;
     void apply(accel);
   });
-  clearBtn.addEventListener('click', () => { recording = false; void apply(null); });
+  clearBtn.addEventListener('click', () => {
+    recording = false;
+    void apply(null);
+  });
 
-  bg.addEventListener('change', () => { void api.set({ keepInBackground: bg.checked }); });
-  login.addEventListener('change', () => { void api.set({ openAtLogin: login.checked }); });
+  // The backend returns the settings actually in effect; on failure resync the boxes and say why.
+  const save = (patch: Partial<Pick<BackgroundSettings, 'keepInBackground' | 'openAtLogin'>>): void => {
+    void api
+      .set(patch)
+      .then((s) => {
+        bg.checked = s.keepInBackground;
+        login.checked = s.openAtLogin;
+        if (s.error) showToast(s.error, 'error');
+      })
+      .catch((e: unknown) => {
+        showToast(errorMessage(e), 'error');
+        void api.get().then((s) => {
+          bg.checked = s.keepInBackground;
+          login.checked = s.openAtLogin;
+        });
+      });
+  };
+  bg.addEventListener('change', () => save({ keepInBackground: bg.checked }));
+  login.addEventListener('change', () => save({ openAtLogin: login.checked }));
 
-  void api.get().then(s => {
+  void api.get().then((s) => {
     bg.checked = s.keepInBackground;
     login.checked = s.openAtLogin;
     current = s.globalShortcut;

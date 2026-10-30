@@ -9,10 +9,15 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["vite/client"]
   },
   "include": ["src/renderer/**/*", "src/types/**/*"]
 }
-

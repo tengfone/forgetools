@@ -1,12 +1,18 @@
 import { debounce, emptyState } from './common';
 
-type DiffFn = (a: string, b: string, opts?: { ignoreCase?: boolean }) => { value: string; added?: boolean; removed?: boolean }[];
 import { $f, esc, reportError, resetStatus, clearWithUndo } from '../../ui';
 import { logger } from '../../logger';
-import { diffLines, diffWords, diffChars } from 'diff';
+import {
+  diffLines,
+  diffWords,
+  diffChars,
+  type DiffLinesOptionsNonabortable,
+  type DiffWordsOptionsNonabortable,
+  type DiffCharsOptionsNonabortable,
+} from 'diff';
 
 export function render(container: HTMLElement): void {
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="custom-interface">
             <!-- Options Bar -->
             <div class="tool-toolbar">
@@ -79,96 +85,108 @@ export function render(container: HTMLElement): void {
             </div>
         </div>
     `;
-    
-    const originalInput = $f('diff-original');
-    const comparedInput = $f('diff-compared');
-    const resultDiv = $f('diff-result');
-    const statsDiv = $f('diff-stats');
-    const caseSensitive = $f('diff-case-sensitive');
-    const diffMode = $f('diff-mode');
-    
-    const computeDiff = () => {
-        const original = originalInput.value;
-        const compared = comparedInput.value;
-        
-        if (!original && !compared) {
-            resultDiv.innerHTML = emptyState('Differences appear here once both sides have text.');
-            statsDiv.textContent = '';
-            return;
-        }
-        
-        const limit = diffMode.value === 'char' ? 50_000 : 500_000;
-        if (original.length > limit || compared.length > limit) {
-            reportError(`Input too large for ${diffMode.value} mode: limit is ${limit.toLocaleString()} characters per side`, 'previous result kept');
-            return;
-        }
-        resetStatus();
 
-        // Case-insensitive compare via jsdiff ignoreCase keeps the original casing in the output.
-        const opts = { ignoreCase: !caseSensitive.checked };
-        const D = { diffLines, diffWords, diffChars } as unknown as { diffLines: DiffFn; diffWords: DiffFn; diffChars: DiffFn };
-        const mode = diffMode.value;
-        let result = '';
-        let addedCount = 0;
-        let removedCount = 0;
-        
-        try {
-            const kind = (p: { added?: boolean; removed?: boolean }) => (p.added ? 'is-add' : p.removed ? 'is-del' : '');
-            if (mode === 'line') {
-                result = D.diffLines(original, compared, opts).map(part => {
-                    const lines = part.value.split('\n');
-                    if (lines[lines.length - 1] === '') lines.pop();
-                    if (part.added) addedCount += lines.length;
-                    else if (part.removed) removedCount += lines.length;
-                    const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
-                    return lines.map(line => `<div class="diff-line ${kind(part)}">${prefix}${esc(line) || ' '}</div>`).join('');
-                }).join('');
-            } else {
-                const diff = mode === 'word' ? D.diffWords(original, compared, opts) : D.diffChars(original, compared, opts);
-                result = diff.map(part => {
-                    const n = mode === 'word' ? part.value.split(/\s+/).filter(Boolean).length : part.value.length;
-                    if (part.added) addedCount += n;
-                    else if (part.removed) removedCount += n;
-                    const text = mode === 'char' ? part.value.replace(/\n/g, '\u21B5\n') : part.value;
-                    return `<span class="diff-inline ${kind(part)}">${esc(text)}</span>`;
-                }).join('');
-            }
-            
-            resultDiv.innerHTML = result || '<div class="tool-empty"><i aria-hidden="true" class="material-icons empty-glyph">check_circle</i>No differences. The texts are identical.</div>';
-            
-            // Update stats
-            if (addedCount || removedCount) {
-                statsDiv.innerHTML = `<span class="text-success">+${addedCount}</span> / <span class="text-error">-${removedCount}</span>`;
-            } else {
-                statsDiv.textContent = '';
-            }
-        } catch (e) {
-            logger.error('Diff error:', e);
-            reportError(e);
-        }
+  const originalInput = $f('diff-original');
+  const comparedInput = $f('diff-compared');
+  const resultDiv = $f('diff-result');
+  const statsDiv = $f('diff-stats');
+  const caseSensitive = $f('diff-case-sensitive');
+  const diffMode = $f('diff-mode');
+
+  const computeDiff = () => {
+    const original = originalInput.value;
+    const compared = comparedInput.value;
+
+    if (!original && !compared) {
+      resultDiv.innerHTML = emptyState('Differences appear here once both sides have text.');
+      statsDiv.textContent = '';
+      return;
+    }
+
+    const limit = diffMode.value === 'char' ? 50_000 : 500_000;
+    if (original.length > limit || compared.length > limit) {
+      reportError(
+        `Input too large for ${diffMode.value} mode: limit is ${limit.toLocaleString()} characters per side`,
+        'previous result kept',
+      );
+      return;
+    }
+    resetStatus();
+
+    // Case-insensitive compare via jsdiff ignoreCase keeps the original casing in the output.
+    const opts: DiffLinesOptionsNonabortable & DiffWordsOptionsNonabortable & DiffCharsOptionsNonabortable = {
+      ignoreCase: !caseSensitive.checked,
     };
-    
-    const scheduleDiff = debounce(computeDiff, 250);
-    originalInput.addEventListener('input', scheduleDiff);
-    comparedInput.addEventListener('input', scheduleDiff);
-    caseSensitive.addEventListener('change', computeDiff);
-    diffMode.addEventListener('change', computeDiff);
-    
-    $f('diff-clear').onclick = () => clearWithUndo([originalInput.id, comparedInput.id], computeDiff);
-    
-    $f('diff-sample').onclick = () => {
-        originalInput.value = 'name: forge\nversion: 1.2.0\nfeatures:\n  - json\n  - jwt';
-        comparedInput.value = 'name: forge\nversion: 1.3.0\nfeatures:\n  - json\n  - jwt\n  - regex';
-        computeDiff();
-    };
-    
-    $f('diff-swap').onclick = () => {
-        const temp = originalInput.value;
-        originalInput.value = comparedInput.value;
-        comparedInput.value = temp;
-        computeDiff();
-    };
-    
-    // Initial state
+    const mode = diffMode.value;
+    let result = '';
+    let addedCount = 0;
+    let removedCount = 0;
+
+    try {
+      const kind = (p: { added?: boolean; removed?: boolean }) => (p.added ? 'is-add' : p.removed ? 'is-del' : '');
+      if (mode === 'line') {
+        result = diffLines(original, compared, opts)
+          .map((part) => {
+            const lines = part.value.split('\n');
+            if (lines[lines.length - 1] === '') lines.pop();
+            if (part.added) addedCount += lines.length;
+            else if (part.removed) removedCount += lines.length;
+            const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
+            return lines
+              .map((line) => `<div class="diff-line ${kind(part)}">${prefix}${esc(line) || ' '}</div>`)
+              .join('');
+          })
+          .join('');
+      } else {
+        const diff = mode === 'word' ? diffWords(original, compared, opts) : diffChars(original, compared, opts);
+        result = diff
+          .map((part) => {
+            const n = mode === 'word' ? part.value.split(/\s+/).filter(Boolean).length : part.value.length;
+            if (part.added) addedCount += n;
+            else if (part.removed) removedCount += n;
+            const text = mode === 'char' ? part.value.replace(/\n/g, '\u21B5\n') : part.value;
+            return `<span class="diff-inline ${kind(part)}">${esc(text)}</span>`;
+          })
+          .join('');
+      }
+
+      resultDiv.innerHTML =
+        result ||
+        '<div class="tool-empty"><i aria-hidden="true" class="material-icons empty-glyph">check_circle</i>No differences. The texts are identical.</div>';
+
+      // Update stats
+      if (addedCount || removedCount) {
+        statsDiv.innerHTML = `<span class="text-success">+${addedCount}</span> / <span class="text-error">-${removedCount}</span>`;
+      } else {
+        statsDiv.textContent = '';
+      }
+    } catch (e) {
+      logger.error('Diff error:', e);
+      reportError(e);
+    }
+  };
+
+  const scheduleDiff = debounce(computeDiff, 250);
+  originalInput.addEventListener('input', scheduleDiff);
+  comparedInput.addEventListener('input', scheduleDiff);
+  caseSensitive.addEventListener('change', computeDiff);
+  diffMode.addEventListener('change', computeDiff);
+
+  $f('diff-clear').onclick = () => clearWithUndo([originalInput.id, comparedInput.id], computeDiff);
+
+  $f('diff-sample').onclick = () => {
+    originalInput.value = 'name: forge\nversion: 1.2.0\nfeatures:\n  - json\n  - jwt';
+    comparedInput.value = 'name: forge\nversion: 1.3.0\nfeatures:\n  - json\n  - jwt\n  - regex';
     computeDiff();
+  };
+
+  $f('diff-swap').onclick = () => {
+    const temp = originalInput.value;
+    originalInput.value = comparedInput.value;
+    comparedInput.value = temp;
+    computeDiff();
+  };
+
+  // Initial state
+  computeDiff();
 }

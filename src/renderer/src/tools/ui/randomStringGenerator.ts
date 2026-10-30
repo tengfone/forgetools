@@ -1,37 +1,37 @@
 import { $, $f, esc, reportError, reportOk, resetStatus } from '../../ui';
 
 const SETS = [
-    ['rand-upper', 'Uppercase (A-Z)', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', true],
-    ['rand-lower', 'Lowercase (a-z)', 'abcdefghijklmnopqrstuvwxyz', true],
-    ['rand-numbers', 'Numbers (0-9)', '0123456789', true],
-    ['rand-symbols', 'Symbols (!@#$...)', '!@#$%^&*()_+-=[]{}|;:,.<>?', false],
+  ['rand-upper', 'Uppercase (A-Z)', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', true],
+  ['rand-lower', 'Lowercase (a-z)', 'abcdefghijklmnopqrstuvwxyz', true],
+  ['rand-numbers', 'Numbers (0-9)', '0123456789', true],
+  ['rand-symbols', 'Symbols (!@#$...)', '!@#$%^&*()_+-=[]{}|;:,.<>?', false],
 ] as const;
 
 /** Unbiased random integer in [0, n) via rejection sampling on crypto bytes. */
 const randInt = (n: number): number => {
-    const limit = Math.floor(0x1_0000_0000 / n) * n;
-    const buf = new Uint32Array(1);
-    for (;;) {
-        crypto.getRandomValues(buf);
-        if (buf[0]! < limit) return buf[0]! % n;
-    }
+  const limit = Math.floor(0x1_0000_0000 / n) * n;
+  const buf = new Uint32Array(1);
+  for (;;) {
+    crypto.getRandomValues(buf);
+    if (buf[0]! < limit) return buf[0]! % n;
+  }
 };
 
 /** One string: at least one char from each set (when length allows), Fisher-Yates shuffled. */
 const makeString = (sets: string[], length: number): string => {
-    const all = sets.join('');
-    const out: string[] = [];
-    if (length >= sets.length) for (const set of sets) out.push(set[randInt(set.length)]!);
-    while (out.length < length) out.push(all[randInt(all.length)]!);
-    for (let i = out.length - 1; i > 0; i--) {
-        const j = randInt(i + 1);
-        [out[i], out[j]] = [out[j]!, out[i]!];
-    }
-    return out.join('');
+  const all = sets.join('');
+  const out: string[] = [];
+  if (length >= sets.length) for (const set of sets) out.push(set[randInt(set.length)]!);
+  while (out.length < length) out.push(all[randInt(all.length)]!);
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = randInt(i + 1);
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out.join('');
 };
 
 export function render(container: HTMLElement): void {
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
                 <h3>Options</h3>
@@ -59,24 +59,24 @@ export function render(container: HTMLElement): void {
         </div>
     `;
 
-    const generate = (): void => {
-        const length = parseInt($f('rand-length').value, 10);
-        const sets: string[] = SETS.filter(([id]) => $f(id).checked).map(([, , c]) => c);
-        if (!sets.length) {
-            reportError('Select at least one character set (uppercase, lowercase, numbers or symbols)');
-            return;
-        }
-        const results = Array.from({ length: 5 }, () => makeString(sets, length));
-        $('rand-results').innerHTML = results.map(r => `<div class="copy-chip" data-copy-self>${esc(r)}</div>`).join('');
-        reportOk('Generated 5 strings', `${length} chars`);
-    };
+  const generate = (): void => {
+    const length = parseInt($f('rand-length').value, 10);
+    const sets: string[] = SETS.filter(([id]) => $f(id).checked).map(([, , c]) => c);
+    if (!sets.length) {
+      reportError('Select at least one character set (uppercase, lowercase, numbers or symbols)');
+      return;
+    }
+    const results = Array.from({ length: 5 }, () => makeString(sets, length));
+    $('rand-results').innerHTML = results.map((r) => `<div class="copy-chip" data-copy-self>${esc(r)}</div>`).join('');
+    reportOk('Generated 5 strings', `${length} chars`);
+  };
 
-    $f('rand-length').addEventListener('input', () => {
-        $('rand-length-val').textContent = $f('rand-length').value;
-        generate();
-    });
-    $('rand-sets').addEventListener('change', generate);
-    $('rand-generate').onclick = generate;
+  $f('rand-length').addEventListener('input', () => {
+    $('rand-length-val').textContent = $f('rand-length').value;
     generate();
-    resetStatus();
+  });
+  $('rand-sets').addEventListener('change', generate);
+  $('rand-generate').onclick = generate;
+  generate();
+  resetStatus();
 }

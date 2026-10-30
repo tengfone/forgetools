@@ -24,17 +24,15 @@ export interface Tool {
   /** Editor tools with alternate modes (e.g. Format | Minify); first is the default. */
   modes?: { id: string; label: string }[];
   format?: (input: string, indent?: number, mode?: string) => string | Promise<string>;
-  /** Lazily loaded custom UI module (code-split per tool). */
-  load?: () => Promise<{ render: (container: HTMLElement) => void }>;
+  /**
+   * Lazily loaded custom UI module (code-split per tool). `render` may return a dispose
+   * function; the shell calls it when the tool is closed (switch, Home).
+   */
+  load?: () => Promise<{ render: (container: HTMLElement) => ToolDispose | void }>;
 }
+
+export type ToolDispose = () => void;
 
 export interface ToolsRegistry {
   [key: string]: Tool;
 }
-
-declare global {
-  interface Window {
-    tools?: ToolsRegistry;
-  }
-}
-

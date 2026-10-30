@@ -1,9 +1,9 @@
-import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo, copyText } from '../../ui';
-import { debounce, inputActions } from './common';
+import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, copyText } from '../../ui';
+import { inputActions, wireLiveTool } from './common';
 import { getNextOccurrences } from '../lib/cron';
 
 export function render(container: HTMLElement): void {
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
                 <div class="card-head">
@@ -24,43 +24,51 @@ export function render(container: HTMLElement): void {
             </div>
         </div>
     `;
-    const cronInput = $f('cron-input');
-    const cronDesc = $('cron-desc');
-    const cronNext = $('cron-next');
+  const cronInput = $f('cron-input');
+  const cronDesc = $('cron-desc');
+  const cronNext = $('cron-next');
 
-    const update = (): void => {
-        const val = cronInput.value.trim();
-        cronNext.innerHTML = '';
-        if (!val) {
-            cronDesc.textContent = 'Enter a cron expression';
-            setFieldInvalid('cron-input', false);
-            resetStatus();
-            return;
-        }
-        try {
-            const runs = getNextOccurrences(val, 5);
-            cronDesc.textContent = 'Valid expression: next 5 runs listed below';
-            runs.forEach(dateStr => {
-                const li = document.createElement('li');
-                li.className = 'copy-chip mb-1.5';
-                li.dataset.copySelf = '';
-                li.textContent = dateStr;
-                cronNext.appendChild(li);
-            });
-            setFieldInvalid('cron-input', false);
-            reportOk('Valid cron expression');
-        } catch (e) {
-            cronDesc.textContent = 'Fix the expression to see upcoming runs';
-            setFieldInvalid('cron-input', true, errorMessage(e));
-            reportError(e, 'format: minute hour day month weekday');
-        }
-    };
+  const update = (): void => {
+    const val = cronInput.value.trim();
+    cronNext.innerHTML = '';
+    if (!val) {
+      cronDesc.textContent = 'Enter a cron expression';
+      setFieldInvalid('cron-input', false);
+      resetStatus();
+      return;
+    }
+    try {
+      const runs = getNextOccurrences(val, 5);
+      cronDesc.textContent = 'Valid expression: next 5 runs listed below';
+      runs.forEach((dateStr) => {
+        const li = document.createElement('li');
+        li.className = 'copy-chip mb-1.5';
+        li.dataset.copySelf = '';
+        li.textContent = dateStr;
+        cronNext.appendChild(li);
+      });
+      setFieldInvalid('cron-input', false);
+      reportOk('Valid cron expression');
+    } catch (e) {
+      cronDesc.textContent = 'Fix the expression to see upcoming runs';
+      setFieldInvalid('cron-input', true, errorMessage(e));
+      reportError(e, 'format: minute hour day month weekday');
+    }
+  };
 
-    cronInput.addEventListener('input', debounce(update));
-    $('cron-sample').onclick = () => { cronInput.value = '*/5 * * * *'; update(); };
-    $('cron-clear').onclick = () => clearWithUndo(['cron-input'], update);
-    $('cron-copy').onclick = () => {
-        void copyText(Array.from(cronNext.children).map(li => li.textContent).join('\n'));
-    };
-    update();
+  wireLiveTool({
+    input: cronInput,
+    update,
+    sample: { button: 'cron-sample', value: '*/5 * * * *' },
+    clear: { button: 'cron-clear', fields: ['cron-input'] },
+    initial: 'none',
+  });
+  $('cron-copy').onclick = () => {
+    void copyText(
+      Array.from(cronNext.children)
+        .map((li) => li.textContent)
+        .join('\n'),
+    );
+  };
+  update();
 }

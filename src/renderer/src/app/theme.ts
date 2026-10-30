@@ -11,7 +11,7 @@ export const getTheme = (): ThemeChoice => currentTheme;
 export function setTheme(theme: 'system' | 'light' | 'dark'): void {
   currentTheme = theme;
   localStorage.setItem('theme', theme);
-  
+
   let isDark: boolean;
   if (theme === 'dark') {
     isDark = true;
@@ -21,7 +21,7 @@ export function setTheme(theme: 'system' | 'light' | 'dark'): void {
     // system theme
     isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   }
-  
+
   // Remove dark class, then add it if needed
   // Tailwind uses 'dark' class for dark mode, absence means light mode
   document.documentElement.classList.remove('dark');
@@ -30,9 +30,11 @@ export function setTheme(theme: 'system' | 'light' | 'dark'): void {
   }
   // Keep the native window theme (macOS title bar, WebView scrollbars) in step with the app theme
   // 'system' passes null so prefers-color-scheme keeps following the OS.
-  if (isTauri()) void appWindow.setTheme(theme === 'system' ? null : isDark ? 'dark' : 'light')
-    .catch((e: unknown) => logger.warn('Native window theme sync failed:', e));
-  
+  if (isTauri())
+    void appWindow
+      .setTheme(theme === 'system' ? null : isDark ? 'dark' : 'light')
+      .catch((e: unknown) => logger.warn('Native window theme sync failed:', e));
+
   // Update Monaco Theme (themes are rebuilt from the CSS variables now in effect)
   const monaco = getMonaco();
   if (monaco) {
@@ -51,7 +53,9 @@ export function syncThemeButton(): void {
   btn.setAttribute('aria-label', `Theme: ${name}. Switch to ${next}`);
   btn.title = `Theme: ${name} (click for ${next})`;
   const icon = btn.querySelector('.material-icons');
-  if (icon) icon.textContent = currentTheme === 'system' ? 'brightness_auto' : currentTheme === 'light' ? 'light_mode' : 'dark_mode';
+  if (icon)
+    icon.textContent =
+      currentTheme === 'system' ? 'brightness_auto' : currentTheme === 'light' ? 'light_mode' : 'dark_mode';
 }
 
 export function isDarkActive(): boolean {
@@ -70,7 +74,7 @@ function cssColor(varName: string, fallback: string): string {
   if (v.startsWith('#')) return v;
   const m = v.match(/rgba?\(([^)]+)\)/);
   if (!m) return fallback;
-  const [r, g, b, a = '1'] = m[1].split(',').map(s => s.trim());
+  const [r = '0', g = '0', b = '0', a = '1'] = (m[1] ?? '').split(',').map((s) => s.trim());
   const hex = (n: number): string => Math.round(n).toString(16).padStart(2, '0');
   return `#${hex(+r)}${hex(+g)}${hex(+b)}${parseFloat(a) < 1 ? hex(parseFloat(a) * 255) : ''}`;
 }
@@ -107,11 +111,11 @@ export function defineMonacoThemes(): void {
         'editorCursor.foreground': accent,
         'editorIndentGuide.background': hairline,
         'editorWidget.border': hairline,
-        'focusBorder': accent,
+        focusBorder: accent,
         'editorGutter.background': canvas,
         'scrollbarSlider.background': hairline,
-        'editorOverviewRuler.border': '#00000000'
-      }
+        'editorOverviewRuler.border': '#00000000',
+      },
     };
   };
   monaco.editor.defineTheme('forge-light', build(false));

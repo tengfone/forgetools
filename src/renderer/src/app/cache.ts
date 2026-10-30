@@ -3,7 +3,8 @@
 
 /** cyrb53: fast 53-bit non-cryptographic string hash. */
 export function fastHash(str: string, seed = 0): string {
-  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  let h1 = 0xdeadbeef ^ seed,
+    h2 = 0x41c6ce57 ^ seed;
   for (let i = 0; i < str.length; i++) {
     const ch = str.charCodeAt(i);
     h1 = Math.imul(h1 ^ ch, 2654435761);
@@ -21,23 +22,22 @@ export function resultCacheKey(tool: string, mode: string, indent: string, input
   return `${tool}:${mode}:${indent}:${input.length}:${fastHash(input)}`;
 }
 
-// LRU cache backed by Map insertion order, with TTL expiry
+// LRU cache backed by Map insertion order, with TTL expiry.
+// Expiry is lazy: every get/set sweeps (the cache is tiny), and a single one-shot timer is armed
+// only while entries exist, so outputs derived from secrets don't outlive their TTL while idle.
 export class LRUCache<K> {
   private cache = new Map<K, { value: string; timestamp: number }>();
-  private cleanupThreshold: number;
+  private expiryTimer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(private maxSize = 100, private ttl = 5 * 60 * 1000) {
-    // Cleanup when cache is 90% full to avoid frequent cleanup
-    this.cleanupThreshold = Math.floor(maxSize * 0.9);
-  }
+  constructor(
+    private maxSize = 100,
+    private ttl = 5 * 60 * 1000,
+  ) {}
 
   get(key: K): string | undefined {
+    this.sweepExpired();
     const item = this.cache.get(key);
     if (!item) return undefined;
-    if (Date.now() - item.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return undefined;
-    }
     // Move to end (most recently used)
     this.cache.delete(key);
     this.cache.set(key, item);
@@ -46,6 +46,7 @@ export class LRUCache<K> {
 
   set(key: K, value: string): void {
     const now = Date.now();
+    this.sweepExpired(now);
     if (this.cache.has(key)) {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {
@@ -53,7 +54,7 @@ export class LRUCache<K> {
       if (firstKey !== undefined) this.cache.delete(firstKey);
     }
     this.cache.set(key, { value, timestamp: now });
-    if (this.cache.size >= this.cleanupThreshold) this.sweepExpired(now);
+    this.armExpiry();
   }
 
   /** Drop all expired entries. */
@@ -63,8 +64,24 @@ export class LRUCache<K> {
     }
   }
 
+  /** One timer for the oldest entry; re-arms itself until the cache is empty. */
+  private armExpiry(): void {
+    if (this.expiryTimer !== undefined) return;
+    let oldest = Infinity;
+    for (const item of this.cache.values()) oldest = Math.min(oldest, item.timestamp);
+    if (oldest === Infinity) return;
+    const due = Math.max(0, oldest + this.ttl - Date.now()) + 1;
+    this.expiryTimer = setTimeout(() => {
+      this.expiryTimer = undefined;
+      this.sweepExpired();
+      this.armExpiry();
+    }, due);
+  }
+
   clear(): void {
     this.cache.clear();
+    clearTimeout(this.expiryTimer);
+    this.expiryTimer = undefined;
   }
 
   size(): number {
@@ -72,15 +89,17 @@ export class LRUCache<K> {
   }
 }
 
+/** Editor tool outputs: 20 entries, 1 minute. */
 export const resultCache = new LRUCache<string>(20, 60 * 1000);
-// Periodic sweep so expired outputs don't linger in memory while the app idles
-setInterval(() => resultCache.sweepExpired(), 60 * 1000);
 
 /** Typed trailing-edge debounce (no tool-epoch guard; safe for app-shell contexts). */
 export function debounce<A extends unknown[]>(fn: (...args: A) => void, wait: number): (...args: A) => void {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   return (...args: A) => {
     clearTimeout(timeout);
-    timeout = setTimeout(() => { timeout = undefined; fn(...args); }, wait);
+    timeout = setTimeout(() => {
+      timeout = undefined;
+      fn(...args);
+    }, wait);
   };
 }

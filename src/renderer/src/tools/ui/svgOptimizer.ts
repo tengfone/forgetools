@@ -1,5 +1,5 @@
-import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUndo } from '../../ui';
-import { debounce, inputActions, copyButton } from './common';
+import { errorMessage, $, $f, reportError, reportOk, resetStatus, setFieldInvalid } from '../../ui';
+import { inputActions, copyButton, wireLiveTool } from './common';
 
 const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
 <!-- Sample icon -->
@@ -10,7 +10,7 @@ const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
 </svg>`;
 
 export function render(container: HTMLElement): void {
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="custom-interface">
             <div class="tool-card">
                 <div class="card-head">
@@ -30,44 +30,46 @@ export function render(container: HTMLElement): void {
             </div>
         </div>
     `;
-    const inputEl = $f('svg-input');
-    const output = $f('svg-output');
+  const inputEl = $f('svg-input');
+  const output = $f('svg-output');
 
-    let seq = 0;
-    const update = async (): Promise<void> => {
-        const mine = ++seq;
-        const input = inputEl.value;
-        if (!input.trim()) {
-            output.value = '';
-            $('svg-input-size').textContent = '';
-            $('svg-stats').textContent = '';
-            setFieldInvalid('svg-input', false);
-            resetStatus();
-            return;
-        }
-        const inputSize = new Blob([input]).size;
-        $('svg-input-size').textContent = `Size: ${(inputSize / 1024).toFixed(2)} KB`;
-        try {
-            if (!/<svg[\s>]/i.test(input)) throw new Error('Input must contain an <svg> element');
-            const optimized = await (await import('../lib/media')).optimizeSvg(input);
-            if (mine !== seq) return;
-            const outputSize = new Blob([optimized]).size;
-            const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);
-            output.value = optimized;
-            $('svg-stats').textContent = `Size: ${(outputSize / 1024).toFixed(2)} KB | Reduced by ${reduction}%`;
-            setFieldInvalid('svg-input', false);
-            reportOk('Optimized', `-${reduction}%`);
-        } catch (e) {
-            if (mine !== seq) return;
-            output.value = '';
-            $('svg-stats').textContent = '';
-            setFieldInvalid('svg-input', true, errorMessage(e));
-            reportError(e);
-        }
-    };
+  let seq = 0;
+  const update = async (): Promise<void> => {
+    const mine = ++seq;
+    const input = inputEl.value;
+    if (!input.trim()) {
+      output.value = '';
+      $('svg-input-size').textContent = '';
+      $('svg-stats').textContent = '';
+      setFieldInvalid('svg-input', false);
+      resetStatus();
+      return;
+    }
+    const inputSize = new Blob([input]).size;
+    $('svg-input-size').textContent = `Size: ${(inputSize / 1024).toFixed(2)} KB`;
+    try {
+      if (!/<svg[\s>]/i.test(input)) throw new Error('Input must contain an <svg> element');
+      const optimized = await (await import('../lib/media')).optimizeSvg(input);
+      if (mine !== seq) return;
+      const outputSize = new Blob([optimized]).size;
+      const reduction = ((1 - outputSize / inputSize) * 100).toFixed(1);
+      output.value = optimized;
+      $('svg-stats').textContent = `Size: ${(outputSize / 1024).toFixed(2)} KB | Reduced by ${reduction}%`;
+      setFieldInvalid('svg-input', false);
+      reportOk('Optimized', `-${reduction}%`);
+    } catch (e) {
+      if (mine !== seq) return;
+      output.value = '';
+      $('svg-stats').textContent = '';
+      setFieldInvalid('svg-input', true, errorMessage(e));
+      reportError(e);
+    }
+  };
 
-    inputEl.addEventListener('input', debounce(() => void update()));
-    $('svg-sample').onclick = () => { inputEl.value = SAMPLE; void update(); };
-    $('svg-clear').onclick = () => clearWithUndo(['svg-input'], () => void update());
-    resetStatus();
+  wireLiveTool({
+    input: inputEl,
+    update,
+    sample: { button: 'svg-sample', value: SAMPLE },
+    clear: { button: 'svg-clear', fields: ['svg-input'] },
+  });
 }

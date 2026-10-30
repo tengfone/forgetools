@@ -21,8 +21,8 @@ export default defineConfig(({ command }) => {
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src/renderer/src')
-      }
+        '@': resolve(__dirname, 'src/renderer/src'),
+      },
     },
     server: {
       // Fixed port: tauri.conf.json devUrl points here.
@@ -32,8 +32,8 @@ export default defineConfig(({ command }) => {
       hmr: host ? { protocol: 'ws', host, port: 5174 } : undefined,
       watch: { ignored: ['**/src-tauri/**'] },
       fs: {
-        allow: ['..']
-      }
+        allow: ['..'],
+      },
     },
     build: {
       // Frontend output folder; tauri.conf.json frontendDist points here.
@@ -48,7 +48,7 @@ export default defineConfig(({ command }) => {
         treeshake: {
           moduleSideEffects: true, // app relies on side-effect imports (./tools, ./monacoEnv)
           preset: 'smallest',
-          propertyReadSideEffects: false
+          propertyReadSideEffects: false,
         },
         output: {
           // No manualChunks: a catch-all 'vendor' chunk made the entry import every library
@@ -57,38 +57,42 @@ export default defineConfig(({ command }) => {
           chunkFileNames: 'chunks/[name]-[hash].js',
           entryFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
-          compact: isProd
+          compact: isProd,
         },
-        external: []
+        external: [],
       },
       minify: isProd ? 'terser' : false,
-      terserOptions: isProd ? {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-          pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
-          passes: 3,
-          // reduce_funcs with passes>1 drops the esbuild __reExport(...) call in Monaco's prebuilt
-          // language contributions (monaco_editor_core_exports stays {} -> "Emitter is not a
-          // constructor"). Costs ~7 KB.
-          reduce_funcs: false,
-          dead_code: true,
-          unused: true
-        },
-        format: {
-          comments: false,
-          ecma: 2020,
-          safari10: true
-        },
-        mangle: {
-          safari10: true
-        }
-      } : undefined,
-      // Monaco is one lazily loaded ~2.9 MB chunk (editor core can't be split further); every
-      // other chunk stays well under 1 MB.
-      chunkSizeWarningLimit: 3000,
+      terserOptions: isProd
+        ? {
+            compress: {
+              // Strip chatty logs only; console.error/warn stay so production failures remain diagnosable.
+              drop_debugger: true,
+              pure_funcs: ['console.log', 'console.info', 'console.debug'],
+              passes: 3,
+              // Workaround: reduce_funcs with passes>1 dropped the esbuild __reExport(...) call in
+              // Monaco <=0.52's prebuilt language contributions ("Emitter is not a constructor").
+              // monaco-editor 0.57 ships without __reExport, so this is probably no longer needed,
+              // but it can only be verified at runtime (open an editor tool in a release build).
+              // Costs ~7 KB; remove after that check.
+              reduce_funcs: false,
+              dead_code: true,
+              unused: true,
+            },
+            format: {
+              comments: false,
+              ecma: 2020,
+              safari10: true,
+            },
+            mangle: {
+              safari10: true,
+            },
+          }
+        : undefined,
+      // Monaco is one lazily loaded chunk (editor core can't be split further): 0.57's core alone is
+      // ~2.8 MB, ~3.2 MB with the curated features in monaco.ts. Every other chunk stays under 1 MB.
+      chunkSizeWarningLimit: 3300,
       reportCompressedSize: false, // Faster builds
-      emptyOutDir: true
-    }
+      emptyOutDir: true,
+    },
   };
 });

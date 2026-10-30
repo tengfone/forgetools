@@ -1,249 +1,525 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ForgeTools - Offline Developer Utilities">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ForgeTools - Offline Developer Utilities" />
     <title>ForgeTools</title>
-    <link rel="icon" type="image/png" href="/assets/favicon.png">
-    <link rel="stylesheet" href="/src/main.css">
-</head>
-<body class="m-0 p-0 font-sans bg-bg-app text-text-primary h-screen overflow-hidden text-[13px] antialiased leading-[1.5]">
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/src/main.css" />
+  </head>
+  <body
+    class="m-0 p-0 font-sans bg-bg-app text-text-primary h-screen overflow-hidden text-[13px] antialiased leading-[1.5]"
+  >
     <header class="titlebar" data-tauri-drag-region="deep">
-        <button type="button" class="titlebar-menu" id="navMenuBtn" aria-controls="sidebar" aria-expanded="false" aria-label="Open tool list" title="Tools (Ctrl+B)"><i class="material-icons" aria-hidden="true">menu</i></button>
-        <button type="button" class="titlebar-home" id="homeLogo" aria-label="Home" title="Home"><span class="wordmark text-[12px]" aria-hidden="true"><img class="wordmark-logo" src="./assets/favicon.png" alt="" draggable="false">ForgeTools</span></button>
-        <div class="flex-grow"></div>
-        <div class="titlebar-controls flex items-center gap-1.5" id="titlebarControls"></div>
-        <div class="window-controls" id="windowControls" hidden><button type="button" class="wc-btn" id="wcMinimize" aria-label="Minimize" title="Minimize"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10"/></svg></button><button type="button" class="wc-btn" id="wcMaximize" aria-label="Maximize" title="Maximize"><svg viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9"/></svg></button><button type="button" class="wc-btn wc-close" id="wcClose" aria-label="Close" title="Close"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10"/></svg></button></div>
+      <button
+        type="button"
+        class="titlebar-menu"
+        id="navMenuBtn"
+        aria-controls="sidebar"
+        aria-expanded="false"
+        aria-label="Open tool list"
+        title="Tools (Ctrl+B)"
+      >
+        <i class="material-icons" aria-hidden="true">menu</i>
+      </button>
+      <button type="button" class="titlebar-home" id="homeLogo" aria-label="Home" title="Home">
+        <span class="wordmark text-[12px]" aria-hidden="true"
+          ><img class="wordmark-logo" src="./assets/favicon.png" alt="" draggable="false" />ForgeTools</span
+        >
+      </button>
+      <div class="flex-grow"></div>
+      <div class="titlebar-controls flex items-center gap-1.5" id="titlebarControls"></div>
+      <div class="window-controls" id="windowControls" hidden>
+        <button type="button" class="wc-btn" id="wcMinimize" aria-label="Minimize" title="Minimize">
+          <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10" /></svg></button
+        ><button type="button" class="wc-btn" id="wcMaximize" aria-label="Maximize" title="Maximize">
+          <svg viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" /></svg></button
+        ><button type="button" class="wc-btn wc-close" id="wcClose" aria-label="Close" title="Close">
+          <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10" /></svg>
+        </button>
+      </div>
     </header>
-    <div id="loadingScreen" class="fixed inset-0 bg-bg-app z-[9999] flex flex-col items-center justify-center transition-opacity duration-150 ease-out">
-        <div class="wordmark wordmark-lg"><img class="wordmark-logo" src="./assets/favicon.png" alt="" draggable="false">ForgeTools</div>
-        <div class="mt-5 w-[120px] h-px bg-border overflow-hidden">
-            <div class="loading-bar w-full h-full bg-accent origin-left"></div>
-        </div>
+    <div
+      id="loadingScreen"
+      class="fixed inset-0 bg-bg-app z-[9999] flex flex-col items-center justify-center transition-opacity duration-150 ease-out"
+    >
+      <div class="wordmark wordmark-lg">
+        <img class="wordmark-logo" src="./assets/favicon.png" alt="" draggable="false" />ForgeTools
+      </div>
+      <div class="mt-5 w-[120px] h-px bg-border overflow-hidden">
+        <div class="loading-bar w-full h-full bg-accent origin-left"></div>
+      </div>
     </div>
 
     <div class="app-body flex" id="appBody">
-        <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
-        <aside id="sidebar" class="sidebar" aria-label="Tools">
-            <div class="sidebar-head">
-                <button type="button" class="sidebar-search" id="sidebarSearch" aria-haspopup="dialog" aria-controls="cmdPalette">
-                    <svg class="search-glyph text-text-secondary" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <span class="sidebar-search-label">Search tools&hellip;</span>
-                    <span class="sidebar-search-keys" aria-hidden="true"><kbd class="mod-key">Ctrl</kbd><kbd>K</kbd></span>
-                </button>
-                <button type="button" class="side-btn rail-search" id="railSearch" aria-haspopup="dialog" aria-label="Search" title="Search (Ctrl K)"><i class="material-icons" aria-hidden="true">search</i></button>
-                <button type="button" class="side-btn" id="sidebarToggle" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar (Ctrl+B)"><i class="material-icons" aria-hidden="true">menu_open</i></button>
-            </div>
-            <button type="button" class="nav-item side-home" id="railHome" title="Home"><i class="material-icons nav-icon" aria-hidden="true">home</i><span class="nav-label truncate">Home</span></button>
-            <nav class="sidebar-scroll scrollbar-thin" id="toolsNav" aria-label="All tools">
-                <!-- Generated by JS -->
-            </nav>
-            <div class="side-cats" id="sideCats" role="group" aria-label="Categories"></div>
-        </aside>
-        <main id="mainContent" class="flex-1 flex flex-col overflow-hidden min-w-0">
-            <!-- Welcome / Empty State -->
-            <div id="welcomeState" class="welcome">
-                <div class="welcome-inner">
-                    <div class="welcome-top">
-                        <h1 class="sr-only">ForgeTools</h1>
-                        <p class="welcome-sub welcome-tagline">Offline developer utilities. Nothing leaves this machine.</p>
-                        <div class="home-search">
-                            <label class="welcome-section" for="homeSearch">Search tools or paste anything</label>
-                            <div class="home-search-box">
-                                <i class="material-icons home-search-glyph" aria-hidden="true">search</i>
-                                <textarea id="homeSearch" class="home-search-input" rows="1" spellcheck="false" autocomplete="off" placeholder="Type a tool name, or paste a token, JSON, timestamp, colour&hellip;" aria-controls="homeGrid" aria-describedby="homeDetect homeSearchHint"></textarea>
-                                <span class="home-search-keys" id="homeSearchHint" aria-hidden="true"><kbd class="mod-key">Ctrl</kbd><kbd>K</kbd></span>
-                            </div>
-                            <div id="homeDetect" class="welcome-detect" aria-live="polite"></div>
-                        </div>
-                    </div>
-                    <div id="homeQuick" class="home-quick"></div>
-                    <section class="home-browse" aria-labelledby="homeBrowseHeading">
-                        <div class="home-browse-head">
-                            <h2 class="home-browse-title" id="homeBrowseHeading">All tools</h2>
-                            <span class="home-browse-count" id="homeCount" aria-live="polite"></span>
-                        </div>
-                        <div id="homeGrid" class="home-grid"></div>
-                        <p id="homeEmpty" class="nav-empty" hidden>No tools match.</p>
-                    </section>
-                    <p class="welcome-hint"><kbd class="mod-key">Ctrl</kbd><kbd>K</kbd> switch tools &middot; <kbd class="mod-key">Ctrl</kbd><kbd>Shift</kbd><kbd>C</kbd> copy output &middot; <kbd>F1</kbd> tool help</p>
+      <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
+      <aside id="sidebar" class="sidebar" aria-label="Tools">
+        <div class="sidebar-head">
+          <button
+            type="button"
+            class="sidebar-search"
+            id="sidebarSearch"
+            aria-haspopup="dialog"
+            aria-controls="cmdPalette"
+          >
+            <svg
+              class="search-glyph text-text-secondary"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span class="sidebar-search-label">Search tools&hellip;</span>
+            <span class="sidebar-search-keys" aria-hidden="true"><kbd class="mod-key">Ctrl</kbd><kbd>K</kbd></span>
+          </button>
+          <button
+            type="button"
+            class="side-btn rail-search"
+            id="railSearch"
+            aria-haspopup="dialog"
+            aria-label="Search"
+            title="Search (Ctrl K)"
+          >
+            <i class="material-icons" aria-hidden="true">search</i>
+          </button>
+          <button
+            type="button"
+            class="side-btn"
+            id="sidebarToggle"
+            aria-controls="sidebar"
+            aria-expanded="true"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar (Ctrl+B)"
+          >
+            <i class="material-icons" aria-hidden="true">menu_open</i>
+          </button>
+        </div>
+        <button type="button" class="nav-item side-home" id="railHome" title="Home">
+          <i class="material-icons nav-icon" aria-hidden="true">home</i><span class="nav-label truncate">Home</span>
+        </button>
+        <nav class="sidebar-scroll scrollbar-thin" id="toolsNav" aria-label="All tools">
+          <!-- Generated by JS -->
+        </nav>
+        <div class="side-cats" id="sideCats" role="group" aria-label="Categories"></div>
+      </aside>
+      <main id="mainContent" class="flex-1 flex flex-col overflow-hidden min-w-0">
+        <!-- Welcome / Empty State -->
+        <div id="welcomeState" class="welcome">
+          <div class="welcome-inner">
+            <div class="welcome-top">
+              <h1 class="sr-only">ForgeTools</h1>
+              <p class="welcome-sub welcome-tagline">Offline developer utilities. Nothing leaves this machine.</p>
+              <div class="home-search">
+                <label class="welcome-section" for="homeSearch">Search tools or paste anything</label>
+                <div class="home-search-box">
+                  <i class="material-icons home-search-glyph" aria-hidden="true">search</i>
+                  <textarea
+                    id="homeSearch"
+                    class="home-search-input"
+                    rows="1"
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder="Type a tool name, or paste a token, JSON, timestamp, colour&hellip;"
+                    aria-controls="homeGrid"
+                    aria-describedby="homeDetect homeSearchHint"
+                  ></textarea>
+                  <span class="home-search-keys" id="homeSearchHint" aria-hidden="true"
+                    ><kbd class="mod-key">Ctrl</kbd><kbd>K</kbd></span
+                  >
                 </div>
-            </div>            <!-- Tool Container -->
-            <div id="toolContainer" class="hidden tool-shell">
-                <div class="tool-panel">
-                <header class="tool-header">
-                    <div class="crumb">
-                        <span class="crumb-cat" id="currentToolCat"></span>
-                        <span class="crumb-sep" aria-hidden="true">/</span>
-                        <h2 id="currentToolTitle" class="crumb-title" tabindex="-1">Tool Name</h2>
-                        <span class="crumb-desc" id="currentToolDesc">Tool description goes here</span>
-                    </div>
-                    <div class="tool-header-actions">
-                        <select id="toolHistory" class="toolbar-select cursor-pointer" aria-label="Recent inputs" title="Recent inputs (saved locally)" hidden></select>
-                        <div class="tool-actions" id="toolActions"></div>
-                        <div class="relative">
-                            <button class="btn-icon btn-ghost btn-sm" id="helpBtn" title="Tool help (F1)" aria-label="Tool help" aria-expanded="false" aria-controls="helpPopover"><i class="material-icons" aria-hidden="true">help_outline</i></button>
-                            <div id="helpPopover" class="help-popover" role="region" aria-label="Tool help" tabindex="-1" hidden></div>
-                        </div>
-                    </div>
-                </header>
+                <div id="homeDetect" class="welcome-detect" aria-live="polite"></div>
+              </div>
+            </div>
+            <div id="homeQuick" class="home-quick"></div>
+            <section class="home-browse" aria-labelledby="homeBrowseHeading">
+              <div class="home-browse-head">
+                <h2 class="home-browse-title" id="homeBrowseHeading">All tools</h2>
+                <span class="home-browse-count" id="homeCount" aria-live="polite"></span>
+              </div>
+              <div id="homeGrid" class="home-grid"></div>
+              <p id="homeEmpty" class="nav-empty" hidden>No tools match.</p>
+            </section>
+            <p class="welcome-hint">
+              <kbd class="mod-key">Ctrl</kbd><kbd>K</kbd> switch tools &middot; <kbd class="mod-key">Ctrl</kbd
+              ><kbd>Shift</kbd><kbd>C</kbd> copy output &middot; <kbd>F1</kbd> tool help
+            </p>
+          </div>
+        </div>
+        <!-- Tool Container -->
+        <div id="toolContainer" class="hidden tool-shell">
+          <div class="tool-panel">
+            <header class="tool-header">
+              <div class="crumb">
+                <span class="crumb-cat" id="currentToolCat"></span>
+                <span class="crumb-sep" aria-hidden="true">/</span>
+                <h2 id="currentToolTitle" class="crumb-title" tabindex="-1">Tool Name</h2>
+                <span class="crumb-desc" id="currentToolDesc">Tool description goes here</span>
+              </div>
+              <div class="tool-header-actions">
+                <select
+                  id="toolHistory"
+                  class="toolbar-select cursor-pointer"
+                  aria-label="Recent inputs"
+                  title="Recent inputs (saved locally)"
+                  hidden
+                ></select>
+                <div class="tool-actions" id="toolActions"></div>
+                <div class="relative">
+                  <button
+                    class="btn-icon btn-ghost btn-sm"
+                    id="helpBtn"
+                    title="Tool help (F1)"
+                    aria-label="Tool help"
+                    aria-expanded="false"
+                    aria-controls="helpPopover"
+                  >
+                    <i class="material-icons" aria-hidden="true">help_outline</i>
+                  </button>
+                  <div
+                    id="helpPopover"
+                    class="help-popover"
+                    role="region"
+                    aria-label="Tool help"
+                    tabindex="-1"
+                    hidden
+                  ></div>
+                </div>
+              </div>
+            </header>
 
-                <div class="flex-1 overflow-hidden flex flex-col min-h-0" id="workspace">
-                    <!-- Editor Interface (Split View) -->
-                    <div id="editorInterface" class="hidden flex flex-col h-full">
-                    <div class="split-view flex flex-1 min-h-0">
-                        <div class="flex-1 flex flex-col border-r border-border min-w-0">
-                            <div class="pane-head">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="pane-label">Input</span>
-                                    <button class="btn-icon btn-ghost btn-sm" id="pasteBtn" title="Paste from Clipboard" aria-label="Paste from Clipboard"><i class="material-icons icon-sm" aria-hidden="true">content_paste</i> Paste</button>
-                                    <button class="btn-icon btn-ghost btn-sm" id="sampleBtn" title="Load Sample Data" aria-label="Load Sample Data"><i class="material-icons icon-sm" aria-hidden="true">science</i> Sample</button>
-                                    <button class="btn-icon btn-ghost btn-sm" id="clearBtn" title="Clear Input" aria-label="Clear Input"><i class="material-icons icon-sm" aria-hidden="true">clear</i> Clear</button>
-                                </div>
-                            </div>
-                            <div class="pane-body">
-                                <div id="inputEditor" class="absolute inset-0 z-[1]"></div>
-                            </div>
-                        </div>
-                        <div class="flex-1 flex flex-col min-w-0">
-                            <div class="pane-head">
-                                <span class="pane-label">Output</span>
-                                <div class="flex items-center gap-1.5">
-                                    <select id="indentSelect" class="toolbar-select h-[26px]" aria-label="Indentation">
-                                        <option value="2">2 spaces</option>
-                                        <option value="4">4 spaces</option>
-                                        <option value="tab">Tab</option>
-                                    </select>
-                                    <button class="btn-icon btn-sm" id="copyBtn" title="Copy Output (Ctrl+Shift+C)"><i class="material-icons icon-sm" aria-hidden="true">content_copy</i> Copy</button>
-                                </div>
-                            </div>
-                            <div class="pane-body">
-                                <div id="outputEditor" class="absolute inset-0 z-[1]"></div>
-                            </div>
-                        </div>
+            <div class="flex-1 overflow-hidden flex flex-col min-h-0" id="workspace">
+              <!-- Editor Interface (Split View) -->
+              <div id="editorInterface" class="hidden flex flex-col h-full">
+                <div class="split-view flex flex-1 min-h-0">
+                  <div class="flex-1 flex flex-col border-r border-border min-w-0">
+                    <div class="pane-head">
+                      <div class="flex items-center gap-1.5">
+                        <span class="pane-label">Input</span>
+                        <button
+                          class="btn-icon btn-ghost btn-sm"
+                          id="pasteBtn"
+                          title="Paste from Clipboard"
+                          aria-label="Paste from Clipboard"
+                        >
+                          <i class="material-icons icon-sm" aria-hidden="true">content_paste</i> Paste
+                        </button>
+                        <button
+                          class="btn-icon btn-ghost btn-sm"
+                          id="sampleBtn"
+                          title="Load Sample Data"
+                          aria-label="Load Sample Data"
+                        >
+                          <i class="material-icons icon-sm" aria-hidden="true">science</i> Sample
+                        </button>
+                        <button
+                          class="btn-icon btn-ghost btn-sm"
+                          id="clearBtn"
+                          title="Clear Input"
+                          aria-label="Clear Input"
+                        >
+                          <i class="material-icons icon-sm" aria-hidden="true">clear</i> Clear
+                        </button>
+                      </div>
                     </div>
+                    <div class="pane-body">
+                      <div id="inputEditor" class="absolute inset-0 z-[1]"></div>
                     </div>
-                    <!-- Custom Interfaces will be injected here -->
-                    <div id="customInterface" class="simple-tool-container hidden w-full overflow-y-auto h-full">
-                        <!-- Dynamic Content -->
+                  </div>
+                  <div class="flex-1 flex flex-col min-w-0">
+                    <div class="pane-head">
+                      <span class="pane-label">Output</span>
+                      <div class="flex items-center gap-1.5">
+                        <select id="indentSelect" class="toolbar-select h-[26px]" aria-label="Indentation">
+                          <option value="2">2 spaces</option>
+                          <option value="4">4 spaces</option>
+                          <option value="tab">Tab</option>
+                        </select>
+                        <button class="btn-icon btn-sm" id="copyBtn" title="Copy Output (Ctrl+Shift+C)">
+                          <i class="material-icons icon-sm" aria-hidden="true">content_copy</i> Copy
+                        </button>
+                      </div>
                     </div>
+                    <div class="pane-body">
+                      <div id="outputEditor" class="absolute inset-0 z-[1]"></div>
+                    </div>
+                  </div>
                 </div>
-                </div>
-                <div class="status-bar" id="statusBar"><span class="status-dot" aria-hidden="true"></span><span class="status-msg" id="statusMsg" aria-hidden="true">Ready</span><span class="status-meta" id="statusMeta" aria-hidden="true">offline</span><span class="status-meta font-mono" id="statusSession" title="Inputs are kept in memory while the app is open and cleared on quit">memory only</span><span class="sr-only" id="statusLive" role="status" aria-live="polite"></span></div>
+              </div>
+              <!-- Custom Interfaces will be injected here -->
+              <div id="customInterface" class="simple-tool-container hidden w-full overflow-y-auto h-full">
+                <!-- Dynamic Content -->
+              </div>
             </div>
-        </main>
+          </div>
+          <div class="status-bar" id="statusBar">
+            <span class="status-dot" aria-hidden="true"></span
+            ><span class="status-msg" id="statusMsg" aria-hidden="true">Ready</span
+            ><span class="status-meta" id="statusMeta" aria-hidden="true">offline</span
+            ><span
+              class="status-meta font-mono"
+              id="statusSession"
+              title="Inputs are kept in memory while the app is open and cleared on quit"
+              >memory only</span
+            ><span class="sr-only" id="statusLive" role="status" aria-live="polite"></span>
+          </div>
+        </div>
+      </main>
     </div>
 
     <!-- Command Palette -->
     <div class="command-palette-overlay fixed inset-0 z-[1000] justify-center items-start pt-[18vh]" id="cmdPalette">
-        <div class="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
-            <input type="text" class="cmd-input" placeholder="Search tools" id="cmdInput" role="combobox" aria-expanded="false" aria-controls="cmdResults" aria-autocomplete="list" aria-label="Search tools" autocomplete="off" spellcheck="false">
-            <div class="cmd-results scrollbar-thin" id="cmdResults" role="listbox" aria-label="Tools">
-                <!-- Results -->
-            </div>
-            <div class="cmd-footer" aria-hidden="true"><span><kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate</span><span><kbd>&crarr;</kbd> open</span><span><kbd>esc</kbd> close</span></div>
+      <div class="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+        <input
+          type="text"
+          class="cmd-input"
+          placeholder="Search tools"
+          id="cmdInput"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="cmdResults"
+          aria-autocomplete="list"
+          aria-label="Search tools"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="cmd-results scrollbar-thin" id="cmdResults" role="listbox" aria-label="Tools">
+          <!-- Results -->
         </div>
+        <div class="cmd-footer" aria-hidden="true">
+          <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate</span><span><kbd>&crarr;</kbd> open</span
+          ><span><kbd>esc</kbd> close</span>
+        </div>
+      </div>
     </div>
 
     <!-- Settings dialog: section nav on the left, one section visible at a time (app/settingsDialog.ts) -->
-    <div class="settings-overlay fixed inset-x-0 bottom-0 top-10 z-[1000] hidden justify-center items-start" id="settingsOverlay">
-        <div class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-            <div class="settings-head">
-                <h3 class="settings-title" id="settingsTitle">Settings</h3>
-                <button class="btn-icon btn-ghost btn-sm" id="settingsClose" aria-label="Close settings"><i class="material-icons icon-sm" aria-hidden="true">close</i></button>
-            </div>
-            <div class="settings-body">
-                <nav class="settings-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
-                    <button type="button" class="settings-tab" role="tab" id="stab-editor" data-section="editor" aria-controls="spane-editor"><i class="material-icons" aria-hidden="true">edit_note</i><span>Editor</span></button>
-                    <button type="button" class="settings-tab" role="tab" id="stab-privacy" data-section="privacy" aria-controls="spane-privacy"><i class="material-icons" aria-hidden="true">lock_outline</i><span>Privacy</span></button>
-                    <button type="button" class="settings-tab" role="tab" id="stab-background" data-section="background" aria-controls="spane-background"><i class="material-icons" aria-hidden="true">layers</i><span>Background</span></button>
-                    <button type="button" class="settings-tab" role="tab" id="stab-about" data-section="about" aria-controls="spane-about"><i class="material-icons" aria-hidden="true">info_outline</i><span>About</span><span class="settings-tab-dot" id="aboutTabDot" hidden></span></button>
-                    <span class="settings-nav-version" id="settingsNavVersion" aria-hidden="true"></span>
-                </nav>
-
-                <section class="settings-pane" role="tabpanel" id="spane-editor" aria-labelledby="stab-editor" tabindex="-1">
-                    <h4 class="settings-pane-title">Editor</h4>
-                    <label class="setting-row" for="setting-wordwrap">
-                        <span class="setting-text"><span class="setting-name">Word wrap</span><span class="setting-hint">Wrap long lines in editor panes instead of scrolling sideways.</span></span>
-                        <input type="checkbox" id="setting-wordwrap" class="setting-switch" role="switch">
-                    </label>
-                    <label class="setting-row" for="setting-minimap">
-                        <span class="setting-text"><span class="setting-name">Show minimap</span><span class="setting-hint">Code overview strip along the right edge of the editor.</span></span>
-                        <input type="checkbox" id="setting-minimap" class="setting-switch" role="switch">
-                    </label>
-                    <div class="setting-row">
-                        <span class="setting-text"><label class="setting-name" for="setting-fontsize">Font size</label><span class="setting-hint">Applies to every editor and code field.</span></span>
-                        <select id="setting-fontsize" class="toolbar-select font-mono">
-                            <option value="12">12px</option>
-                            <option value="13" selected>13px</option>
-                            <option value="14">14px</option>
-                            <option value="16">16px</option>
-                            <option value="18">18px</option>
-                        </select>
-                    </div>
-                </section>
-
-                <section class="settings-pane" role="tabpanel" id="spane-privacy" aria-labelledby="stab-privacy" tabindex="-1" hidden>
-                    <h4 class="settings-pane-title">Privacy</h4>
-                    <label class="setting-row" for="setting-remember">
-                        <span class="setting-text"><span class="setting-name">Remember inputs while switching tools</span><span class="setting-hint">Kept in memory only, and cleared when you quit.</span></span>
-                        <input type="checkbox" id="setting-remember" class="setting-switch" role="switch">
-                    </label>
-                    <label class="setting-row" for="setting-history">
-                        <span class="setting-text"><span class="setting-name">Keep input history per tool</span><span class="setting-hint">Last 10 inputs per tool, saved on this machine. Turning it off deletes them.</span></span>
-                        <input type="checkbox" id="setting-history" class="setting-switch" role="switch">
-                    </label>
-                </section>
-
-                <section class="settings-pane" role="tabpanel" id="spane-background" aria-labelledby="stab-background" tabindex="-1" hidden>
-                    <h4 class="settings-pane-title">Background</h4>
-                    <div id="settingsBackground">
-                        <label class="setting-row" for="setting-background">
-                            <span class="setting-text"><span class="setting-name">Keep running in background</span><span class="setting-hint">Closing the window hides ForgeTools to the tray instead of quitting.</span></span>
-                            <input type="checkbox" id="setting-background" class="setting-switch" role="switch">
-                        </label>
-                        <label class="setting-row" for="setting-login">
-                            <span class="setting-text"><span class="setting-name">Start at login</span><span class="setting-hint">Starts hidden in the tray when you sign in.</span></span>
-                            <input type="checkbox" id="setting-login" class="setting-switch" role="switch">
-                        </label>
-                        <div class="setting-row setting-row-stack">
-                            <span class="setting-text"><span class="setting-name" id="shortcutLabel">Global shortcut</span><span class="setting-hint" id="shortcutMsg">Shows or hides ForgeTools from any app.</span></span>
-                            <div class="flex items-center gap-1.5">
-                                <button type="button" class="shortcut-rec" id="shortcutRec" aria-labelledby="shortcutLabel shortcutRec" aria-describedby="shortcutMsg">Not set</button>
-                                <button type="button" class="btn-icon btn-ghost btn-sm" id="shortcutClear">Clear</button>
-                            </div>
-                            <div class="shortcut-chips" id="shortcutChips" role="group" aria-label="Suggested shortcuts"></div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="settings-pane" role="tabpanel" id="spane-about" aria-labelledby="stab-about" tabindex="-1" hidden>
-                    <div id="settingsAbout">
-                        <div class="about-head">
-                            <img class="about-logo" src="./assets/favicon.png" alt="" draggable="false">
-                            <div class="min-w-0 flex-1">
-                                <div class="about-name">ForgeTools</div>
-                                <div class="about-version"><span id="aboutVersion">Version …</span><span class="about-update" id="aboutUpdate" role="status" aria-live="polite"></span></div>
-                            </div>
-                            <button type="button" class="btn-icon btn-sm" id="aboutCheck">Check for updates</button>
-                        </div>
-                        <p class="about-blurb">Offline developer utilities. Free and open source (MIT). Nothing you paste ever leaves your machine.</p>
-                        <label class="setting-row" for="setting-autoupdate">
-                            <span class="setting-text"><span class="setting-name">Check for updates automatically</span><span class="setting-hint">Asks api.github.com for the latest release at most once a day. Nothing else is sent.</span></span>
-                            <input type="checkbox" id="setting-autoupdate" class="setting-switch" role="switch">
-                        </label>
-                        <div class="about-links">
-                            <button type="button" class="about-link" data-link="github"><i class="material-icons" aria-hidden="true">code</i><span>Source on GitHub</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
-                            <button type="button" class="about-link" data-link="releases"><i class="material-icons" aria-hidden="true">new_releases</i><span>Release notes</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
-                            <button type="button" class="about-link" data-link="issues"><i class="material-icons" aria-hidden="true">bug_report</i><span>Report an issue</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
-                            <button type="button" class="about-link about-coffee" data-link="coffee"><i class="material-icons" aria-hidden="true">local_cafe</i><span>Buy me a coffee</span><i class="material-icons about-ext" aria-hidden="true">open_in_new</i></button>
-                        </div>
-                        <button type="button" class="about-meta" id="aboutMeta" title="Copy version details"></button>
-                    </div>
-                </section>
-            </div>
+    <div
+      class="settings-overlay fixed inset-x-0 bottom-0 top-10 z-[1000] hidden justify-center items-start"
+      id="settingsOverlay"
+    >
+      <div class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="settings-head">
+          <h3 class="settings-title" id="settingsTitle">Settings</h3>
+          <button class="btn-icon btn-ghost btn-sm" id="settingsClose" aria-label="Close settings">
+            <i class="material-icons icon-sm" aria-hidden="true">close</i>
+          </button>
         </div>
+        <div class="settings-body">
+          <nav class="settings-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
+            <button
+              type="button"
+              class="settings-tab"
+              role="tab"
+              id="stab-editor"
+              data-section="editor"
+              aria-controls="spane-editor"
+            >
+              <i class="material-icons" aria-hidden="true">edit_note</i><span>Editor</span>
+            </button>
+            <button
+              type="button"
+              class="settings-tab"
+              role="tab"
+              id="stab-privacy"
+              data-section="privacy"
+              aria-controls="spane-privacy"
+            >
+              <i class="material-icons" aria-hidden="true">lock_outline</i><span>Privacy</span>
+            </button>
+            <button
+              type="button"
+              class="settings-tab"
+              role="tab"
+              id="stab-background"
+              data-section="background"
+              aria-controls="spane-background"
+            >
+              <i class="material-icons" aria-hidden="true">layers</i><span>Background</span>
+            </button>
+            <button
+              type="button"
+              class="settings-tab"
+              role="tab"
+              id="stab-about"
+              data-section="about"
+              aria-controls="spane-about"
+            >
+              <i class="material-icons" aria-hidden="true">info_outline</i><span>About</span
+              ><span class="settings-tab-dot" id="aboutTabDot" hidden></span>
+            </button>
+            <span class="settings-nav-version" id="settingsNavVersion" aria-hidden="true"></span>
+          </nav>
+
+          <section class="settings-pane" role="tabpanel" id="spane-editor" aria-labelledby="stab-editor" tabindex="-1">
+            <h4 class="settings-pane-title">Editor</h4>
+            <label class="setting-row" for="setting-wordwrap">
+              <span class="setting-text"
+                ><span class="setting-name">Word wrap</span
+                ><span class="setting-hint">Wrap long lines in editor panes instead of scrolling sideways.</span></span
+              >
+              <input type="checkbox" id="setting-wordwrap" class="setting-switch" role="switch" />
+            </label>
+            <label class="setting-row" for="setting-minimap">
+              <span class="setting-text"
+                ><span class="setting-name">Show minimap</span
+                ><span class="setting-hint">Code overview strip along the right edge of the editor.</span></span
+              >
+              <input type="checkbox" id="setting-minimap" class="setting-switch" role="switch" />
+            </label>
+            <div class="setting-row">
+              <span class="setting-text"
+                ><label class="setting-name" for="setting-fontsize">Font size</label
+                ><span class="setting-hint">Applies to every editor and code field.</span></span
+              >
+              <select id="setting-fontsize" class="toolbar-select font-mono">
+                <option value="12">12px</option>
+                <option value="13" selected>13px</option>
+                <option value="14">14px</option>
+                <option value="16">16px</option>
+                <option value="18">18px</option>
+              </select>
+            </div>
+          </section>
+
+          <section
+            class="settings-pane"
+            role="tabpanel"
+            id="spane-privacy"
+            aria-labelledby="stab-privacy"
+            tabindex="-1"
+            hidden
+          >
+            <h4 class="settings-pane-title">Privacy</h4>
+            <label class="setting-row" for="setting-remember">
+              <span class="setting-text"
+                ><span class="setting-name">Remember inputs while switching tools</span
+                ><span class="setting-hint">Kept in memory only, and cleared when you quit.</span></span
+              >
+              <input type="checkbox" id="setting-remember" class="setting-switch" role="switch" />
+            </label>
+            <label class="setting-row" for="setting-history">
+              <span class="setting-text"
+                ><span class="setting-name">Keep input history per tool</span
+                ><span class="setting-hint"
+                  >Last 10 inputs per tool, saved on this machine. Turning it off deletes them.</span
+                ></span
+              >
+              <input type="checkbox" id="setting-history" class="setting-switch" role="switch" />
+            </label>
+          </section>
+
+          <section
+            class="settings-pane"
+            role="tabpanel"
+            id="spane-background"
+            aria-labelledby="stab-background"
+            tabindex="-1"
+            hidden
+          >
+            <h4 class="settings-pane-title">Background</h4>
+            <div id="settingsBackground">
+              <label class="setting-row" for="setting-background">
+                <span class="setting-text"
+                  ><span class="setting-name">Keep running in background</span
+                  ><span class="setting-hint"
+                    >Closing the window hides ForgeTools to the tray instead of quitting.</span
+                  ></span
+                >
+                <input type="checkbox" id="setting-background" class="setting-switch" role="switch" />
+              </label>
+              <label class="setting-row" for="setting-login">
+                <span class="setting-text"
+                  ><span class="setting-name">Start at login</span
+                  ><span class="setting-hint">Starts hidden in the tray when you sign in.</span></span
+                >
+                <input type="checkbox" id="setting-login" class="setting-switch" role="switch" />
+              </label>
+              <div class="setting-row setting-row-stack">
+                <span class="setting-text"
+                  ><span class="setting-name" id="shortcutLabel">Global shortcut</span
+                  ><span class="setting-hint" id="shortcutMsg">Shows or hides ForgeTools from any app.</span></span
+                >
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    class="shortcut-rec"
+                    id="shortcutRec"
+                    aria-labelledby="shortcutLabel shortcutRec"
+                    aria-describedby="shortcutMsg"
+                  >
+                    Not set
+                  </button>
+                  <button type="button" class="btn-icon btn-ghost btn-sm" id="shortcutClear">Clear</button>
+                </div>
+                <div class="shortcut-chips" id="shortcutChips" role="group" aria-label="Suggested shortcuts"></div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="settings-pane"
+            role="tabpanel"
+            id="spane-about"
+            aria-labelledby="stab-about"
+            tabindex="-1"
+            hidden
+          >
+            <div id="settingsAbout">
+              <div class="about-head">
+                <img class="about-logo" src="./assets/favicon.png" alt="" draggable="false" />
+                <div class="min-w-0 flex-1">
+                  <div class="about-name">ForgeTools</div>
+                  <div class="about-version">
+                    <span id="aboutVersion">Version …</span
+                    ><span class="about-update" id="aboutUpdate" role="status" aria-live="polite"></span>
+                  </div>
+                </div>
+                <button type="button" class="btn-icon btn-sm" id="aboutCheck">Check for updates</button>
+              </div>
+              <p class="about-blurb">
+                Offline developer utilities. Free and open source (MIT). Nothing you paste ever leaves your machine.
+              </p>
+              <label class="setting-row" for="setting-autoupdate">
+                <span class="setting-text"
+                  ><span class="setting-name">Check for updates automatically</span
+                  ><span class="setting-hint"
+                    >Asks api.github.com for the latest release at most once a day. Nothing else is sent.</span
+                  ></span
+                >
+                <input type="checkbox" id="setting-autoupdate" class="setting-switch" role="switch" />
+              </label>
+              <div class="about-links">
+                <button type="button" class="about-link" data-link="github">
+                  <i class="material-icons" aria-hidden="true">code</i><span>Source on GitHub</span
+                  ><i class="material-icons about-ext" aria-hidden="true">open_in_new</i>
+                </button>
+                <button type="button" class="about-link" data-link="releases">
+                  <i class="material-icons" aria-hidden="true">new_releases</i><span>Release notes</span
+                  ><i class="material-icons about-ext" aria-hidden="true">open_in_new</i>
+                </button>
+                <button type="button" class="about-link" data-link="issues">
+                  <i class="material-icons" aria-hidden="true">bug_report</i><span>Report an issue</span
+                  ><i class="material-icons about-ext" aria-hidden="true">open_in_new</i>
+                </button>
+                <button type="button" class="about-link about-coffee" data-link="coffee">
+                  <i class="material-icons" aria-hidden="true">local_cafe</i><span>Buy me a coffee</span
+                  ><i class="material-icons about-ext" aria-hidden="true">open_in_new</i>
+                </button>
+              </div>
+              <button type="button" class="about-meta" id="aboutMeta" title="Copy version details"></button>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
 
     <div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -251,5 +527,5 @@
     <div id="toastAlert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
     <script type="module" src="/src/app.ts"></script>
-</body>
+  </body>
 </html>

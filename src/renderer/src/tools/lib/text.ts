@@ -6,12 +6,14 @@
  * to the preceding word (version2Beta -> version2 beta).
  */
 export function splitWords(str: string): string[] {
-  return (str.match(/[A-Z]+\d*(?![a-z])|[A-Z]?[a-z]+\d*|\d+/g) ?? [])
-    .map((w) => w.toLowerCase());
+  return (str.match(/[A-Z]+\d*(?![a-z])|[A-Z]?[a-z]+\d*|\d+/g) ?? []).map((w) => w.toLowerCase());
 }
 const cap = (w: string): string => (w ? w[0]!.toUpperCase() + w.slice(1) : w);
 
-export const toCamelCase = (s: string): string => splitWords(s).map((w, i) => (i ? cap(w) : w)).join('');
+export const toCamelCase = (s: string): string =>
+  splitWords(s)
+    .map((w, i) => (i ? cap(w) : w))
+    .join('');
 export const toPascalCase = (s: string): string => splitWords(s).map(cap).join('');
 export const toSnakeCase = (s: string): string => splitWords(s).join('_');
 export const toKebabCase = (s: string): string => splitWords(s).join('-');

@@ -24,14 +24,21 @@ export function setupAbout(): void {
   const auto = document.getElementById('setting-autoupdate') as HTMLInputElement | null;
   const meta = document.getElementById('aboutMeta');
   let details = '';
-  const openRelease = (): void => { void openLink('latestRelease').catch(() => showToast('Could not open link', 'error')); };
+  const openRelease = (): void => {
+    void openLink('latestRelease').catch(() => showToast('Could not open link', 'error'));
+  };
 
-  void getAppInfo().then(info => {
-    if (version) version.textContent = `Version ${info.version}`;
-    if (navVersion) navVersion.textContent = `v${info.version}`;
-    details = `ForgeTools ${info.version} · Tauri ${info.tauri} · WebView ${info.webview} · ${info.platform}-${info.arch}`;
-    if (meta) meta.textContent = `Tauri ${info.tauri} · WebView ${info.webview.split('.')[0]} · ${info.platform}-${info.arch}`;
-  }).catch(() => { if (version) version.textContent = ''; });
+  void getAppInfo()
+    .then((info) => {
+      if (version) version.textContent = `Version ${info.version}`;
+      if (navVersion) navVersion.textContent = `v${info.version}`;
+      details = `ForgeTools ${info.version} · Tauri ${info.tauri} · WebView ${info.webview} · ${info.platform}-${info.arch}`;
+      if (meta)
+        meta.textContent = `Tauri ${info.tauri} · WebView ${info.webview.split('.')[0]} · ${info.platform}-${info.arch}`;
+    })
+    .catch(() => {
+      if (version) version.textContent = '';
+    });
 
   const setStatus = (kind: '' | 'ok' | 'error' | 'new', text = ''): void => {
     if (!status) return;
@@ -42,7 +49,11 @@ export function setupAbout(): void {
     flag(r.available);
     if (!r.available) {
       setStatus('ok', 'Up to date');
-      if (checkBtn) { checkBtn.textContent = 'Check for updates'; checkBtn.className = 'btn-icon btn-sm'; delete checkBtn.dataset.mode; }
+      if (checkBtn) {
+        checkBtn.textContent = 'Check for updates';
+        checkBtn.className = 'btn-icon btn-sm';
+        delete checkBtn.dataset.mode;
+      }
       return;
     }
     if (!status) return;
@@ -62,11 +73,15 @@ export function setupAbout(): void {
   };
 
   checkBtn?.addEventListener('click', () => {
-    if (checkBtn.dataset.mode === 'open') { openRelease(); return; }
+    if (checkBtn.dataset.mode === 'open') {
+      openRelease();
+      return;
+    }
     checkBtn.disabled = true;
     checkBtn.textContent = 'Checking…';
     setStatus('');
-    updates().check()
+    updates()
+      .check()
       .then(show)
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
@@ -91,20 +106,32 @@ export function setupAbout(): void {
         return;
       }
       auto.checked = p.autoCheck;
-      if (p.autoCheck) void updates().auto().then(r => { if (r) show(r); }).catch((e: unknown) => logger.warn('Auto update check failed:', e));
+      if (p.autoCheck)
+        void updates()
+          .auto()
+          .then((r) => {
+            if (r) show(r);
+          })
+          .catch((e: unknown) => logger.warn('Auto update check failed:', e));
     });
   }
   // Startup: updates.ts decides whether to touch the network (opt-in, once a day).
-  void updates().auto().then(r => { if (r?.available) show(r); }).catch((e: unknown) => logger.warn('Auto update check failed:', e));
+  void updates()
+    .auto()
+    .then((r) => {
+      if (r?.available) show(r);
+    })
+    .catch((e: unknown) => logger.warn('Auto update check failed:', e));
 
   meta?.addEventListener('click', () => {
     if (!details) return;
-    void clipboard.writeText(details)
+    void clipboard
+      .writeText(details)
       .then(() => showToast('Version details copied'))
       .catch(() => showToast('Could not copy', 'error'));
   });
 
-  group.querySelectorAll<HTMLButtonElement>('[data-link]').forEach(btn => {
+  group.querySelectorAll<HTMLButtonElement>('[data-link]').forEach((btn) => {
     btn.addEventListener('click', () => {
       void openLink(btn.dataset.link as ExternalLinkId).catch(() => showToast('Could not open link', 'error'));
     });

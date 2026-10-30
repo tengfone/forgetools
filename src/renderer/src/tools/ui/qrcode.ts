@@ -2,7 +2,7 @@ import { $, $f, reportError, reportOk, resetStatus, setFieldInvalid, clearWithUn
 import { debounce, inputActions } from './common';
 
 export function render(container: HTMLElement): void {
-    container.innerHTML = `
+  container.innerHTML = `
         <div class="custom-interface">
             <div class="grid-2">
                 <div class="tool-card">
@@ -34,61 +34,68 @@ export function render(container: HTMLElement): void {
             </div>
         </div>
     `;
-    const input = $f('qr-input');
-    const sizeInput = $f('qr-size');
-    const preview = $('qr-preview');
-    const downloadBtn = $<HTMLButtonElement>('qr-download');
-    let currentDataUrl = '';
+  const input = $f('qr-input');
+  const sizeInput = $f('qr-size');
+  const preview = $('qr-preview');
+  const downloadBtn = $<HTMLButtonElement>('qr-download');
+  let currentDataUrl = '';
 
-    const empty = (msg: string): void => {
-        preview.innerHTML = `<div class="text-text-secondary">${esc(msg)}</div>`;
-        downloadBtn.disabled = true;
-        currentDataUrl = '';
-    };
+  const empty = (msg: string): void => {
+    preview.innerHTML = `<div class="text-text-secondary">${esc(msg)}</div>`;
+    downloadBtn.disabled = true;
+    currentDataUrl = '';
+  };
 
-    let seq = 0;
-    const generate = async (): Promise<void> => {
-        const my = ++seq;
-        const text = input.value.trim();
-        const size = parseInt(sizeInput.value, 10);
-        if (!Number.isFinite(size) || size < 128 || size > 512) {
-            setFieldInvalid('qr-size', true, 'Size must be between 128 and 512 px');
-            reportError('Size must be between 128 and 512 px');
-            return;
-        }
-        setFieldInvalid('qr-size', false);
-        if (!text) { empty('Enter text to generate a QR code'); resetStatus(); return; }
-        try {
-            const url = await (await import('../lib/media')).generateQr(text, { width: size, margin: 2 });
-            if (my !== seq || !preview.isConnected) return; // stale result
-            currentDataUrl = url;
-            const img = document.createElement('img');
-            img.className = 'max-w-full rounded-sm';
-            img.alt = 'QR code for the entered text';
-            img.src = url;
-            preview.replaceChildren(img);
-            downloadBtn.disabled = false;
-            reportOk('QR code generated', `${size}px`);
-        } catch (e) {
-            if (my !== seq) return;
-            empty('Could not generate a QR code');
-            reportError(e);
-        }
-    };
-    const live = debounce(() => void generate());
+  let seq = 0;
+  const generate = async (): Promise<void> => {
+    const my = ++seq;
+    const text = input.value.trim();
+    const size = parseInt(sizeInput.value, 10);
+    if (!Number.isFinite(size) || size < 128 || size > 512) {
+      setFieldInvalid('qr-size', true, 'Size must be between 128 and 512 px');
+      reportError('Size must be between 128 and 512 px');
+      return;
+    }
+    setFieldInvalid('qr-size', false);
+    if (!text) {
+      empty('Enter text to generate a QR code');
+      resetStatus();
+      return;
+    }
+    try {
+      const url = await (await import('../lib/media')).generateQr(text, { width: size, margin: 2 });
+      if (my !== seq || !preview.isConnected) return; // stale result
+      currentDataUrl = url;
+      const img = document.createElement('img');
+      img.className = 'max-w-full rounded-sm';
+      img.alt = 'QR code for the entered text';
+      img.src = url;
+      preview.replaceChildren(img);
+      downloadBtn.disabled = false;
+      reportOk('QR code generated', `${size}px`);
+    } catch (e) {
+      if (my !== seq) return;
+      empty('Could not generate a QR code');
+      reportError(e);
+    }
+  };
+  const live = debounce(() => void generate());
 
-    input.addEventListener('input', live);
-    sizeInput.addEventListener('input', live);
-    $('qr-generate').onclick = () => void generate();
-    $('qr-sample').onclick = () => { input.value = 'https://example.com'; void generate(); };
-    $('qr-clear').onclick = () => clearWithUndo(['qr-input'], () => void generate());
+  input.addEventListener('input', live);
+  sizeInput.addEventListener('input', live);
+  $('qr-generate').onclick = () => void generate();
+  $('qr-sample').onclick = () => {
+    input.value = 'https://example.com';
+    void generate();
+  };
+  $('qr-clear').onclick = () => clearWithUndo(['qr-input'], () => void generate());
 
-    downloadBtn.onclick = () => {
-        if (!currentDataUrl) return;
-        const a = document.createElement('a');
-        a.href = currentDataUrl;
-        a.download = 'qrcode.png';
-        a.click();
-    };
-    resetStatus();
+  downloadBtn.onclick = () => {
+    if (!currentDataUrl) return;
+    const a = document.createElement('a');
+    a.href = currentDataUrl;
+    a.download = 'qrcode.png';
+    a.click();
+  };
+  resetStatus();
 }

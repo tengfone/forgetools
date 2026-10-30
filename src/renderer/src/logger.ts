@@ -22,5 +22,5 @@ export const logger = {
   },
   debug: (...args: unknown[]) => {
     if (isDev) console.debug(...args);
-  }
+  },
 };
