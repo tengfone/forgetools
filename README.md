@@ -18,8 +18,24 @@ Offline developer utilities in one desktop app. Format, decode, convert and gene
 - **Light and dark themes** that follow your system.
 - **Lives in the tray**: closing the window keeps it running, with an optional global shortcut and start at login (see [Background mode](#background-mode)).
 - **Locked down**: system WebView with no Node.js, least-privilege Tauri permissions, strict Content Security Policy, sanitized Markdown preview, and no network access. The one exception is an opt-in update check (a button in Settings → About, plus an optional daily check that is off by default) that only asks GitHub for the latest release number.
-- **Small and fast**: a portable Windows exe of about 5 MB (measured: 5.2 MiB), a window on screen in well under a second (median 0.6 s on a Windows 11 dev machine via `scripts/measure.cjs`), and each tool loads its libraries only when you open it.
+- **Small and fast**: a 5.8 MB portable Windows exe, a window on screen in well under a second (median 0.6 s on a Windows 11 dev machine via `scripts/measure.cjs`), and each tool loads its libraries only when you open it. See [From Electron to Tauri](#from-electron-to-tauri).
 - Runs on **Windows, macOS (Intel & Apple Silicon) and Linux**.
+
+## From Electron to Tauri
+
+ForgeTools started as an Electron app. Version 1.0.0 is a rewrite on [Tauri v2](https://v2.tauri.app/): a small Rust shell that uses the WebView already on your system (WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux) instead of shipping its own copy of Chromium and Node.js. Every tool from 0.2.1 came along, and parity tests check their output against 0.2.1.
+
+Download sizes of the published releases:
+
+| Download | 0.2.1 (Electron) | 1.0.0 (Tauri) | Saved |
+| --- | --- | --- | --- |
+| Windows portable exe | 103.9 MB | 5.8 MB | **94%** (18× smaller) |
+| macOS Apple Silicon | 119.3 MB | 5.4 MB | **95%** (22× smaller) |
+| macOS Intel | 123.1 MB | 5.4 MB | **96%** (23× smaller) |
+| Linux AppImage | 100.8 MB | 83.5 MB | 17% (it bundles its own WebKitGTK) |
+| Linux .deb / .rpm | not available | 4.7 MB | new |
+
+On Windows the app went from a 336 MiB unpacked folder to a single 5.8 MB exe, and the window appears in 0.61 s instead of 0.78 s (median, Windows 11 dev machine). Memory use is about the same (196 MB vs 185 MB private at idle), because the system WebView runs its own processes just as Chromium did. Full measurements are in [tests/fixtures/BASELINE.md](tests/fixtures/BASELINE.md).
 
 ## Tools
 
@@ -48,12 +64,12 @@ Get the latest build from [Releases](https://github.com/tengfone/forgetools/rele
 
 | Platform | File | Size |
 | --- | --- | --- |
-| Windows 10/11 | `ForgeTools-Portable-X.Y.Z.exe` | ~5 MB |
-| macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` | a few MB |
-| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` | a few MB |
-| Linux (any distro) | `ForgeTools-X.Y.Z.AppImage` | ~80 MB |
-| Linux (Debian/Ubuntu) | `ForgeTools-X.Y.Z-amd64.deb` | a few MB |
-| Linux (Fedora/openSUSE) | `ForgeTools-X.Y.Z-x86_64.rpm` | a few MB |
+| Windows 10/11 | `ForgeTools-Portable-X.Y.Z.exe` | ~6 MB |
+| macOS (Intel) | `ForgeTools-X.Y.Z-mac-x64.zip` | ~5 MB |
+| macOS (Apple Silicon) | `ForgeTools-X.Y.Z-mac-arm64.zip` | ~5 MB |
+| Linux (any distro) | `ForgeTools-X.Y.Z.AppImage` | ~83 MB |
+| Linux (Debian/Ubuntu) | `ForgeTools-X.Y.Z-amd64.deb` | ~5 MB |
+| Linux (Fedora/openSUSE) | `ForgeTools-X.Y.Z-x86_64.rpm` | ~5 MB |
 
 Platform notes:
 
@@ -85,7 +101,7 @@ npm run dist       # installers in src-tauri/target/release/bundle
 
 You also need the Rust toolchain and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS. `npm run demo` re-records `assets/demo.gif` (needs `npm run build:e2e` first and ffmpeg on PATH).
 
-CI runs the tests on every push and pull request. To release, run `npm run release:patch` (or `release:minor` / `release:major`): it bumps and tags the version, and once tests and all platform builds pass, CI creates a **draft** GitHub release that a maintainer reviews and publishes. Only the 10 newest published releases are kept (their git tags stay). See [CHANGELOG.md](CHANGELOG.md).
+CI runs the tests on every push and pull request. To release, run `npm run release:patch` (or `release:minor` / `release:major`): it bumps and tags the version, and once tests and all platform builds pass, CI creates a **draft** GitHub release that a maintainer reviews and publishes. Only the 10 newest published releases are kept (their git tags stay). Release notes are generated from the commit messages, so they follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## License
 

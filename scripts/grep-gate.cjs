@@ -1,5 +1,5 @@
-// Fails if any tracked file mentions the old desktop runtime. The v0.2.1 baseline
-// fixtures (tests/fixtures) are provenance for the parity tests and are allowlisted.
+// Fails if any tracked file mentions the old desktop runtime. Allowlisted: the v0.2.1 baseline
+// fixtures (tests/fixtures, provenance for the parity tests) and the README's migration story.
 const { spawnSync } = require('child_process');
 const r = spawnSync(
   'git',
@@ -14,7 +14,7 @@ const r = spawnSync(
     '.',
     ':!package-lock.json',
     ':!tests/fixtures',
-    ':!CHANGELOG.md',
+    ':!README.md',
     ':!scripts/grep-gate.cjs',
   ],
   { encoding: 'utf8' },

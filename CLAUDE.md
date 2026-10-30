@@ -23,10 +23,7 @@ npm run demo           # re-record assets/demo.gif (after build:e2e; needs ffmpe
 
 Before saying a change works, run `npm run typecheck`, `npm run lint`, `npm run test:unit`, `npm run test:e2e` and `cargo test --lib` (in `src-tauri`).
 
-Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
-
-- `node scripts/measure.cjs <exe> [runs]`: cold start, idle memory, memory after 5 tools.
-- `node scripts/csp-probe.cjs <exe>`: opens a Monaco tool and a few custom tools, reports CSP violations and console errors.
+Windows-only dev probe (WebView2 CDP + PowerShell/taskkill; not run in CI): `node scripts/measure.cjs <exe> [runs]` measures cold start, idle memory and memory after 5 tools (the numbers in `tests/fixtures/BASELINE.md` and the README).
 
 ## Layout
 
@@ -47,7 +44,7 @@ Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
 
 ## Testing
 
-- **Unit** (`tests/unit`, Vitest): pure tool logic, plus parity tests against `tests/fixtures/golden-v0.2.1.json` (captured from v0.2.1; `capture-v0.2.1.cjs` is provenance only and does not run here).
+- **Unit** (`tests/unit`, Vitest): pure tool logic, plus parity tests against `tests/fixtures/golden-v0.2.1.json` (captured from the v0.2.1 app, which no longer builds; see `tests/fixtures/BASELINE.md`).
 - **E2E** (`tests/e2e/*.spec.mjs`): native WebdriverIO (`$`, `$$`, `browser.keys`, expect-webdriverio matchers) against a debug build with an embedded WebDriver server (`build:e2e`; never in release builds, `test:smoke` checks that). `helpers/tauriApp.mjs` does app-ready, error capture and Tauri window/clipboard calls; `helpers/input.mjs` holds the few documented workarounds for the embedded driver (`<select>` choice, trusted text input, focus on clicking non-focusable elements). Use native commands everywhere else. Tests do not resize the window. The E2E build runs under its own identifier `com.tengfone.forgetools.e2e` (`tauri.wdio.conf.json`), so its WebView storage and app data are separate from the installed app; `freshStart` refuses to clear storage under any other identifier. Failure logs and screenshots go to `test-results/`.
 - **Manual** release checklist (tray, global shortcut, start at login, Gatekeeper/SmartScreen, per-OS): `tests/MANUAL_CHECKLIST.md`.
 
@@ -61,7 +58,7 @@ Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
 ## Conventions
 
 - **Offline only.** No network requests, telemetry or CDN assets. Fonts and icons are bundled. The single exception is the update check (`src/updates.ts`): one GET to `api.github.com/repos/tengfone/forgetools/releases/latest`, run only when the user clicks "Check for updates" or has turned on the opt-in daily check (off by default, skipped under `FORGE_E2E`). External links open in the OS browser through `EXTERNAL_LINKS` (`links.ts`).
-- **CSP** is strict (`tauri.conf.json`): no inline scripts, no `blob:` workers, `wasm-unsafe-eval` only. Don't loosen it; run `csp-probe.cjs` after touching Monaco or workers.
+- **CSP** is strict (`tauri.conf.json`): no inline scripts, no `blob:` workers, `wasm-unsafe-eval` only. Don't loosen it. The E2E suite fails on CSP violations (`newtools.spec`) and checks that the regex and diff workers run (`tools.spec`).
 - **Settings** is one dialog with sections (Editor, Privacy, Background, About; `app/settingsDialog.ts`). Add new options as `.setting-row`s in an existing section, or add a section. Don't make one section scroll.
 - Errors go to the shared status bar (`reportError` / `reportOk` / `resetStatus`), not `alert()` or console-only.
 - No inline styles or inline event handlers in tool markup (a test enforces this). Use Tailwind/CSS classes and `addEventListener`.
@@ -73,9 +70,10 @@ Windows-only dev probes (WebView2 CDP + PowerShell/taskkill; not run in CI):
 
 CI (`.github/workflows/release.yml`, workflow "CI") runs the test job (lint gate, typecheck, format check, audit, unit, Rust, e2e, release smoke) on every push to `main` and on PRs. A `v*` tag additionally builds Win/macOS/Linux and creates a **draft** GitHub release.
 
-1. Move `## [X.Y.Z] - Unreleased` in `CHANGELOG.md` to today's date and commit.
-2. `npm run release:patch|minor|major` (clean working tree). `npm version` runs `scripts/sync-version.cjs`, which copies the version into `src-tauri/Cargo.toml`/`Cargo.lock` in the same commit (`node scripts/sync-version.cjs --dry-run [version]` previews). CI fails if the tag, `package.json` and `Cargo.toml` disagree.
-3. Review the draft release, then publish it with "Set as the latest release" ticked. Only the 10 newest published releases are kept (drafts are never pruned; tags always stay).
+There is no changelog file: CI writes the release notes from the `feat:`/`fix:`/`perf:`/`docs:` commit subjects since the previous tag, so commit messages are the changelog.
+
+1. `npm run release:patch|minor|major` (clean working tree). `npm version` runs `scripts/sync-version.cjs`, which copies the version into `src-tauri/Cargo.toml`/`Cargo.lock` in the same commit (`node scripts/sync-version.cjs --dry-run [version]` previews). CI fails if the tag, `package.json` and `Cargo.toml` disagree.
+2. Review the draft release, then publish it with "Set as the latest release" ticked. Only the 10 newest published releases are kept (drafts are never pruned; tags always stay).
 
 Don't tag or release unless asked.
 

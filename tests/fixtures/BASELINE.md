@@ -31,8 +31,8 @@ macOS and Linux were not measured (no machines available); the published downloa
 
 ## Golden fixtures
 
-`golden-v0.2.1.json` was captured from the running v0.2.1 app through its own bridge
-(`tests/fixtures/capture-v0.2.1.cjs`): MD5/SHA-1/SHA-256/SHA-512 of 4 inputs, X.509 decode of the
+`golden-v0.2.1.json` was captured from the running v0.2.1 app through its own bridge (a one-off
+script, removed along with the Electron build it needed): MD5/SHA-1/SHA-256/SHA-512 of 4 inputs, X.509 decode of the
 bundled sample cert plus 3 extra certs in `certs/` (RSA-2048 with a long serial and 7-RDN subject,
 EC P-384 with an escaped comma in O, Ed25519), QR data URLs, barcode SVGs (EAN-13, UPC, CODE39,
 CODE128) and SVGO output for 2 inputs. Parity unit tests compare the Tauri implementation against it.
