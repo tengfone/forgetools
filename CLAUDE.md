@@ -6,7 +6,7 @@ ForgeTools: an offline desktop app of developer utilities. Tauri v2 (Rust shell,
 
 ```bash
 npm run dev            # tauri dev with hot reload
-npm run build          # frontend only, to out/renderer
+npm run build          # frontend only, to out/
 npm run typecheck      # tsc, no emit (web, node, tests)
 npm run lint           # ESLint (typescript-eslint, type-aware)
 npm run format         # prettier --write

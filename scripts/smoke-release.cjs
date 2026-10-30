@@ -36,7 +36,7 @@ const check = (ok, msg) => {
   console.log(`size  ${bin.length} B (${(bin.length / 1048576).toFixed(2)} MiB)`);
   check(!bin.includes('tauri-plugin-wdio') && !bin.includes('plugin:wdio'), 'no wdio plugin in binary');
 
-  const dist = path.join(root, 'out', 'renderer');
+  const dist = path.join(root, 'out');
   const leaks = [];
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -46,7 +46,7 @@ const check = (ok, msg) => {
     }
   };
   if (fs.existsSync(dist)) walk(dist);
-  check(leaks.length === 0, `no @wdio/tauri-plugin in out/renderer ${leaks.join(', ')}`);
+  check(leaks.length === 0, `no @wdio/tauri-plugin in out/ ${leaks.join(', ')}`);
 
   const child = spawn(exe, [], { env: { ...process.env, TAURI_WEBDRIVER_PORT: String(PORT) }, stdio: 'ignore' });
   let exited = null;

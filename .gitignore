@@ -1,7 +1,7 @@
 # WDIO failure logs/screenshots (wdio.conf.mjs)
 test-results/
 
-# Build output: Vite frontend (out/renderer) and Rust targets
+# Build output: Vite frontend (out/) and Rust targets
 out/
 src-tauri/target/
 target/

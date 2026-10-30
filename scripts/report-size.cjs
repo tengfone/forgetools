@@ -22,9 +22,9 @@ for (const name of ['forgetools.exe', 'forgetools']) {
 for (const f of walk(path.join(rel, 'bundle')).filter((f) => /\.(exe|msi|dmg|AppImage|deb|rpm)$/.test(f))) {
   rows.push(['installer', path.relative(rel, f), size(f)]);
 }
-const front = walk(path.join(root, 'out', 'renderer'));
+const front = walk(path.join(root, 'out'));
 if (front.length) {
-  rows.push(['frontend', 'out/renderer (total)', front.reduce((s, f) => s + size(f), 0)]);
+  rows.push(['frontend', 'out/ (total)', front.reduce((s, f) => s + size(f), 0)]);
   const entry = front.filter((f) => /assets[\\/]index-.*\.js$/.test(f));
   for (const f of entry) rows.push(['frontend', 'startup entry ' + path.basename(f), size(f)]);
 }

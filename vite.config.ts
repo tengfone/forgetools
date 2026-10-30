@@ -19,11 +19,6 @@ export default defineConfig(({ command }) => {
     envDir: __dirname,
     // Single source of truth for the version (tauri.conf.json reads package.json too).
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },
-    resolve: {
-      alias: {
-        '@': resolve(__dirname, 'src'),
-      },
-    },
     server: {
       // Fixed port: tauri.conf.json devUrl points here.
       port: 5173,
@@ -31,13 +26,15 @@ export default defineConfig(({ command }) => {
       host: host || false,
       hmr: host ? { protocol: 'ws', host, port: 5174 } : undefined,
       watch: { ignored: ['**/src-tauri/**'] },
+      // The dev server may serve the sources and installed packages, not the rest of the repo
+      // (relative to `root`; Vite's default would be the whole workspace).
       fs: {
-        allow: ['..'],
+        allow: ['.', '../node_modules'],
       },
     },
     build: {
       // Frontend output folder; tauri.conf.json frontendDist points here.
-      outDir: resolve(__dirname, 'out/renderer'),
+      outDir: resolve(__dirname, 'out'),
       // No source maps in shipped builds
       sourcemap: !isProd,
       cssCodeSplit: true,
