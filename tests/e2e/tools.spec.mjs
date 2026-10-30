@@ -62,8 +62,11 @@ describe('Tools', () => {
     await expect($('#statusMsg')).toHaveText(expect.stringContaining('Too many fields'));
   });
 
-  it('a pathological character diff never freezes the window', async () => {
+  it('text diff renders from its worker and never freezes the window', async () => {
     await open('textDiff');
+    await $('#diff-sample').click(); // proves the worker loads under the app's CSP
+    await expect($('#diff-result .diff-line.is-add')).toBeExisting();
+    await expect($('#diff-stats')).toHaveText('+3 / -2');
     await selectOption('#diff-mode', { value: 'char' });
     const started = Date.now();
     await browser.execute(() => {
