@@ -1,0 +1,173 @@
+/* Welcome / Home tool browser. */
+@layer components {
+  /* ---------- Welcome / Home (tool browser) ---------- */
+  .welcome {
+    @apply h-full overflow-y-auto;
+  }
+  .welcome-inner {
+    @apply max-w-[960px] mx-auto px-6 pt-8 pb-12;
+  }
+  .welcome-top {
+    @apply max-w-[560px];
+  }
+  .home-quick {
+    @apply flex flex-col gap-2 mb-8;
+  }
+  .home-quick:empty {
+    @apply hidden;
+  }
+  .home-chips {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+  .home-chips-label {
+    @apply w-16 mb-0 px-0 shrink-0;
+  }
+  .home-chip {
+    @apply inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] border text-[12px] text-text-primary cursor-pointer;
+    font-family: var(--ui-font);
+    background: var(--bg-panel);
+    border-color: var(--border-color);
+    transition:
+      border-color 120ms ease-out,
+      background-color 120ms ease-out;
+  }
+  .home-chip:hover {
+    border-color: var(--border-hover);
+  }
+  .home-chip .material-icons {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .home-browse-head {
+    @apply flex items-center justify-between gap-4 mb-2 pb-2 border-b border-border;
+  }
+  .home-browse-title {
+    @apply m-0 text-[15px] font-semibold;
+  }
+  .home-cat[hidden],
+  .home-tile-wrap[hidden] {
+    display: none;
+  }
+  .welcome-section.home-cat-title {
+    margin: 28px 0 6px;
+  }
+  .home-tiles {
+    @apply grid gap-x-2 gap-y-0.5;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .home-tile-wrap {
+    @apply relative;
+  }
+  .home-tile {
+    @apply w-full grid items-center gap-x-2.5 py-2 pl-2 pr-8 border-0 rounded-[6px] bg-transparent text-left cursor-pointer;
+    grid-template-columns: 18px minmax(0, 1fr);
+    font-family: var(--ui-font);
+    transition: background-color 120ms ease-out;
+  }
+  .home-tile:hover {
+    background: var(--hover-tint);
+  }
+  .home-tile-icon {
+    grid-row: span 2;
+    font-size: 18px !important;
+    color: var(--text-secondary);
+    align-self: start;
+    margin-top: 1px;
+  }
+  .home-tile-title {
+    @apply text-[13px] font-medium text-text-primary truncate;
+  }
+  .home-tile-desc {
+    @apply text-[12px] text-text-secondary truncate;
+  }
+  .home-tile-pin {
+    top: 8px;
+    right: 6px;
+  }
+  .home-tile-wrap:hover .home-tile-pin,
+  .home-tile-wrap:focus-within .home-tile-pin,
+  .home-tile-pin.is-pinned {
+    opacity: 1;
+  }
+  .welcome-head {
+    @apply mb-6;
+  }
+  .welcome-sub {
+    @apply m-0 mt-2 text-[13px] text-text-secondary;
+  }
+  .welcome-tagline {
+    @apply mt-0 mb-6 px-2;
+  }
+  .home-search {
+    @apply mb-8;
+  }
+  .home-search .welcome-section {
+    @apply block;
+  }
+  .home-search-box {
+    @apply relative flex items-start w-full rounded-[8px] border;
+    background: var(--bg-panel);
+    border-color: var(--field-border);
+    transition:
+      border-color 140ms ease-out,
+      box-shadow 140ms ease-out;
+  }
+  .home-search-box:hover {
+    border-color: var(--border-hover);
+  }
+  .home-search-box:focus-within {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+  .home-search-glyph {
+    @apply absolute left-3 top-[11px] text-[18px] pointer-events-none;
+    color: var(--text-secondary);
+  }
+  .home-search-input {
+    @apply block w-full m-0 py-[10px] pl-10 pr-20 border-0 bg-transparent text-[14px] text-text-primary resize-none outline-none overflow-hidden;
+    font-family: var(--ui-font);
+    line-height: 22px;
+    min-height: 44px;
+  }
+  .home-search-input:focus-visible {
+    outline: none;
+  }
+  .home-search-input::placeholder {
+    color: var(--text-secondary);
+  }
+  .home-search-input.is-data {
+    font-family: var(--mono-font, ui-monospace, monospace);
+    font-size: 13px;
+  }
+  .home-search-keys {
+    @apply absolute right-3 top-[11px] flex gap-1 pointer-events-none;
+  }
+  .home-search-box:focus-within .home-search-keys {
+    @apply hidden;
+  }
+  .home-browse-count {
+    @apply font-mono text-[12px] text-text-secondary;
+  }
+  .shortcut-rec {
+    @apply h-8 min-w-[200px] px-3 rounded-[6px] border text-left font-mono text-[12px] text-text-primary cursor-pointer;
+    background: var(--bg-input);
+    border-color: var(--field-border);
+  }
+  .shortcut-rec:hover {
+    border-color: var(--border-hover);
+  }
+  .shortcut-rec.is-empty {
+    color: var(--text-secondary);
+  }
+  .shortcut-rec.is-recording {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+    color: var(--accent-text);
+  }
+  .shortcut-chips {
+    @apply flex flex-row flex-wrap gap-1.5;
+  }
+  .shortcut-chip {
+    @apply font-mono;
+  }
+}

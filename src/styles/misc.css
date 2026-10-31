@@ -1,0 +1,39 @@
+/* Text colours, placeholders, loading bar, search glyph. */
+.text-success {
+  color: var(--success-text) !important;
+}
+.text-error {
+  color: var(--error-text) !important;
+}
+
+/* beats Tailwind preflight input::placeholder (gray-400, 2.4:1) */
+input::placeholder,
+textarea::placeholder,
+::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.loading-bar {
+  animation: forge-loading 1.2s infinite ease-out;
+}
+@keyframes forge-loading {
+  0% {
+    transform: scaleX(0);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+    transform-origin: right center;
+  }
+}
+
+.search-glyph {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}

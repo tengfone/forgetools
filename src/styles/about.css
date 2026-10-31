@@ -1,0 +1,147 @@
+/* About (settings section) and the update-available dot. */
+@layer components {
+  /* ---------- About (settings section) ---------- */
+  .about-head {
+    @apply flex items-center gap-3 pb-4;
+  }
+  .about-logo {
+    @apply w-10 h-10 shrink-0;
+  }
+  .about-name {
+    @apply text-[15px] font-semibold text-text-primary;
+  }
+  .about-version {
+    @apply flex flex-wrap items-baseline gap-x-2 font-mono text-[12px] text-text-secondary;
+  }
+  .about-update:empty {
+    display: none;
+  }
+  .about-update {
+    @apply inline-flex items-center gap-1.5;
+  }
+  .about-update::before {
+    content: '·';
+    color: var(--text-tertiary);
+  }
+  .about-update.is-ok {
+    color: var(--success-text);
+  }
+  .about-update.is-error {
+    color: var(--error-text);
+  }
+  .about-update.is-new {
+    color: var(--accent-text);
+  }
+  .about-update-link {
+    @apply p-0 border-0 bg-transparent font-mono text-[12px] font-medium cursor-pointer underline;
+    color: var(--accent-text);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .about-blurb {
+    @apply m-0 pb-1 text-[13px] text-text-secondary;
+    line-height: 1.5;
+    max-width: 60ch;
+  }
+  .about-links {
+    @apply grid grid-cols-2 gap-0.5 mt-4 mb-4 -mx-2;
+  }
+  .about-link {
+    @apply flex items-center gap-2.5 w-full h-8 px-2 rounded-[6px] border-0 bg-transparent text-left text-[13px] text-text-primary cursor-pointer;
+    font-family: var(--ui-font);
+    transition: background-color 120ms ease-out;
+  }
+  .about-link:hover {
+    background: var(--hover-tint);
+  }
+  .about-link .material-icons {
+    font-size: 16px;
+    color: var(--text-secondary);
+  }
+  .about-link span {
+    @apply flex-1 truncate;
+  }
+  .about-link .about-ext {
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+  }
+  .about-link:hover .about-ext,
+  .about-link:focus-visible .about-ext {
+    opacity: 1;
+  }
+  .about-coffee .material-icons:first-child {
+    color: var(--accent-text);
+  }
+  .about-meta {
+    @apply block w-full p-0 border-0 bg-transparent text-left font-mono text-[11px] text-text-tertiary cursor-pointer;
+    line-height: 1.6;
+  }
+  .about-meta:hover {
+    color: var(--text-secondary);
+  }
+  /* Update-available dot on the titlebar Settings button */
+  .tb-btn.has-dot {
+    position: relative;
+  }
+  .tb-btn.has-dot::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--accent-fill);
+    box-shadow: 0 0 0 2px var(--bg-app);
+  }
+  .welcome-section {
+    @apply m-0 mb-1 px-2 font-mono text-[11px] font-medium uppercase text-text-tertiary;
+    letter-spacing: 0.06em;
+  }
+  .welcome-grid {
+    @apply flex flex-col mb-6;
+  }
+  .welcome-hint {
+    @apply m-0 mt-2 px-2 flex flex-wrap items-center gap-1 font-mono text-[12px] text-text-secondary;
+  }
+  .welcome-detect {
+    @apply flex flex-wrap items-center gap-1 mt-2;
+  }
+  .welcome-detect:empty {
+    @apply hidden;
+  }
+  .welcome-detect-none {
+    @apply px-2 text-[12px] text-text-secondary;
+  }
+  .welcome-detect-kbd {
+    @apply ml-1 font-mono text-[12px] opacity-70;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: inherit;
+  }
+  .welcome-detect-alt {
+    @apply h-7 px-2 rounded-[6px] border-0 bg-transparent text-[12px] text-text-secondary cursor-pointer;
+    font-family: var(--ui-font);
+  }
+  .welcome-detect-alt:hover {
+    background: var(--hover-tint);
+    @apply text-text-primary;
+  }
+  .welcome-tool {
+    @apply flex items-center gap-2 h-7 px-2 rounded-[6px] border-0 bg-transparent text-left text-[13px] text-text-primary cursor-pointer;
+    font-family: var(--ui-font);
+    transition: background-color 120ms ease-out;
+  }
+  .welcome-tool:hover {
+    background: var(--hover-tint);
+  }
+  .welcome-tool .material-icons {
+    @apply text-[16px];
+    color: var(--text-secondary);
+  }
+  .welcome-tool-cat {
+    @apply ml-auto font-mono text-[11px] text-text-secondary;
+  }
+}

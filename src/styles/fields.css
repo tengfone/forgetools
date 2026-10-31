@@ -1,0 +1,71 @@
+/* Colour swatch, inline field errors, two-way direction bar, range sliders, field label buttons. */
+@layer components {
+  .color-swatch-picker {
+    width: 72px;
+    height: 72px;
+    padding: 0;
+    border: 1px solid var(--field-border);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .color-swatch-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  .color-swatch-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 6px;
+  }
+  .color-swatch-picker:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Inline field errors ---------- */
+.field-error {
+  @apply flex items-start gap-1 mt-1.5 mb-0 text-[12px] leading-[16px];
+  color: var(--error-text);
+  font-family: inherit;
+}
+.field-error .material-icons {
+  @apply text-[14px] leading-[16px] shrink-0;
+}
+
+/* ---------- Two-way direction bar ---------- */
+.direction-bar {
+  @apply flex items-center justify-center gap-2 px-5 py-2;
+  border-bottom: 1px solid var(--border-color);
+}
+.direction-chip {
+  @apply inline-flex items-center px-2.5 h-[26px] rounded-[6px] text-[12px] font-medium text-text-secondary;
+  background: var(--hover-tint);
+}
+.output-marker {
+  @apply ml-2 px-1.5 rounded text-[11px] font-normal normal-case tracking-normal text-text-secondary;
+  font-family: var(--ui-font);
+  letter-spacing: 0;
+  text-transform: none;
+  background: var(--hover-tint);
+}
+.welcome-tool-desc {
+  @apply ml-auto truncate min-w-0 text-[12px] text-text-secondary text-right;
+  max-width: 55%;
+}
+
+/* Range sliders are values, not selection: neutral ink keeps amber for focus/selection/primary */
+input[type='range'] {
+  accent-color: var(--text-secondary);
+}
+
+@layer components {
+  .field-label .btn-icon {
+    height: 22px;
+    width: 22px;
+    min-height: 0;
+    padding: 0;
+  }
+  .field-label label {
+    margin: 0;
+  }
+}

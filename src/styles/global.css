@@ -1,0 +1,58 @@
+/* Icon font, global utilities and overlay visibility. */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block; /* never flash ligature text */
+  src: url(../fonts/material-icons.woff2) format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 16px;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+
+@layer utilities {
+  /* Tailwind display utilities (flex/grid) would otherwise beat the hidden attribute */
+  .custom-interface [hidden] {
+    display: none !important;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--border-hover);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 6px;
+  }
+}
+
+/* Window dragging: the header carries data-tauri-drag-region="deep"; Tauri skips buttons,
+   links and inputs, and a double-click toggles maximize. */
+
+.command-palette-overlay {
+  display: none;
+}
+.command-palette-overlay.visible {
+  display: flex !important;
+}
+.settings-overlay.visible {
+  @apply flex;
+}

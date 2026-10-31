@@ -1,0 +1,57 @@
+/* Status bar. */
+@layer components {
+  /* ---------- Status bar (on canvas, under the panel) ---------- */
+  .status-bar {
+    @apply flex items-center gap-2 h-6 px-2 font-mono text-[12px] text-text-secondary shrink-0;
+  }
+  .status-bar .status-dot {
+    @apply w-1.5 h-1.5 rounded-full shrink-0;
+    background: var(--success-color);
+  }
+  .status-bar.is-error {
+    color: var(--error-text);
+  }
+  .status-bar.is-error .status-dot {
+    background: var(--error-color);
+  }
+  .status-bar .status-msg {
+    @apply truncate;
+  }
+  .status-bar .status-meta {
+    @apply shrink-0 text-text-secondary;
+  }
+  .status-bar .status-meta::before {
+    content: '·';
+    @apply mr-2 text-text-tertiary;
+  }
+
+  kbd,
+  .kbd {
+    @apply inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-[4px] border font-mono text-[11px] text-text-secondary leading-none;
+    background: var(--bg-input);
+    border-color: var(--field-border);
+  }
+
+  .result-box {
+    @apply m-0 font-mono text-[13px] whitespace-pre-wrap break-all text-text-primary;
+  }
+
+  .color-preview {
+    @apply h-[100px] rounded-[6px] border border-border mb-4;
+  }
+  .stats-grid {
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .stat-card {
+    @apply border rounded-[6px] p-4 text-center;
+    background: var(--bg-input);
+    border-color: var(--field-border);
+  }
+  .stat-value {
+    @apply text-[20px] font-semibold text-text-primary;
+  }
+  .stat-label {
+    @apply text-[11px] text-text-secondary mt-1;
+  }
+}

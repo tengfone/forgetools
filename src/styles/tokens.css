@@ -1,0 +1,141 @@
+/* Design tokens: colour, type and motion custom properties (light/dark/high contrast). */
+/*
+ * Forge — instrument dark.
+ * Tokens: canvas → panel → control. One accent (molten amber) for focus, the active
+ * nav marker, selection and the single primary action. Contrast pairs are listed in DESIGN.md.
+ */
+@layer base {
+  :root {
+    /* Light */
+    --bg-app: #f4f4f2;
+    --bg-sidebar: transparent;
+    --bg-panel: #ffffff;
+    --bg-card: #ffffff; /* floating layers */
+    --bg-input: #f7f7f5; /* controls */
+    --bg-control-hover: #efefec;
+    --text-primary: #18181b; /* 17.7:1 on panel */
+    --text-secondary: #52525b; /* 7.7:1 panel, 7.0:1 canvas */
+    --text-tertiary: #6b6b73; /* labels: 4.8:1 canvas, 4.9:1 control */
+    --accent-color: #e5670f; /* focus border / markers */
+    --accent-hover: #c2560c;
+    --accent-text: #a84a06; /* accent as text: 5.8:1 panel, 5.2:1 canvas */
+    --accent-fill: #ff8a3d;
+    --accent-fill-hover: #ff9d5c;
+    --on-accent: #1a0e05; /* 8.1:1 on fill, 9.2:1 on hover */
+    --on-accent-muted: #3a2210;
+    --border-color: #e4e4e0;
+    --border-hover: #c9c9c3;
+    --field-border: #dcdcd7;
+    --success-color: #22b866;
+    --error-color: #e5484d;
+    --warning-color: #e0a400;
+    --success-text: #1a7f45; /* 5.0:1 panel */
+    --error-text: #c62828; /* 5.6:1 panel */
+    --hover-tint: rgba(0, 0, 0, 0.04);
+    --active-tint: rgba(0, 0, 0, 0.06);
+    --active-hover-tint: rgba(0, 0, 0, 0.08);
+    --focus-ring: rgba(255, 138, 61, 0.25);
+    --selection: rgba(255, 138, 61, 0.28);
+    --float-shadow: 0 12px 32px -8px rgba(20, 20, 18, 0.18), 0 2px 6px rgba(20, 20, 18, 0.06);
+    --scrim: rgba(0, 0, 0, 0.32);
+    --part-header: #b4434a;
+    --part-payload: #3d7650;
+    --part-signature: #3a5d8c;
+    --ui-font: 'Inter Variable', Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    --mono-font: 'JetBrains Mono Variable', 'JetBrains Mono', 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg-app: #0b0b0c;
+    --bg-panel: #111113;
+    --bg-card: #141416;
+    --bg-input: #17171a;
+    --bg-control-hover: #1c1c20;
+    --text-primary: #ededef; /* 16.1:1 panel */
+    --text-secondary: #a0a0a8; /* 7.3:1 panel, 6.9:1 control */
+    --text-tertiary: #8a8a92; /* raised from #6e6e76 (3.7:1): 5.5:1 panel, 5.2:1 control */
+    --accent-color: #ff8a3d;
+    --accent-hover: #ff9d5c;
+    --accent-text: #ff8a3d; /* 8.0:1 panel */
+    --accent-fill: #ff8a3d;
+    --accent-fill-hover: #ff9d5c;
+    --on-accent: #1a0e05;
+    --on-accent-muted: #3a2210;
+    --border-color: #1f1f22;
+    --border-hover: #34343a;
+    --field-border: #26262b;
+    --success-color: #3ddc84;
+    --error-color: #ff6b6b;
+    --warning-color: #f5c443;
+    --success-text: #3ddc84; /* 10.6:1 panel */
+    --error-text: #ff6b6b; /* 6.8:1 panel */
+    --hover-tint: rgba(255, 255, 255, 0.04);
+    --active-tint: rgba(255, 255, 255, 0.06);
+    --active-hover-tint: rgba(255, 255, 255, 0.08);
+    --focus-ring: rgba(255, 138, 61, 0.25);
+    --selection: rgba(255, 138, 61, 0.25);
+    --float-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --scrim: rgba(0, 0, 0, 0.5);
+    --part-header: #f08a8a;
+    --part-payload: #93bf9e;
+    --part-signature: #8fadd6;
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    font-family: var(--ui-font);
+  }
+  button,
+  input,
+  select,
+  textarea,
+  option {
+    color: inherit;
+    font-family: inherit;
+  }
+  option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+  }
+  ::selection {
+    background: var(--selection);
+  }
+  :focus-visible {
+    outline: 1px solid var(--accent-color);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  .form-control:focus-visible {
+    outline: none;
+  }
+  body {
+    caret-color: var(--accent-color);
+    font-variant-numeric: tabular-nums;
+    accent-color: var(--accent-fill);
+  }
+
+  /* Ramp: 11 / 12 / 13 / 15 / 20 */
+  h1 {
+    @apply text-[20px] font-semibold leading-tight;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    @apply text-[15px] font-semibold leading-tight;
+  }
+  h3 {
+    @apply text-[13px] font-semibold;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

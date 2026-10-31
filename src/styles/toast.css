@@ -1,0 +1,35 @@
+/* Toast. */
+@layer components {
+  /* ---------- Toast ---------- */
+  .toast {
+    @apply fixed bottom-9 right-4 text-text-primary pl-3 pr-3 h-9 rounded-[8px] border border-border opacity-0 z-[2000] text-[13px] flex items-center gap-2;
+    background: var(--bg-card);
+    box-shadow: var(--float-shadow);
+    transform: translateY(6px);
+    transition:
+      opacity 160ms ease-out,
+      transform 160ms ease-out;
+  }
+  .toast.visible {
+    opacity: 1;
+    transform: none;
+  }
+  .toast::before {
+    content: '';
+    @apply block w-1.5 h-1.5 rounded-full shrink-0;
+  }
+  .toast-success::before {
+    background: var(--success-color);
+  }
+  .toast-error::before {
+    background: var(--error-color);
+  }
+  .toast-action {
+    @apply ml-1 -mr-1 px-2 h-6 rounded-[4px] border-0 bg-transparent font-mono text-[11px] uppercase font-medium cursor-pointer;
+    letter-spacing: 0.06em;
+    color: var(--accent-text);
+  }
+  .toast-action:hover {
+    background: var(--hover-tint);
+  }
+}

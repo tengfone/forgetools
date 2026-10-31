@@ -1,0 +1,111 @@
+/* Responsive breakpoints (sidebar drawer below 900px). */
+/* Responsive: below 900px the sidebar becomes a drawer opened from the titlebar menu button */
+.sidebar-scrim[hidden] {
+  display: none;
+}
+.app-body {
+  height: calc(100vh - 40px);
+  position: relative;
+}
+@media (max-width: 899px) {
+  .titlebar-menu {
+    display: inline-flex;
+  }
+  body.sidebar-collapsed .sidebar,
+  .sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 400;
+    width: min(280px, calc(100vw - 48px));
+    padding-left: 8px;
+    padding-right: 8px;
+    border: 1px solid var(--border-color);
+    border-left: 0;
+    border-radius: 0 10px 10px 0;
+    transform: translateX(-8px);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      transform 160ms ease-out,
+      opacity 160ms ease-out,
+      visibility 0s linear 160ms;
+  }
+  /* In the drawer the sidebar is always the full list */
+  body.sidebar-collapsed .sidebar-filter {
+    display: block;
+  }
+  body.sidebar-collapsed .nav-label {
+    display: inline;
+  }
+  body.sidebar-collapsed #toolsNav > .nav-group,
+  body.sidebar-collapsed #navQuick .category-header {
+    display: block;
+  }
+  body.sidebar-collapsed .nav-pin {
+    display: inline-flex;
+  }
+  body.sidebar-collapsed .side-cats {
+    display: none;
+  }
+  body.sidebar-collapsed .nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  body.sidebar-collapsed .nav-row .nav-item {
+    padding-right: 28px;
+  }
+  body.sidebar-collapsed .sidebar-scroll {
+    flex: 1 1 0%;
+    margin-right: -8px;
+  }
+  body.sidebar-collapsed #navQuick:not(:empty) {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+  body.drawer-open .sidebar {
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    transition:
+      transform 160ms ease-out,
+      opacity 160ms ease-out;
+    box-shadow: var(--float-shadow);
+  }
+  .sidebar-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 399;
+    background: var(--scrim);
+  }
+  .tool-shell {
+    padding-left: 8px;
+  }
+}
+@media (max-width: 759px) {
+  .split-view {
+    flex-direction: column;
+  }
+  .split-view > div {
+    border-right: 0;
+    min-height: 200px;
+  }
+  .split-view > div + div {
+    border-top: 1px solid var(--border-color);
+  }
+  .welcome-inner {
+    @apply px-4 pt-6;
+  }
+  .home-browse-head {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 900px) {
+  .crumb-desc {
+    display: none;
+  }
+}

@@ -1,0 +1,167 @@
+/* Settings dialog. */
+@layer components {
+  /* ---------- Settings dialog ---------- */
+  /* Centered below the titlebar (never under the native caption buttons). Section nav on the
+     left; one pane at a time, so nothing hides below a fold. A pane only scrolls if the window
+     is shorter than its content. */
+  .settings-overlay {
+    background: var(--scrim);
+    top: 40px;
+    padding: 6vh 16px 16px;
+  }
+  .settings-panel {
+    @apply flex flex-col border border-border rounded-[10px] overflow-hidden;
+    width: 680px;
+    max-width: 100%;
+    height: 460px;
+    max-height: 100%;
+    background: var(--bg-card);
+    box-shadow: var(--float-shadow);
+  }
+  .settings-head {
+    @apply h-11 shrink-0 pl-4 pr-2 border-b border-border flex justify-between items-center;
+  }
+  .settings-title {
+    @apply m-0 font-mono text-[11px] font-medium uppercase text-text-tertiary;
+    letter-spacing: 0.06em;
+  }
+  .settings-body {
+    @apply flex flex-1 min-h-0;
+  }
+  .settings-nav {
+    @apply flex flex-col gap-0.5 shrink-0 p-2 border-r border-border;
+    width: 176px;
+  }
+  .settings-tab {
+    @apply relative flex items-center gap-2.5 w-full h-8 px-2.5 rounded-[6px] border-0 bg-transparent text-left text-[13px] cursor-pointer text-text-secondary;
+    font-family: var(--ui-font);
+    transition:
+      background-color 120ms ease-out,
+      color 120ms ease-out;
+  }
+  .settings-tab .material-icons {
+    font-size: 16px;
+    color: var(--text-secondary);
+  }
+  .settings-tab:hover {
+    background: var(--hover-tint);
+    color: var(--text-primary);
+  }
+  .settings-tab[aria-selected='true'] {
+    background: var(--active-tint);
+    color: var(--text-primary);
+  }
+  .settings-tab[aria-selected='true'] .material-icons {
+    color: var(--text-primary);
+  }
+  .settings-tab[aria-selected='true']::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--accent-fill);
+  }
+  .settings-tab-dot {
+    @apply ml-auto w-1.5 h-1.5 rounded-full;
+    background: var(--accent-fill);
+  }
+  .settings-tab-dot[hidden] {
+    display: none;
+  }
+  .settings-nav-version {
+    @apply mt-auto px-2.5 pb-1 font-mono text-[11px] text-text-tertiary;
+  }
+  .settings-pane {
+    @apply flex-1 min-w-0 overflow-y-auto px-6 pt-5 pb-6 outline-none;
+  }
+  .settings-pane[hidden] {
+    display: none;
+  }
+  .settings-pane-title {
+    @apply m-0 mb-2 text-[15px] font-semibold text-text-primary;
+  }
+
+  /* Rows: label + hint on the left, control on the right, hairline between rows */
+  .setting-row {
+    @apply flex items-center justify-between gap-6 py-3.5 border-b border-border;
+  }
+  label.setting-row {
+    @apply cursor-pointer;
+  }
+  .setting-row:last-child {
+    @apply border-b-0;
+  }
+  .setting-row-stack {
+    @apply flex-col items-stretch gap-2.5;
+  }
+  .setting-text {
+    @apply flex flex-col gap-0.5 min-w-0;
+  }
+  .setting-name {
+    @apply text-[13px] font-medium text-text-primary;
+  }
+  .setting-hint {
+    @apply text-[12px] text-text-secondary;
+    line-height: 1.45;
+  }
+  .setting-hint.is-error {
+    color: var(--error-text);
+  }
+
+  /* Switch: a styled checkbox (role="switch"), amber when on (selection state) */
+  .setting-switch {
+    @apply relative shrink-0 m-0 cursor-pointer rounded-full border;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 30px;
+    height: 18px;
+    background: var(--bg-input);
+    border-color: var(--field-border);
+    transition:
+      background-color 140ms ease-out,
+      border-color 140ms ease-out;
+  }
+  .setting-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    background: var(--text-secondary);
+    transition:
+      transform 140ms ease-out,
+      background-color 140ms ease-out;
+  }
+  .setting-switch:hover {
+    border-color: var(--border-hover);
+  }
+  .setting-switch:checked {
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
+  }
+  .setting-switch:checked::after {
+    transform: translateX(12px);
+    background: var(--on-accent);
+  }
+  .setting-switch:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+
+  @media (max-width: 560px) {
+    .settings-nav {
+      width: 52px;
+    }
+    .settings-tab span:not(.settings-tab-dot) {
+      display: none;
+    }
+    .settings-nav-version {
+      display: none;
+    }
+  }
+}

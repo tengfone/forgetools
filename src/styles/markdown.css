@@ -1,0 +1,80 @@
+/* Markdown preview. */
+/* Markdown preview */
+.markdown-preview {
+  line-height: 1.6;
+}
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  @apply font-semibold mt-6 mb-3;
+}
+.markdown-preview > :first-child {
+  margin-top: 0;
+}
+.markdown-preview h1 {
+  @apply text-[20px] border-b border-border pb-2;
+}
+.markdown-preview h2 {
+  @apply text-[15px] border-b border-border pb-2;
+}
+.markdown-preview h3 {
+  @apply text-[15px];
+}
+.markdown-preview p {
+  @apply mb-4;
+}
+.markdown-preview ul,
+.markdown-preview ol {
+  @apply mb-4 pl-6;
+}
+.markdown-preview ul {
+  @apply list-disc;
+}
+.markdown-preview ol {
+  @apply list-decimal;
+}
+.markdown-preview li {
+  @apply mb-1;
+}
+.markdown-preview code {
+  @apply px-1.5 py-0.5 rounded-[4px] text-[12px] font-mono;
+  background: var(--bg-app);
+}
+.markdown-preview pre {
+  @apply p-4 rounded-[6px] overflow-x-auto mb-4;
+  background: var(--bg-app);
+}
+.markdown-preview pre code {
+  @apply bg-transparent p-0;
+}
+.markdown-preview blockquote {
+  @apply pl-4 italic my-4 text-text-secondary;
+  border-left: 1px solid var(--border-hover);
+}
+.markdown-preview a {
+  color: var(--accent-text);
+  text-underline-offset: 3px;
+}
+.markdown-preview a:hover {
+  @apply underline;
+}
+.markdown-preview table {
+  @apply w-full border-collapse mb-4;
+}
+.markdown-preview th,
+.markdown-preview td {
+  @apply border border-border px-3 py-1.5;
+}
+.markdown-preview th {
+  @apply font-semibold;
+  background: var(--bg-input);
+}
+.markdown-preview img {
+  @apply max-w-full h-auto rounded-[6px] my-4;
+}
+.markdown-preview hr {
+  @apply border-t border-border my-6;
+}

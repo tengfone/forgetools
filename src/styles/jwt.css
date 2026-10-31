@@ -1,0 +1,68 @@
+/* JWT parts. */
+@layer components {
+  /* ---------- JWT parts: flat sections with a coloured key dot ---------- */
+  .jwt-parts {
+    @apply flex flex-col;
+  }
+  .jwt-part,
+  .data-part {
+    --part: var(--accent-color);
+    @apply px-5 py-4 border-b border-border;
+  }
+  .jwt-part:last-child {
+    border-bottom: 0;
+  }
+  .jwt-part h3 {
+    @apply inline-flex items-center gap-2;
+    color: var(--part);
+  }
+  .jwt-part h3::before {
+    content: '';
+    @apply block w-1.5 h-1.5 rounded-full;
+    background: var(--part);
+  }
+  .jwt-header {
+    --part: var(--part-header);
+  }
+  .jwt-payload {
+    --part: var(--part-payload);
+  }
+  .jwt-signature {
+    --part: var(--part-signature);
+  }
+  .data-part-head {
+    @apply flex items-center gap-2 font-mono text-[11px] uppercase;
+    color: var(--part);
+  }
+  .data-part-head::before {
+    content: '';
+    @apply block w-1.5 h-1.5 rounded-full;
+    background: var(--part);
+  }
+  .data-part-body {
+    @apply pt-2 font-mono text-[13px] whitespace-pre-wrap break-all;
+  }
+
+  .match-list > .empty-state {
+    @apply p-4;
+  }
+  .match-card {
+    @apply px-4 py-2.5 border-b border-border;
+  }
+  .match-card:last-child {
+    border-bottom: 0;
+  }
+  .match-card-index {
+    @apply font-mono text-[11px] text-text-secondary mb-1;
+  }
+  .match-card-value {
+    @apply font-mono text-[13px] break-all;
+    color: var(--success-text);
+  }
+  .tool-empty {
+    @apply flex flex-col items-center gap-2 py-8 text-text-secondary text-[13px];
+  }
+  .tool-empty .material-icons {
+    @apply text-[28px] opacity-40;
+  }
+}

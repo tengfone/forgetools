@@ -1,0 +1,25 @@
+/* Editor panes. */
+@layer components {
+  /* ---------- Editor panes ---------- */
+  .pane-head {
+    @apply px-3 h-10 border-b border-border flex justify-between items-center gap-2 shrink-0;
+  }
+  .pane-label {
+    @apply font-mono text-[11px] font-medium uppercase text-text-tertiary mr-1;
+    letter-spacing: 0.06em;
+  }
+  .pane-body {
+    @apply flex-1 relative overflow-hidden;
+    background: var(--bg-panel);
+  }
+
+  .empty-state {
+    @apply flex flex-wrap items-center gap-2 text-[13px] text-text-secondary;
+  }
+  .empty-state .btn-ghost {
+    @apply h-[26px] px-2 text-[12px];
+  }
+  .empty-icon {
+    @apply text-[28px] mb-4 opacity-40;
+  }
+}

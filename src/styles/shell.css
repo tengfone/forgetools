@@ -1,0 +1,223 @@
+/* Shell: titlebar, caption buttons and the sidebar frame. */
+@layer components {
+  /* ---------- Shell ---------- */
+  .titlebar {
+    @apply h-10 flex items-center gap-2 px-3 relative z-[100] min-w-0;
+    background: var(--bg-app);
+  }
+  /* macOS: native traffic lights (overlay title bar) on the left. Windows/Linux: our own caption
+     buttons sit flush with the right edge, so the bar has no right padding there. */
+  .platform-mac .titlebar {
+    padding-left: 78px;
+  }
+  .platform-win .titlebar,
+  .platform-linux .titlebar {
+    padding-right: 0;
+  }
+  .window-controls {
+    @apply flex items-stretch self-stretch shrink-0;
+    margin-left: -4px;
+  } /* 4px from the controls (bar gap is 8px) */
+  .window-controls[hidden] {
+    display: none;
+  }
+  .wc-btn {
+    @apply w-[46px] flex items-center justify-center border-0 bg-transparent p-0 cursor-default text-text-secondary;
+  }
+  .wc-btn svg {
+    width: 10px;
+    height: 10px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+  }
+  .wc-btn:hover {
+    background: var(--hover-tint);
+    color: var(--text-primary);
+  }
+  .wc-btn:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+  }
+  .wc-close:hover {
+    background: #c42b1c;
+    color: #fff;
+  }
+  .titlebar-menu {
+    display: none;
+  }
+  .titlebar-menu {
+    @apply w-7 h-7 shrink-0 items-center justify-center border-0 rounded-[6px] bg-transparent cursor-pointer text-text-secondary p-0 -ml-1;
+  }
+  .titlebar-menu:hover {
+    background: var(--hover-tint);
+    color: var(--text-primary);
+  }
+  .titlebar-menu .material-icons {
+    font-size: 18px;
+    width: 18px;
+    overflow: hidden;
+  }
+  .titlebar-controls {
+    @apply min-w-0 overflow-hidden;
+  }
+  .titlebar-home {
+    @apply inline-flex items-center h-7 px-2 -ml-1 border-0 rounded-[6px] bg-transparent cursor-pointer shrink-0;
+    transition: background-color 120ms ease-out;
+  }
+  .titlebar-home:hover {
+    background: var(--hover-tint);
+  }
+  .wordmark {
+    @apply inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold text-text-primary select-none;
+    letter-spacing: -0.01em;
+  }
+  .wordmark-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full;
+    background: var(--accent-fill);
+  }
+  .wordmark-lg {
+    @apply text-[20px] gap-2;
+  }
+  .wordmark-lg .wordmark-dot {
+    @apply w-2 h-2;
+  }
+  .wordmark-logo {
+    @apply inline-block w-4 h-4 rounded-[4px];
+    -webkit-user-drag: none;
+  }
+  .wordmark-lg .wordmark-logo {
+    @apply w-8 h-8 rounded-[7px];
+  }
+
+  /* ---------- Sidebar (one navigation surface; collapses to a 56px rail) ---------- */
+  .sidebar {
+    @apply w-[240px] flex flex-col px-2 pb-2 pt-1 shrink-0 min-h-0;
+    background: var(--bg-app);
+  }
+  .sidebar-head {
+    @apply flex items-center gap-1 mb-1 shrink-0;
+  }
+  .sidebar-filter {
+    @apply flex-1 min-w-0;
+  }
+  .side-btn,
+  .tb-btn {
+    @apply w-7 h-7 shrink-0 inline-flex items-center justify-center border-0 rounded-[6px] bg-transparent cursor-pointer text-text-secondary p-0;
+    transition:
+      background-color 120ms ease-out,
+      color 120ms ease-out;
+  }
+  .side-btn:hover,
+  .tb-btn:hover {
+    background: var(--hover-tint);
+    color: var(--text-primary);
+  }
+  .side-btn .material-icons,
+  .tb-btn .material-icons {
+    font-size: 18px;
+    width: 18px;
+    overflow: hidden;
+  }
+  .side-home {
+    @apply shrink-0 mb-1;
+  }
+  .sidebar-scroll {
+    @apply flex-1 min-h-0 overflow-y-auto;
+    scrollbar-gutter: stable;
+    margin-right: -8px;
+    padding-right: 0;
+    padding-top: 14px;
+    /* soft edge where items scroll under Home, instead of a hard clip */
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  }
+  .side-cats {
+    display: none;
+  }
+
+  /* Collapsed: 56px icon rail. Same buttons, labels hidden, so icons never move. */
+  body.sidebar-collapsed .sidebar {
+    @apply w-14 px-2;
+  }
+  body.sidebar-collapsed .sidebar-search,
+  body.sidebar-collapsed .nav-label,
+  body.sidebar-collapsed #toolsNav > .nav-group,
+  body.sidebar-collapsed #navEmpty,
+  body.sidebar-collapsed .nav-pin,
+  body.sidebar-collapsed #navQuick .category-header {
+    display: none;
+  }
+  body.sidebar-collapsed .sidebar-head {
+    @apply flex-col justify-center gap-0.5;
+  }
+  body.sidebar-collapsed .sidebar-scroll {
+    flex: 0 1 auto;
+    margin-right: 0;
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+  body.sidebar-collapsed .sidebar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  body.sidebar-collapsed .nav-item {
+    @apply w-10 justify-center px-0 mx-auto;
+  }
+  body.sidebar-collapsed .nav-row .nav-item {
+    padding-right: 0;
+  }
+  body.sidebar-collapsed #navQuick:not(:empty) {
+    @apply mt-1 pt-1 border-t border-border;
+  }
+  body.sidebar-collapsed .side-cats {
+    @apply flex flex-col gap-0.5 mt-1 pt-1 border-t border-border;
+  }
+  body.sidebar-collapsed .nav-item.active::before {
+    left: -6px;
+  }
+  #navQuick .nav-item.active::before {
+    display: none;
+  }
+  .tool-shell {
+    @apply h-full flex flex-col px-2 pb-0 pt-0 min-h-0;
+  }
+  .tool-panel {
+    @apply flex-1 flex flex-col min-h-0 overflow-hidden border border-border;
+    background: var(--bg-panel);
+    border-radius: 10px;
+  }
+  .tool-header {
+    @apply h-11 shrink-0 flex items-center justify-between gap-3 px-3 pl-4 border-b border-border;
+  }
+  .crumb {
+    @apply flex items-baseline gap-2 min-w-0;
+  }
+  .crumb-cat {
+    @apply text-[13px] text-text-secondary whitespace-nowrap;
+  }
+  .crumb-sep {
+    @apply text-[13px] text-text-tertiary;
+  }
+  .crumb-title {
+    @apply m-0 text-[15px] font-semibold text-text-primary whitespace-nowrap outline-none;
+  }
+  .crumb-title:focus-visible {
+    box-shadow: none;
+    outline: none;
+    text-decoration: underline;
+    text-decoration-color: var(--accent-color);
+    text-underline-offset: 4px;
+  }
+  .crumb-desc {
+    @apply ml-2 text-[12px] text-text-secondary truncate min-w-0;
+  }
+  .tool-header-actions {
+    @apply flex items-center gap-1.5 shrink-0;
+  }
+  .tool-header-actions .btn-sm {
+    @apply h-7;
+  }
+  .tool-header-actions .btn-sm.btn-icon:has(> .material-icons:only-child) {
+    @apply w-7 px-0 justify-center;
+  }
+}

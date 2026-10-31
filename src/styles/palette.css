@@ -1,0 +1,70 @@
+/* Command palette. */
+@layer components {
+  /* ---------- Command palette ---------- */
+  .command-palette-overlay {
+    background: var(--scrim);
+  }
+  .command-palette {
+    @apply w-[640px] max-w-[calc(100vw-32px)] max-h-[64vh] flex flex-col overflow-hidden border border-border rounded-[10px];
+    background: var(--bg-card);
+    box-shadow: var(--float-shadow);
+  }
+  .cmd-input {
+    @apply w-full h-12 shrink-0 px-4 border-0 border-b border-solid border-border text-text-primary text-[15px] outline-none bg-transparent;
+    font-family: var(--ui-font);
+  }
+  .cmd-input:focus-visible {
+    box-shadow: none;
+  }
+  .cmd-results {
+    @apply overflow-y-auto px-1.5 py-1.5;
+  }
+  .cmd-group-label {
+    @apply px-2.5 pt-2.5 pb-1 font-mono text-[11px] uppercase text-text-tertiary;
+    letter-spacing: 0.06em;
+  }
+  .cmd-item {
+    @apply relative h-9 px-2.5 flex items-center gap-2.5 cursor-pointer rounded-[6px] text-[13px] text-text-primary;
+  }
+  .cmd-item .material-icons {
+    @apply text-[16px] shrink-0;
+    color: var(--text-secondary);
+  }
+  .cmd-item.is-selected {
+    background: var(--active-tint);
+  }
+  .cmd-item.is-selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    bottom: 9px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--accent-fill);
+  }
+  .cmd-item.is-selected .material-icons {
+    color: var(--text-primary);
+  }
+  .cmd-meta {
+    @apply text-[12px] text-text-secondary truncate;
+  }
+  .cmd-item mark {
+    background: none;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--accent-color);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .cmd-footer {
+    @apply flex shrink-0 gap-4 h-9 items-center px-4 border-t border-border font-mono text-[11px] text-text-secondary;
+  }
+  .cmd-footer span {
+    @apply inline-flex items-center gap-1;
+  }
+  .cmd-empty {
+    @apply px-4 py-6 text-center text-[13px] text-text-secondary;
+  }
+}
