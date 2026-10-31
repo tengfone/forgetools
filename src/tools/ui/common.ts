@@ -1,4 +1,4 @@
-import { $, clearWithUndo, resetStatus, toolEpoch, isUserEdit } from '../../ui';
+import { $, $f, clearWithUndo, esc, resetStatus, setFieldInvalid, toolEpoch, isUserEdit } from '../../ui';
 // Shared building blocks for custom tool UIs so every tool looks and behaves the same.
 
 /** Debounce live updates (default 120ms). */
@@ -66,7 +66,7 @@ export function wireLiveTool(o: LiveToolWiring): void {
   else if (o.initial !== 'none') resetStatus();
 }
 
-const icon = (name: string): string => `<i class="material-icons icon-sm" aria-hidden="true">${name}</i>`;
+export const icon = (name: string): string => `<i class="material-icons icon-sm" aria-hidden="true">${name}</i>`;
 
 /**
  * Input card action buttons in the fixed order Paste, Sample, Clear.
@@ -210,3 +210,56 @@ export function decodeBase64Url(str: string): Uint8Array {
 /** decodeBase64Url + strict UTF-8 decode. Throws on invalid base64 or invalid UTF-8. */
 export const decodeBase64UrlText = (str: string): string =>
   new TextDecoder('utf-8', { fatal: true }).decode(decodeBase64Url(str));
+
+// ── Picker / builder widgets (shared by the richer custom tool UIs) ─────────
+
+/** Lowercased, alphanumeric-only slug for element ids. */
+export const slug = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Pretty two-space JSON. */
+export const jsonPretty = (v: unknown): string => JSON.stringify(v, null, 2);
+
+/** "1 row" / "2 rows". */
+export const plural = (n: number, w: string): string => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+/** A labelled toolbar `<select>`; `value` marks the selected option. */
+export const select = (id: string, label: string, choices: Array<[string, string]>, value?: string): string => `
+    <label class="flex items-center gap-2 text-[12px]">
+        <span class="text-text-secondary">${esc(label)}</span>
+        <select id="${id}" class="toolbar-select cursor-pointer">${choices.map(([v, l]) => `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    </label>`;
+
+/** A wrapping set of checkbox chips. Ids are `${prefix}-${slug(value)}`. */
+export function chipSet(
+  prefix: string,
+  labelId: string,
+  items: Array<[value: string, label: string]>,
+  checked: readonly string[],
+): string {
+  return `<div class="chip-set" role="group" aria-labelledby="${labelId}">${items
+    .map(
+      ([v, l]) =>
+        `<label class="check-chip"><input type="checkbox" id="${prefix}-${slug(v)}" value="${esc(v)}"${checked.includes(v) ? ' checked' : ''}>${esc(l)}</label>`,
+    )
+    .join('')}</div>`;
+}
+
+/** Values of the checked checkboxes within `root`. */
+export const checkedValues = (root: HTMLElement): string[] =>
+  Array.from(root.querySelectorAll<HTMLInputElement>('input[type=checkbox]:checked')).map((c) => c.value);
+
+/** Check exactly the checkboxes in `root` whose value is in `values`. */
+export const setChecked = (root: HTMLElement, values: readonly string[]): void =>
+  root.querySelectorAll<HTMLInputElement>('input[type=checkbox]').forEach((c) => {
+    c.checked = values.includes(c.value);
+  });
+
+/** Read an integer field in [lo, hi]; marks the field and throws a readable error otherwise. */
+export function intField(id: string, lo: number, hi: number, label: string): number {
+  const raw = $f(id).value.trim();
+  const n = Number(raw);
+  const ok = raw !== '' && Number.isInteger(n) && n >= lo && n <= hi;
+  setFieldInvalid(id, !ok, ok ? undefined : `${label} must be a whole number from ${lo} to ${hi}`);
+  if (!ok) throw new Error(`${label} must be a whole number from ${lo} to ${hi}`);
+  return n;
+}

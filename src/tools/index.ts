@@ -108,7 +108,7 @@ const tools: ToolsRegistry = {
     icon: 'verified',
     useCustomUI: true,
     primaryInput: 'hmac-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.hmacTool })),
+    load: () => import('./ui/hmac'),
   },
   csrDecoder: {
     id: 'csrDecoder',
@@ -120,7 +120,7 @@ const tools: ToolsRegistry = {
     icon: 'assignment',
     useCustomUI: true,
     primaryInput: 'csr-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.csrDecoder })),
+    load: () => import('./ui/csrDecoder'),
   },
   samlDecoder: {
     id: 'samlDecoder',
@@ -132,7 +132,7 @@ const tools: ToolsRegistry = {
     icon: 'badge',
     useCustomUI: true,
     primaryInput: 'saml-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.samlDecoder })),
+    load: () => import('./ui/samlDecoder'),
   },
   urlParser: {
     id: 'urlParser',
@@ -144,7 +144,7 @@ const tools: ToolsRegistry = {
     icon: 'travel_explore',
     useCustomUI: true,
     primaryInput: 'urlp-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.urlParser })),
+    load: () => import('./ui/urlParser'),
   },
   userAgent: {
     id: 'userAgent',
@@ -155,7 +155,7 @@ const tools: ToolsRegistry = {
     icon: 'devices',
     useCustomUI: true,
     primaryInput: 'ua-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.uaParser })),
+    load: () => import('./ui/userAgent'),
   },
   cidr: {
     id: 'cidr',
@@ -166,7 +166,7 @@ const tools: ToolsRegistry = {
     icon: 'lan',
     useCustomUI: true,
     primaryInput: 'cidr-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.cidrCalc })),
+    load: () => import('./ui/cidr'),
   },
   decompress: {
     id: 'decompress',
@@ -178,7 +178,7 @@ const tools: ToolsRegistry = {
     icon: 'compress',
     useCustomUI: true,
     primaryInput: 'gz-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.decompressTool })),
+    load: () => import('./ui/decompress'),
   },
   binaryDecoder: {
     id: 'binaryDecoder',
@@ -190,7 +190,7 @@ const tools: ToolsRegistry = {
     icon: 'memory',
     useCustomUI: true,
     primaryInput: 'bin-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.binaryDecoder })),
+    load: () => import('./ui/binaryDecoder'),
   },
   unicodeInspector: {
     id: 'unicodeInspector',
@@ -201,7 +201,7 @@ const tools: ToolsRegistry = {
     icon: 'font_download',
     useCustomUI: true,
     primaryInput: 'uni-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.unicodeInspector })),
+    load: () => import('./ui/unicodeInspector'),
   },
   dockerfileLint: {
     id: 'dockerfileLint',
@@ -212,7 +212,7 @@ const tools: ToolsRegistry = {
     icon: 'rule',
     useCustomUI: true,
     primaryInput: 'dfl-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.dockerfileLint })),
+    load: () => import('./ui/dockerfileLint'),
   },
 
   // ── Format ──────────────────────────────────────────────────────────
@@ -351,7 +351,7 @@ const tools: ToolsRegistry = {
     icon: 'code',
     useCustomUI: true,
     primaryInput: 'cjs-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.cssJsFormat })),
+    load: () => import('./ui/cssJsFormat'),
   },
   graphqlFormat: {
     id: 'graphqlFormat',
@@ -362,7 +362,7 @@ const tools: ToolsRegistry = {
     icon: 'hub',
     useCustomUI: true,
     primaryInput: 'gql-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.graphqlFormat })),
+    load: () => import('./ui/graphqlFormat'),
   },
 
   // ── Convert ─────────────────────────────────────────────────────────
@@ -428,7 +428,7 @@ const tools: ToolsRegistry = {
     icon: 'swap_horiz',
     useCustomUI: true,
     primaryInput: 'jy-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.jsonYaml })),
+    load: () => import('./ui/jsonYaml'),
   },
   jsonTypes: {
     id: 'jsonTypes',
@@ -439,7 +439,7 @@ const tools: ToolsRegistry = {
     icon: 'data_object',
     useCustomUI: true,
     primaryInput: 'jt-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.jsonTypes })),
+    load: () => import('./ui/jsonTypes'),
   },
   tomlJson: {
     id: 'tomlJson',
@@ -450,7 +450,7 @@ const tools: ToolsRegistry = {
     icon: 'settings_suggest',
     useCustomUI: true,
     primaryInput: 'tj-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.tomlJson })),
+    load: () => import('./ui/tomlJson'),
   },
   envJson: {
     id: 'envJson',
@@ -462,7 +462,7 @@ const tools: ToolsRegistry = {
     icon: 'key',
     useCustomUI: true,
     primaryInput: 'ej-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.envJson })),
+    load: () => import('./ui/envJson'),
   },
   pemJwk: {
     id: 'pemJwk',
@@ -474,7 +474,7 @@ const tools: ToolsRegistry = {
     icon: 'vpn_key',
     useCustomUI: true,
     primaryInput: 'pj-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.pemJwk })),
+    load: () => import('./ui/pemJwk'),
   },
   curlConverter: {
     id: 'curlConverter',
@@ -486,7 +486,7 @@ const tools: ToolsRegistry = {
     icon: 'terminal',
     useCustomUI: true,
     primaryInput: 'curl-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.curlConverter })),
+    load: () => import('./ui/curlConverter'),
   },
   dockerCompose: {
     id: 'dockerCompose',
@@ -498,7 +498,7 @@ const tools: ToolsRegistry = {
     icon: 'directions_boat',
     useCustomUI: true,
     primaryInput: 'dc-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.dockerCompose })),
+    load: () => import('./ui/dockerCompose'),
   },
   chmod: {
     id: 'chmod',
@@ -509,7 +509,7 @@ const tools: ToolsRegistry = {
     icon: 'lock_open',
     useCustomUI: true,
     primaryInput: 'chmod-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.chmodCalc })),
+    load: () => import('./ui/chmod'),
   },
   dataSize: {
     id: 'dataSize',
@@ -520,7 +520,7 @@ const tools: ToolsRegistry = {
     icon: 'storage',
     useCustomUI: true,
     primaryInput: 'dsz-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.dataSize })),
+    load: () => import('./ui/dataSize'),
   },
   timezone: {
     id: 'timezone',
@@ -531,7 +531,7 @@ const tools: ToolsRegistry = {
     icon: 'public',
     useCustomUI: true,
     primaryInput: 'tz-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.timezone })),
+    load: () => import('./ui/timezone'),
   },
 
   // ── Text & Utilities ────────────────────────────────────────────────
@@ -599,7 +599,7 @@ const tools: ToolsRegistry = {
     icon: 'manage_search',
     useCustomUI: true,
     primaryInput: 'jp-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.jsonPathTool })),
+    load: () => import('./ui/jsonPath'),
   },
   passwordStrength: {
     id: 'passwordStrength',
@@ -611,7 +611,7 @@ const tools: ToolsRegistry = {
     icon: 'shield',
     useCustomUI: true,
     primaryInput: 'pws-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.passwordStrengthTool })),
+    load: () => import('./ui/passwordStrength'),
   },
   passwordHash: {
     id: 'passwordHash',
@@ -623,7 +623,7 @@ const tools: ToolsRegistry = {
     icon: 'password',
     useCustomUI: true,
     primaryInput: 'pwh-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.passwordHash })),
+    load: () => import('./ui/passwordHash'),
   },
   httpStatus: {
     id: 'httpStatus',
@@ -634,7 +634,7 @@ const tools: ToolsRegistry = {
     icon: 'http',
     useCustomUI: true,
     primaryInput: 'http-input',
-    load: () => import('./ui/builders').then((m) => ({ render: m.httpStatus })),
+    load: () => import('./ui/httpStatus'),
   },
   cheatSheets: {
     id: 'cheatSheets',
@@ -645,7 +645,7 @@ const tools: ToolsRegistry = {
     icon: 'menu_book',
     useCustomUI: true,
     primaryInput: 'cheat-input',
-    load: () => import('./ui/builders').then((m) => ({ render: m.cheatSheets })),
+    load: () => import('./ui/cheatSheets'),
   },
   pipeline: {
     id: 'pipeline',
@@ -657,7 +657,7 @@ const tools: ToolsRegistry = {
     icon: 'account_tree',
     useCustomUI: true,
     primaryInput: 'chain-input',
-    load: () => import('./ui/builders').then((m) => ({ render: m.pipeline })),
+    load: () => import('./ui/pipeline'),
   },
 
   // ── Generate ────────────────────────────────────────────────────────
@@ -722,7 +722,7 @@ const tools: ToolsRegistry = {
     icon: 'draw',
     useCustomUI: true,
     primaryInput: 'jws-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.jwtSign })),
+    load: () => import('./ui/jwtSign'),
   },
   keyPair: {
     id: 'keyPair',
@@ -734,7 +734,7 @@ const tools: ToolsRegistry = {
     icon: 'vpn_lock',
     useCustomUI: true,
     primaryInput: 'kp-input',
-    load: () => import('./ui/builders').then((m) => ({ render: m.keyPair })),
+    load: () => import('./ui/keyPair'),
   },
   fakeData: {
     id: 'fakeData',
@@ -745,7 +745,7 @@ const tools: ToolsRegistry = {
     category: 'Generate',
     icon: 'group',
     useCustomUI: true,
-    load: () => import('./ui/builders').then((m) => ({ render: m.fakeData })),
+    load: () => import('./ui/fakeData'),
   },
   cronBuilder: {
     id: 'cronBuilder',
@@ -756,7 +756,7 @@ const tools: ToolsRegistry = {
     category: 'Generate',
     icon: 'schedule',
     useCustomUI: true,
-    load: () => import('./ui/builders').then((m) => ({ render: m.cronBuilder })),
+    load: () => import('./ui/cronBuilder'),
   },
   gitignore: {
     id: 'gitignore',
@@ -767,7 +767,7 @@ const tools: ToolsRegistry = {
     category: 'Generate',
     icon: 'block',
     useCustomUI: true,
-    load: () => import('./ui/builders').then((m) => ({ render: m.gitignore })),
+    load: () => import('./ui/gitignore'),
   },
   favicon: {
     id: 'favicon',
@@ -803,7 +803,7 @@ const tools: ToolsRegistry = {
     icon: 'difference',
     useCustomUI: true,
     primaryInput: 'jd-input',
-    load: () => import('./ui/textTools').then((m) => ({ render: m.jsonDiffTool })),
+    load: () => import('./ui/jsonDiff'),
   },
 };
 

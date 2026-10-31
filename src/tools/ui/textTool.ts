@@ -14,6 +14,21 @@ import {
   toolEpoch,
 } from '../../ui';
 import { debounce, inputActions, copyButton } from './common';
+import { bytesToHex } from '../lib/bytes';
+
+/** Choices for a two-direction select: option `a` (forward) and `b` (reverse). */
+export const dir = (a: string, b: string): Array<[string, string]> => [
+  ['a', a],
+  ['b', b],
+];
+
+/** JSON.stringify that renders bigint as a decimal string and Uint8Array as hex. */
+export const jsonBytes = (v: unknown): string =>
+  JSON.stringify(
+    v,
+    (_k, x: unknown) => (typeof x === 'bigint' ? x.toString() : x instanceof Uint8Array ? bytesToHex(x) : x),
+    2,
+  );
 
 export interface SelectOption {
   id: string;
