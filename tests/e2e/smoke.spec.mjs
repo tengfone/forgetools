@@ -22,7 +22,11 @@ describe('Harness smoke', () => {
   it('opens at the configured window size (no runtime resizing)', async () => {
     const conf = JSON.parse(fs.readFileSync(new URL('../../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
     const { width, height } = conf.app.windows[0];
-    expect(await browser.execute(() => [innerWidth, innerHeight])).toEqual([width, height]);
+    const [w, h] = await browser.execute(() => [innerWidth, innerHeight]);
+    // ±1px: the viewport is rounded from physical pixels (display scale) and the macOS overlay
+    // title bar can add a pixel. A runtime resize would be off by far more than that.
+    expect(Math.abs(w - width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(h - height)).toBeLessThanOrEqual(1);
   });
 
   it('shows the home screen with tools in the sidebar', async () => {
