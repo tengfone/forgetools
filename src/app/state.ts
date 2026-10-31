@@ -1,5 +1,5 @@
 import type { Tool, ToolDispose } from '../types/tools';
-import tools from '../tools';
+import tools, { CATEGORY_ORDER } from '../tools';
 
 /** The few pieces of shell state shared between app/* modules. */
 export const state: {
@@ -12,7 +12,10 @@ export const state: {
 } = { currentTool: null, renderToken: 0, disposeTool: null };
 
 export const toolById = (id: string | undefined): Tool | undefined => (id ? tools[id] : undefined);
-export const allTools = (): Tool[] => Object.values(tools);
+const rank = (t: Tool): number => CATEGORY_ORDER.indexOf(t.category);
+/** Every tool, grouped by CATEGORY_ORDER (stable: declaration order within a category). */
+const ordered: Tool[] = Object.values(tools).sort((a, b) => rank(a) - rank(b));
+export const allTools = (): Tool[] => [...ordered];
 
 /** Run and forget the open tool's dispose hook. */
 export function disposeCurrentTool(): void {

@@ -35,8 +35,25 @@ export function setupHomeSearch(): void {
   const line = document.getElementById('homeDetect');
   if (!(box instanceof HTMLTextAreaElement) || !line) return;
   let top: Candidate[] = [];
+  /** Query the grid is currently filtered by ('' = unfiltered). */
+  let activeQuery = '';
   const visibleTiles = (): HTMLElement[] =>
     Array.from(document.querySelectorAll<HTMLElement>('#homeGrid .home-tile')).filter((x) => x.offsetParent !== null);
+  /** Tile that Enter / Arrow Down target: the best match for the typed filter, else the first tile. */
+  const bestTile = (): HTMLElement | undefined => {
+    const tiles = visibleTiles();
+    const q = activeQuery;
+    if (!q) return tiles[0];
+    const score = (el: HTMLElement): number => {
+      const t = toolById(el.dataset.toolTile);
+      return t ? scoreTool(t, q) : 0;
+    };
+    // Stable on ties: grid (category) order decides between equal matches
+    return tiles.reduce<HTMLElement | undefined>(
+      (best, el) => (!best || score(el) > score(best) ? el : best),
+      undefined,
+    );
+  };
 
   const grow = (): void => {
     const cs = getComputedStyle(box);
@@ -50,6 +67,7 @@ export function setupHomeSearch(): void {
   };
 
   const filter = (q: string): void => {
+    activeQuery = q;
     let total = 0;
     document.querySelectorAll<HTMLElement>('#homeGrid .home-cat').forEach((sec) => {
       let n = 0;
@@ -123,7 +141,7 @@ export function setupHomeSearch(): void {
         open(top[0]);
         return;
       }
-      const id = visibleTiles()[0]?.dataset.toolTile;
+      const id = bestTile()?.dataset.toolTile;
       if (id && box.value.trim()) {
         clear();
         nav.openTool(id);
@@ -136,7 +154,7 @@ export function setupHomeSearch(): void {
       // Leave the textarea only from its last line, so multi-line pastes stay editable
       if (box.value.slice(box.selectionEnd).includes('\n')) return;
       render();
-      const target = line.querySelector<HTMLElement>('button') ?? visibleTiles()[0];
+      const target = line.querySelector<HTMLElement>('button') ?? bestTile();
       if (target) {
         e.preventDefault();
         target.focus();
@@ -146,7 +164,7 @@ export function setupHomeSearch(): void {
   // Arrow Down from the detection row continues into the grid
   line.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown') {
-      const t = visibleTiles()[0];
+      const t = bestTile();
       if (t) {
         e.preventDefault();
         t.focus();

@@ -2,19 +2,22 @@ import type { Indent, ToolCategory, ToolsRegistry } from '../types/tools';
 import { beautifyIndent, clampIndent } from './lib/indent';
 import { formatSql } from './lib/sql';
 
-/** Sidebar category order. The registry below is declared in this same order. */
+/**
+ * Category order for every tool list (sidebar, rail icons, palette, Home). The single source of
+ * truth: `allTools()` sorts by it, so the registry's declaration order only matters within a category.
+ */
 export const CATEGORY_ORDER: ToolCategory[] = [
-  'Inspect & Decode',
   'Format',
-  'Convert',
   'Text & Utilities',
+  'Convert',
+  'Inspect & Decode',
   'Generate',
   'Compare',
 ];
 
 // Tool registry. Editor tools are defined inline; custom UIs are code-split
 // and only fetched the first time the user opens them.
-// Insertion order == sidebar order: keep it grouped per CATEGORY_ORDER.
+// Within a category, declaration order is display order.
 const tools: ToolsRegistry = {
   // ── Inspect & Decode ────────────────────────────────────────────────
   jwt: {

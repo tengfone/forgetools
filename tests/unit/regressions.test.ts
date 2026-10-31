@@ -62,3 +62,20 @@ describe('data is preserved exactly', () => {
     expect(await tools.json?.format?.('{"a":{"b":1}}', '\t')).toBe('{\n\t"a": {\n\t\t"b": 1\n\t}\n}');
   });
 });
+
+describe('tool order', () => {
+  it('every tool list follows CATEGORY_ORDER, keeping declaration order within a category', async () => {
+    const { CATEGORY_ORDER } = await import('../../src/tools');
+    const { allTools } = await import('../../src/app/state');
+    const list = allTools();
+    expect(CATEGORY_ORDER[0]).toBe('Format');
+    expect(list.map((t) => t.category)).toEqual(
+      [...list.map((t) => t.category)].sort((a, b) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b)),
+    );
+    expect(new Set(list.map((t) => t.category))).toEqual(new Set(CATEGORY_ORDER));
+    const declared = Object.values(tools)
+      .filter((t) => t.category === 'Format')
+      .map((t) => t.id);
+    expect(list.filter((t) => t.category === 'Format').map((t) => t.id)).toEqual(declared);
+  });
+});
