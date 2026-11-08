@@ -42,4 +42,16 @@ describe('Navigation', () => {
     await $('#homeSearch').clearValue();
     await expect($('#homeSearch')).toHaveValue('');
   });
+
+  it('sidebar groups tools by usage in CATEGORY_ORDER', async () => {
+    const names = [];
+    for (const t of await $$('#toolsNav .nav-group[data-category]')) names.push(await t.getAttribute('data-category'));
+    expect(names).toEqual(['Data', 'Web', 'Text & Encoding', 'Security', 'DevOps & Time', 'AI', 'Workflow']);
+    await expect($$('#sideCats .side-cat')).toBeElementsArrayOfSize(7);
+    const ai = $('#toolsNav .nav-group[data-category="AI"]');
+    await expect(ai.$('[data-tool-id="tokenCounter"]')).toExist();
+    await expect(ai.$('[data-tool-id="promptTemplate"]')).toExist();
+    await expect(ai.$$('[data-tool-id]')).toBeElementsArrayOfSize(6);
+    await expect($('#toolsNav .nav-group[data-category="Data"] [data-tool-id="jsonSchema"]')).toExist();
+  });
 });

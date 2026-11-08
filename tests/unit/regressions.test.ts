@@ -68,14 +68,14 @@ describe('tool order', () => {
     const { CATEGORY_ORDER } = await import('../../src/tools');
     const { allTools } = await import('../../src/app/state');
     const list = allTools();
-    expect(CATEGORY_ORDER[0]).toBe('Format');
+    expect(CATEGORY_ORDER[0]).toBe('Data');
     expect(list.map((t) => t.category)).toEqual(
       [...list.map((t) => t.category)].sort((a, b) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b)),
     );
     expect(new Set(list.map((t) => t.category))).toEqual(new Set(CATEGORY_ORDER));
     const declared = Object.values(tools)
-      .filter((t) => t.category === 'Format')
+      .filter((t) => t.category === 'Data')
       .map((t) => t.id);
-    expect(list.filter((t) => t.category === 'Format').map((t) => t.id)).toEqual(declared);
+    expect(list.filter((t) => t.category === 'Data').map((t) => t.id)).toEqual(declared);
   });
 });

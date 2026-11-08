@@ -1,4 +1,4 @@
-export type ToolCategory = 'Inspect & Decode' | 'Format' | 'Convert' | 'Text & Utilities' | 'Generate' | 'Compare';
+export type ToolCategory = 'Data' | 'Web' | 'Text & Encoding' | 'Security' | 'DevOps & Time' | 'AI' | 'Workflow';
 
 /** One indentation level for formatters: a width in spaces, or a tab. */
 export type Indent = number | '\t';

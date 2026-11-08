@@ -10,12 +10,13 @@ import { getCollapsed, getPinned, isPinned, togglePin, forgetCollapsed, syncPinB
 export const narrowMq = window.matchMedia('(max-width: 899px)');
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
 const CATEGORY_ICONS: Record<string, string> = {
-  Format: 'format_align_left',
-  Convert: 'swap_horiz',
-  'Inspect & Decode': 'manage_search',
-  Compare: 'compare_arrows',
-  Generate: 'auto_fix_high',
-  'Text & Utilities': 'text_fields',
+  Data: 'data_object',
+  Web: 'language',
+  'Text & Encoding': 'text_fields',
+  Security: 'lock',
+  'DevOps & Time': 'terminal',
+  AI: 'psychology',
+  Workflow: 'account_tree',
 };
 
 /** Platform modifier label: \u2318 on macOS, Ctrl elsewhere. */
