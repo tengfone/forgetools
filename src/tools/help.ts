@@ -198,6 +198,47 @@ const HELP: Record<string, ToolHelp> = {
     tip: 'Type a letter or emoji, or pick an image (cropped to a square). The .ico contains 16, 32 and 48 px images.',
   },
   jsonDiff: { tip: 'Compares structure, not text: key order is ignored and array items are compared by position.' },
+  jsonSchema: {
+    tip: 'Generate infers types and required keys from a sample. Validate supports draft 2020-12 / 07 keywords (no external $ref or format checks). Repair extracts JSON from LLM output and fixes it.',
+    rows: [
+      ['Fences / prose', 'takes the ```json block or the first {...}'],
+      ["{a: 'x',}", 'quotes keys, converts quotes, drops trailing commas'],
+      ['True / None', 'Python literals to true / null'],
+      ['Cut-off output', 'closes open strings and brackets'],
+    ],
+  },
+  tokenCounter: {
+    tip: 'A tokenizer-free estimate (about ±10% for English and code; CJK counts one token per character). For exact counts use the official tokenizer of the model.',
+  },
+  promptTemplate: {
+    tip: 'Use {{name}} placeholders. Give values as key=value lines (write \\n for a newline) or as a JSON object. Unfilled placeholders are reported.',
+  },
+  llmInspector: {
+    tip: 'Detects the format automatically. Streams are merged into the final message, including tool-call arguments sent in pieces. Nothing is sent anywhere.',
+    rows: [
+      ['OpenAI', 'Chat Completions and Responses: requests, responses, chunk streams'],
+      ['Anthropic', 'Messages: requests, responses, event streams'],
+      ['Gemini', 'generateContent requests, responses, streamed chunks'],
+      ['Array', 'a bare messages array (exported conversations)'],
+    ],
+  },
+  toolSchema: {
+    tip: 'Input can be a TypeScript interface, a JSON Schema, sample arguments, or a tool definition from any provider. JSDoc comments become property descriptions. Name and Description override what the input says.',
+    rows: [
+      ['Strict', 'OpenAI strict mode: all keys required, optional ones become nullable'],
+      ['Gemini', 'drops keywords Gemini rejects (additionalProperties, const...)'],
+    ],
+  },
+  redactor: {
+    tip: 'Each distinct value gets a stable placeholder such as <EMAIL_1>. Paste the AI reply below to put the real values back. Pattern-based, so review before sharing.',
+  },
+  mcpConfig: {
+    tip: 'Build one server entry, or paste any client config to convert it. Prefer ${ENV_VAR} references over literal tokens in files you commit.',
+    rows: [
+      ['stdio', 'a local command the client launches'],
+      ['HTTP / SSE', 'a remote server URL (Claude Desktop bridges it with mcp-remote)'],
+    ],
+  },
 };
 
 /** Shown for every tool, below the tool-specific tip. */

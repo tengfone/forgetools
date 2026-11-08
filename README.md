@@ -41,12 +41,13 @@ On Windows the app went from a 336 MiB unpacked folder to a single 5.8 MB exe, a
 
 | Category | Tools |
 | --- | --- |
-| **Format** | JSON, XML, SQL, HTML, YAML, SVG Optimizer, HTML to JSX, Markdown to HTML, Markdown Preview, CSS/SCSS/JS Beautify & Minify, GraphQL |
-| **Text & Utilities** | String Case, RegExp Tester, String Inspector, Hash Generator (MD5/SHA-1/SHA-256/SHA-512), Cron Parser, JSONPath Query, Password Strength, bcrypt/Argon2, HTTP Status Codes, Cheat Sheets, Pipeline (chain tools) |
-| **Convert** | CSV ↔ JSON, Timestamp, Color, Number Base, Image to Base64, JSON ↔ YAML, JSON → Types (TS/Go/Rust/C#/Python), TOML ↔ JSON, .env ↔ JSON, PEM ↔ JWK, cURL → Code, docker run ↔ compose, Chmod, Data Size, Time Zones |
-| **Inspect & Decode** | JWT Decoder, Certificate Decoder (X.509), Base64, URL Encode/Decode, Backslash Escape, HEX ↔ ASCII, HMAC Generator/Verifier, CSR Decoder, SAML Decoder, URL Parser, User-Agent Parser, IP/CIDR Calculator, Gzip/Deflate, Protobuf/MessagePack, Unicode Inspector, Dockerfile Linter |
-| **Generate** | UUID/ULID, QR Code, Barcode (EAN-13, UPC, CODE128, CODE39), Lorem Ipsum, Random String, JWT Encoder/Signer, Key Pair (RSA/EC/Ed25519, PEM/SSH/JWK), Fake Data, Cron Builder, .gitignore, Favicon |
-| **Compare** | Text Diff (line, word, char), JSON Diff (structural) |
+| **Data** | JSON, XML, SQL, YAML, GraphQL formatters, CSV ↔ JSON, JSON ↔ YAML, JSON → Types (TS/Go/Rust/C#/Python), TOML ↔ JSON, .env ↔ JSON, JSONPath Query, JSON Diff, JSON Schema (generate/validate/repair LLM output), Protobuf/MessagePack |
+| **Web** | HTML, CSS/SCSS/JS Beautify & Minify, HTML to JSX, SVG Optimizer, Markdown to HTML, Markdown Preview, URL Encode/Decode, URL Parser, cURL → Code, HTTP Status Codes, User-Agent Parser, Color, Image to Base64, Favicon, QR Code, Barcode |
+| **Text & Encoding** | Base64, Backslash Escape, HEX ↔ ASCII, Unicode Inspector, String Case, String Inspector, RegExp Tester, Text Diff, Gzip/Deflate, Number Base, Lorem Ipsum |
+| **Security** | JWT Decoder, JWT Encoder/Signer, Certificate Decoder (X.509), CSR Decoder, SAML Decoder, PEM ↔ JWK, Key Pair (RSA/EC/Ed25519), Hash (MD5/SHA-1/SHA-256/SHA-512), HMAC, Password Strength, bcrypt/Argon2, Random String |
+| **DevOps & Time** | Cron Parser, Cron Builder, Timestamp, Time Zones, Chmod, docker run → compose, Dockerfile Linter, .gitignore, IP/CIDR Calculator, Data Size, UUID/ULID, Fake Data |
+| **AI** | Token Counter (offline estimate), Prompt Template ({{variables}}), LLM Inspector (OpenAI/Anthropic/Gemini payloads and SSE streams), Tool Schema Builder, Secret & PII Redactor, MCP Config Builder |
+| **Workflow** | Pipeline (chain tools), Cheat Sheets |
 
 ## Background mode
 

@@ -10,6 +10,8 @@ const text = (b: Uint8Array): string => {
 import { autoDecompress, compress } from './crypto';
 import { jsonToYaml, yamlToJson } from './json';
 import { tomlToJson } from './convert';
+import { repairJson } from './json/repair';
+import { redact } from './redact';
 
 export interface ChainOp {
   id: string;
@@ -47,6 +49,8 @@ export const CHAIN_OPS: ChainOp[] = [
   { id: 'json2yaml', label: 'JSON → YAML', run: (s) => jsonToYaml(s) },
   { id: 'yaml2json', label: 'YAML → JSON', run: (s) => yamlToJson(s) },
   { id: 'toml2json', label: 'TOML → JSON', run: (s) => tomlToJson(s) },
+  { id: 'jsonrepair', label: 'Repair JSON (LLM output)', run: (s) => repairJson(s).json },
+  { id: 'redact', label: 'Redact secrets & PII', run: (s) => redact(s).text },
   {
     id: 'jwtpayload',
     label: 'JWT → payload',

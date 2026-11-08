@@ -75,6 +75,19 @@ export function detect(raw: string): Candidate[] {
   if (jwt) add('jwt', 'a JWT', 0.98);
   if (/-----BEGIN CERTIFICATE-----/.test(s)) add('certificate', 'an X.509 certificate', 0.97);
   if (json) add('json', 'JSON', 0.95);
+  if (json && /"(messages|contents)"\s*:\s*\[/.test(s) && /"role"\s*:/.test(s))
+    add('llmInspector', 'an LLM request', 0.97);
+  else if (
+    json &&
+    (/"object"\s*:\s*"chat\.completion"/.test(s) ||
+      /"type"\s*:\s*"message"[\s\S]*"stop_reason"/.test(s) ||
+      /"candidates"\s*:\s*\[/.test(s))
+  )
+    add('llmInspector', 'an LLM response', 0.97);
+  if (/^data:\s*\{/m.test(s) && /"(choices|delta|content_block_delta|candidates|response\.)/.test(s))
+    add('llmInspector', 'an LLM stream', 0.97);
+  if (json && /"(mcpServers|servers)"\s*:\s*\{[\s\S]*"(command|url|serverUrl)"\s*:/.test(s))
+    add('mcpConfig', 'an MCP config', 0.97);
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) add('uuid', 'a UUID', 0.96);
   if (/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i.test(s)) add('uuid', 'a ULID', 0.85);
   if (/^\d{10}$|^\d{13}$/.test(s)) add('timestamp', 'a Unix timestamp', 0.9);

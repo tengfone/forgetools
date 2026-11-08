@@ -52,6 +52,12 @@ describe('New tools', () => {
     ['cronBuilder', 'cronb', /^30 9 \* \* 1-5$/],
     ['gitignore', 'gi', /# Node\nnode_modules\//],
     ['jsonDiff', 'jd', /~ \$\.version: 1 → 2/],
+    ['jsonSchema', 'jschema', /^Valid: the JSON matches the schema\.$/],
+    ['promptTemplate', 'ptpl', /senior python reviewer[\s\S]*return a - b/],
+    ['llmInspector', 'llm', /## system[\s\S]*call get_forecast[\s\S]*bring an umbrella/, 'llm-text'],
+    ['toolSchema', 'tsch', /"name": "search_flights"[\s\S]*"enum"/],
+    ['redactor', 'red', /<API_KEY_1>[\s\S]*<EMAIL_1> or <PHONE_1>/],
+    ['mcpConfig', 'mcp', /"mcpServers"[\s\S]*server-github/],
   ];
 
   for (const [id, p, re, out] of CASES) {
@@ -62,6 +68,50 @@ describe('New tools', () => {
       await expect($('#statusBar')).not.toHaveElementClass('is-error');
     });
   }
+
+  it('token counter: Sample fills the estimate', async () => {
+    await open('tokenCounter');
+    await $('#tok-sample').click();
+    await expect($('#tok-count')).toHaveText(/^[1-9]\d*$/);
+    await expect($('#tok-lines')).toHaveText('3');
+    await expect($('#statusBar')).toHaveText(expect.stringContaining('tokens'));
+    await expect($('#statusBar')).not.toHaveElementClass('is-error');
+  });
+
+  it('json schema: generate mode infers a schema; invalid data lists errors', async () => {
+    await open('jsonSchema');
+    await selectOption('#jschema-mode', { value: 'infer' });
+    await expect($('#jschema-schema')).not.toBeDisplayed();
+    await $('#jschema-input').setValue('{"id":1,"tags":["a"]}');
+    await expect($('#jschema-output')).toHaveValue(/"required": \[\s*"id",\s*"tags"\s*\]/, { wait: 5000 });
+    await selectOption('#jschema-mode', { value: 'validate' });
+    await $('#jschema-schema').setValue('{"type":"object","properties":{"id":{"type":"string"}}}');
+    await expect($('#jschema-output')).toHaveValue(/\$\.id: expected string, got integer/, { wait: 5000 });
+  });
+
+  it('json schema: repair mode fixes LLM output', async () => {
+    await open('jsonSchema');
+    await selectOption('#jschema-mode', { value: 'repair' });
+    await $('#jschema-schema').clearValue();
+    await $('#jschema-input').setValue("Here:\n```json\n{name: 'Ada', ok: True,}\n```");
+    await expect($('#jschema-output')).toHaveValue(/"name": "Ada"[\s\S]*"ok": true[\s\S]*\/\/ fixed:/, { wait: 5000 });
+    await expect($('#statusBar')).not.toHaveElementClass('is-error');
+  });
+
+  it('llm inspector: renders an SSE stream as turns', async () => {
+    await open('llmInspector');
+    await $('#llm-input').setValue(
+      'data: {"object":"chat.completion.chunk","model":"m","choices":[{"delta":{"content":"Hel"}}]}\n\ndata: {"object":"chat.completion.chunk","choices":[{"delta":{"content":"lo"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n',
+    );
+    await expect($('#llm-output')).toHaveText(expect.stringContaining('Hello'), { wait: 5000 });
+    await expect($$('#llm-output .llm-turn')).toBeElementsArrayOfSize(1);
+  });
+
+  it('prompt template: a missing variable is reported as an error', async () => {
+    await open('promptTemplate');
+    await $('#ptpl-input').setValue('Hello {{name}}');
+    await expect($('#statusBar')).toHaveText(expect.stringContaining('Missing value for: name'), { wait: 5000 });
+  });
 
   it('HTTP status reference: search filters a grouped table and rows copy', async () => {
     await open('httpStatus');

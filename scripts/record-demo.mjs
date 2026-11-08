@@ -70,22 +70,26 @@ it('records the demo', async () => {
   await $('#hash-input').click();
   await typeSlow('hello forgetools', 55);
   await hold(2200);
-  // 3. Timestamp
-  await palette('timestamp');
-  await $('#ts-now-btn').click();
-  await hold(2200);
+  // 3. LLM Inspector: request payload as a conversation
+  await palette('llm inspector');
+  await $('#llm-sample').click();
+  await hold(2800);
   // 4. Pipeline: chain decode -> format in one recipe
   await palette('pipeline');
   await $('#chain-sample').click();
   await hold(2400);
-  // 5. Cron builder: plain-English schedule + next runs
+  // 5. Token counter
+  await palette('token counter');
+  await $('#tok-sample').click();
+  await hold(2400);
+  // 6. Redactor: mask secrets before pasting into a chat
+  await palette('redactor');
+  await $('#red-sample').click();
+  await hold(2600);
+  // 7. Cron builder
   await palette('cron builder');
   await $('#cronb-sample').click();
-  await hold(2400);
-  // 6. Fake data
-  await palette('fake data');
-  await $('#fake-sample').click();
-  await hold(2400);
+  await hold(2200);
 
   recording = false;
   await recorder;

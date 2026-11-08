@@ -374,6 +374,91 @@
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
+  .tok-stats {
+    @apply flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px] text-text-secondary;
+  }
+  .tok-stats b {
+    @apply text-text-primary font-semibold;
+  }
+
+  /* LLM Inspector: conversation view */
+  .llm-view {
+    @apply flex flex-col gap-2 overflow-auto;
+    max-height: 32rem;
+  }
+  .llm-meta {
+    @apply flex flex-wrap gap-1.5;
+  }
+  .llm-chip {
+    @apply inline-flex items-center rounded-sm px-2 py-0.5 text-[12px] bg-bg-input text-text-secondary border border-border;
+  }
+  .llm-usage b {
+    @apply text-text-primary font-medium;
+  }
+  .llm-turns {
+    @apply flex flex-col;
+  }
+  .llm-turn {
+    @apply py-2.5 border-t border-border;
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.75rem;
+  }
+  .llm-turn:first-child {
+    border-top: 0;
+  }
+  .llm-role {
+    @apply flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-wide text-text-tertiary;
+    align-self: start;
+    padding-top: 1px;
+  }
+  .llm-turn[data-role='assistant'] .llm-role,
+  .llm-turn[data-role='model'] .llm-role {
+    color: var(--accent-text);
+  }
+  .llm-body {
+    @apply flex flex-col gap-2 min-w-0;
+  }
+  .llm-text {
+    @apply text-[13px] text-text-primary whitespace-pre-wrap break-words;
+    line-height: 1.55;
+  }
+  .llm-part {
+    @apply rounded-sm border border-border bg-bg-input text-[12px];
+  }
+  .llm-part.is-other {
+    @apply flex items-center gap-1.5 px-2 py-1.5 text-text-secondary;
+  }
+  .llm-part-head {
+    @apply flex items-center gap-1.5 px-2 py-1 border-b border-border font-mono text-text-secondary;
+  }
+  .llm-part.is-call .llm-part-head {
+    color: var(--accent-text);
+  }
+  .llm-part.is-result .llm-part-head {
+    color: var(--success-text);
+  }
+  .llm-part.is-thinking {
+    @apply italic text-text-secondary;
+  }
+  .llm-pre {
+    @apply m-0 px-2 py-1.5 font-mono whitespace-pre-wrap break-words text-text-primary;
+    max-height: 16rem;
+    overflow: auto;
+  }
+
+  /* Tool schema / MCP: provider warnings */
+  .tsch-warn {
+    @apply flex flex-col gap-1 p-0 m-0 list-none text-[12px] text-text-secondary;
+  }
+  .tsch-warn li {
+    @apply flex items-start gap-1.5;
+  }
+  .tsch-warn .material-icons {
+    color: var(--warning-color);
+    margin-top: 1px;
+  }
+
   /* Reference tables (status codes, cheat sheets): scannable rows, click a row to copy */
   .ref-table {
     @apply w-full border-collapse text-[13px];
