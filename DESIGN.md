@@ -93,7 +93,7 @@ spacing:
   titlebar: "36px"
   toolbar: "44px"
   status: "24px"
-  sidebar: "232px"
+  sidebar: "240px"
 components:
   button:
     backgroundColor: "{colors.control-dark}"
@@ -156,7 +156,7 @@ All colour flows through CSS custom properties in `src/main.css` (`--bg-*`, `--t
 
 ## Typography
 
-UI: `Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui` (no bundled webfont; offline promise). Mono: `'JetBrains Mono', 'Cascadia Mono', 'SF Mono', Consolas`. Base 13px / 1.5. Tool title 15px/600 inside the breadcrumb. Section labels, values, tags, kbd, status bar, palette groups and help foot are mono; labels are 11px uppercase with 0.06em tracking. No large display headers; the welcome wordmark (mono 20px) is the largest text.
+UI: `Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui` (Inter and JetBrains Mono are bundled locally via @fontsource-variable; no CDN, offline promise). Mono: `'JetBrains Mono', 'Cascadia Mono', 'SF Mono', Consolas`. Base 13px / 1.5. Tool title 15px/600 inside the breadcrumb. Section labels, values, tags, kbd, status bar, palette groups and help foot are mono; labels are 11px uppercase with 0.06em tracking. No large display headers; the welcome wordmark (mono 20px) is the largest text.
 
 ## Layout
 
@@ -217,4 +217,4 @@ Flat. Only floating layers (command palette, help popover, settings dialog, toas
 
 ## Home search & background mode
 - Home has one box, "Search tools or paste anything": typing filters the grid; data (len > 12, multi-line, or detection confidence = 0.9) switches the box to mono and shows the detection row (amber primary = top match, text alternatives). Enter opens the top detection, else the top grid match; ? moves into the grid; Esc clears. Ctrl/?+K focuses the box on Home and opens the palette inside a tool.
-- Close hides to the tray/menu bar (setting, default on; one-time notification). Tray menu: Open, Global shortcut (read-only), Start at login, Quit. Global shortcut is user-recorded in Settings, validated by registration ("Shortcut is in use by another app"). Prefs live in userData/background.json. FORGE_E2E disables tray, close-to-tray and the single-instance lock.
+- Close hides to the tray/menu bar (setting, default on; one-time notification). Tray menu: Open, Global shortcut (read-only), Start at login, Quit. Global shortcut is user-recorded in Settings, validated by registration ("Shortcut is in use by another app"). Prefs live in `<app data>/background.json` (migrated from the v0.2.1 userData copy). FORGE_E2E disables tray, close-to-tray and the single-instance lock.

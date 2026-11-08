@@ -61,7 +61,7 @@ Windows-only dev probe (WebView2 CDP + PowerShell/taskkill; not run in CI): `nod
 - **CSP** is strict (`tauri.conf.json`): no inline scripts, no `blob:` workers, `wasm-unsafe-eval` only. Don't loosen it. The E2E suite fails on CSP violations (`newtools.spec`) and checks that the regex and diff workers run (`tools.spec`).
 - **Settings** is one dialog with sections (Editor, Privacy, Background, About; `app/settingsDialog.ts`). Add new options as `.setting-row`s in an existing section, or add a section. Don't make one section scroll.
 - Errors go to the shared status bar (`reportError` / `reportOk` / `resetStatus`), not `alert()` or console-only.
-- No inline styles or inline event handlers in tool markup (a test enforces this). Use Tailwind/CSS classes and `addEventListener`.
+- No inline styles or inline event handlers in tool markup (an e2e test checks for `onclick`). Use Tailwind/CSS classes and `addEventListener`; setting a style from JS for data values (e.g. a colour preview) is fine.
 - Prefix element ids with the tool's own prefix (e.g. `b64-plain`, `jwt-input`).
 - Escape user content with `esc()` before putting it in `innerHTML`.
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `perf:`, `docs:`, `chore:`). Release notes are generated from them.

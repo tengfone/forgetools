@@ -42,7 +42,7 @@ const HELP: Record<string, ToolHelp> = {
     ],
   },
   timestamp: {
-    tip: 'Accepts Unix seconds or milliseconds; 13-digit values are detected as milliseconds automatically.',
+    tip: 'Accepts Unix seconds, milliseconds, microseconds or nanoseconds; the unit is detected from the digit count (up to 11 s, 12-14 ms, 15-17 µs, 18+ ns).',
   },
   color: { tip: 'Type into any field or paste a hex value; every format and code preset updates together.' },
   uuid: { tip: 'Paste a UUID or ULID to inspect it. ULIDs embed a millisecond timestamp; UUID v4 is fully random.' },
@@ -129,9 +129,11 @@ const HELP: Record<string, ToolHelp> = {
       ['/16', '65,534 usable'],
     ],
   },
-  decompress: { tip: 'Paste Base64 or hex. The format (gzip, zlib, raw deflate) is detected from the header bytes.' },
+  decompress: {
+    tip: 'Decompress: paste Base64 or hex; the format (gzip, zlib, raw deflate) is detected from the header bytes. The other modes compress text to Base64.',
+  },
   binaryDecoder: {
-    tip: 'Protobuf without a schema shows field numbers and wire types; length-delimited fields are shown as nested messages when they parse cleanly.',
+    tip: 'Protobuf without a schema shows field numbers and wire types; length-delimited fields are shown as nested messages when they parse cleanly. MessagePack can be decoded to JSON or encoded from JSON (hex + Base64 output).',
   },
   unicodeInspector: {
     tip: 'Finds zero-width spaces, BOMs, bidi overrides and non-breaking spaces that break code and config files.',
@@ -199,7 +201,7 @@ const HELP: Record<string, ToolHelp> = {
   },
   jsonDiff: { tip: 'Compares structure, not text: key order is ignored and array items are compared by position.' },
   jsonSchema: {
-    tip: 'Generate infers types and required keys from a sample. Validate supports draft 2020-12 / 07 keywords (no external $ref or format checks). Repair extracts JSON from LLM output and fixes it.',
+    tip: 'Generate infers types and required keys from a sample. Validate supports draft 2020-12 / 07 keywords (no external $ref or format checks). Repair extracts JSON from LLM output, fixes it, and validates it if a schema is given (the schema is optional in Repair).',
     rows: [
       ['Fences / prose', 'takes the ```json block or the first {...}'],
       ["{a: 'x',}", 'quotes keys, converts quotes, drops trailing commas'],

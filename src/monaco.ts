@@ -1,4 +1,4 @@
-// Monaco, bundled as ESM by Vite. Imported only via dynamic import() from the editors module so
+// Monaco, bundled as ESM by Vite. Imported only via dynamic import() in monacoEnv.ts (loadMonaco) so
 // the editor lands in its own chunk and loads the first time an editor-based tool opens.
 //
 // Only the editor core (editor.api + the standard editor features) plus the tokenizers the tools

@@ -70,7 +70,8 @@ export default defineConfig(({ command }) => {
               // Monaco <=0.52's prebuilt language contributions ("Emitter is not a constructor").
               // monaco-editor 0.57 ships without __reExport, so this is probably no longer needed,
               // but it can only be verified at runtime (open an editor tool in a release build).
-              // Costs ~7 KB; remove after that check.
+              // Costs ~7 KB.
+              // TODO: verify in a release build with Monaco 0.57, then remove reduce_funcs: false.
               reduce_funcs: false,
               dead_code: true,
               unused: true,

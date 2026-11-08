@@ -163,7 +163,8 @@ export function setupCommandPalette(): void {
         .filter((x): x is Tool => !!x);
       tools = [...recent, ...all.filter((x) => !recent.includes(x))];
     } else {
-      // Rank: prefix > word-start > substring > subsequence across title/keywords/id; then description
+      // Rank via scoreTool: prefix > word-start > substring > subsequence across title/keywords/id,
+      // then category (substring or better), then description (substring only)
       tools = all
         .map((x) => [x, scoreTool(x, t)] as const)
         .filter(([, sc]) => sc > 0)

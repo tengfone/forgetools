@@ -23,7 +23,7 @@ describe('Tools', () => {
     for (const id of ids) await open(id);
   });
 
-  it('no inline styles or handlers leak into tool UIs', async () => {
+  it('no inline onclick handlers leak into tool UIs', async () => {
     const ids = await toolIds();
     for (const id of ids) {
       await open(id);
@@ -97,7 +97,7 @@ describe('Tools', () => {
     });
   });
 
-  it('JSON output Copy goes through the main-process clipboard', async () => {
+  it('JSON output Copy writes to the system clipboard', async () => {
     await open('json');
     await $('#sampleBtn').click();
     // Monaco renders lines as divs; .view-lines textContent is the rendered output.
@@ -116,7 +116,7 @@ describe('Tools', () => {
     expect(clip).toContain('\n'); // formatted output, not the raw sample echo
   });
 
-  it('Paste button reads the main-process clipboard', async () => {
+  it('Paste button reads the system clipboard', async () => {
     await clipboard.writeText('hello paste');
     await open('base64');
     await $('[data-paste="b64-plain"]').click();

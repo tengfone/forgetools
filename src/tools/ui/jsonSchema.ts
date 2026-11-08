@@ -80,7 +80,7 @@ const base = textTool({
           : `${out.split('\n').length} error(s)`,
 });
 
-/** Same UI as textTool, but the schema field only shows in Validate mode. */
+/** Same UI as textTool, but the schema field is hidden in Generate (infer) mode. */
 export function render(container: HTMLElement): void {
   base(container);
   const mode = container.querySelector<HTMLSelectElement>('#jschema-mode');

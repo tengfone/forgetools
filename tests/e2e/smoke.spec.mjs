@@ -30,6 +30,7 @@ describe('Harness smoke', () => {
   });
 
   it('shows the home screen with tools in the sidebar', async () => {
+    await expect($('#welcomeState')).toBeDisplayed();
     const items = await $$('#toolsNav [data-tool-id]');
     expect(items.length).toBeGreaterThan(20);
   });

@@ -76,7 +76,7 @@ Platform notes:
 
 - **Windows**: needs the Microsoft Edge WebView2 runtime, which ships with Windows 10 and 11. The build is unsigned, so SmartScreen may warn on first launch: choose **More info** → **Run anyway**.
 - **macOS**: the build is unsigned and not notarized, so macOS 15 says it "can't be opened" on first launch. Move ForgeTools.app to Applications and open it once, then go to **System Settings** → **Privacy & Security**, scroll to Security and click **Open Anyway** (then confirm). Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/ForgeTools.app`.
-- **Linux**: the `.deb` / `.rpm` install with your package manager (`sudo apt install ./ForgeTools-X.Y.Z-amd64.deb` or `sudo dnf install ./ForgeTools-X.Y.Z-x86_64.rpm`) and use the system WebKitGTK, so they are small. The AppImage runs anywhere: make it executable (`chmod +x ForgeTools-X.Y.Z.AppImage`) and run it. It bundles its own WebKitGTK, which is why it is larger. The tray icon has no click action on Linux; use its **Show** menu item. Some Wayland desktops block the global shortcut.
+- **Linux**: the `.deb` / `.rpm` install with your package manager (`sudo apt install ./ForgeTools-X.Y.Z-amd64.deb` or `sudo dnf install ./ForgeTools-X.Y.Z-x86_64.rpm`) and use the system WebKitGTK, so they are small. The AppImage runs anywhere: make it executable (`chmod +x ForgeTools-X.Y.Z.AppImage`) and run it. It bundles its own WebKitGTK, which is why it is larger. If clicking the tray icon does nothing on your desktop, use its **Open ForgeTools** menu item. Some Wayland desktops block the global shortcut.
 
 ## Reporting bugs
 

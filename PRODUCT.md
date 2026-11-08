@@ -20,7 +20,7 @@ Desktop app (Tauri) used alongside an editor, terminal, and browser. Input is us
 
 ## Capabilities and Constraints
 - Stack: Tauri v2, Vite, TypeScript, Tailwind CSS, Monaco Editor, Vitest and WebdriverIO tests.
-- Tool categories (see README.md): Formatters (JSON, XML, SQL, HTML, HTML→JSX, Markdown→HTML, Markdown preview, YAML, SVG optimizer); Encoders/Decoders (Base64, URL, JWT, backslash escape, HEX↔ASCII, X.509 certificate, hashes); Converters (YAML↔JSON, CSV↔JSON, timestamp, color, number base, image→Base64); Generators (UUID/ULID, QR, barcode, Lorem Ipsum, random string); Text tools (diff viewer). Also: HMAC, JWT signing, key pairs, CSR/SAML/PEM↔JWK, bcrypt/Argon2, password strength, JSON↔YAML/TOML/.env, JSON→types, JSONPath, JSON diff, cURL→code, docker run↔compose, Dockerfile lint, CSS/JS/GraphQL formatting, CIDR, URL/User-Agent parsing, gzip, protobuf/MessagePack, Unicode inspector, chmod, data sizes, time zones, HTTP status, cheat sheets, fake data, cron builder, .gitignore, favicons, a tool pipeline, and opt-in local per-tool history.
+- Tool categories (see the Tools table in README.md): Data, Web, Text & Encoding, Security, DevOps & Time, AI (token counter, prompt templates, LLM payload inspector, tool schemas, secret/PII redaction, MCP config) and Workflow (pipeline, cheat sheets). Also opt-in local per-tool history.
 - Hard constraints: must work entirely offline; no telemetry or network calls with user data. The only network request is an opt-in update check (manual button, or a daily check that is off by default) that asks GitHub for the latest release version; it sends nothing about the user.
 - Undecided: target OSes, distribution, brand identity, accessibility standard.
 

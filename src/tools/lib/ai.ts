@@ -3,7 +3,7 @@
 
 /**
  * Approximate BPE token count. Tracks GPT/Claude tokenizers to roughly ±10% on English
- * prose and code: short words are one token, long words split every ~4 chars,
+ * prose and code: short words (up to 6 chars) are one token, longer words split every ~5 chars,
  * punctuation is usually its own token and CJK is about one token per character.
  */
 export function estimateTokens(text: string): number {
