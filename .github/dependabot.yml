@@ -5,8 +5,32 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 10
+    # Major bumps here are rewrites/migrations; upgrade these by hand.
+    # Everything else gets majors as separate PRs.
     ignore:
-      - dependency-name: "*"
+      - dependency-name: "@tauri-apps/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss" # v4 is a config rewrite
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@wdio/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "monaco-editor"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "svgo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "marked"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node" # tracks the Node version in .nvmrc
         update-types: ["version-update:semver-major"]
     groups:
       npm-minor-patch:
@@ -18,7 +42,7 @@ updates:
       interval: monthly
     open-pull-requests-limit: 10
     ignore:
-      - dependency-name: "*"
+      - dependency-name: "tauri*" # tauri, tauri-build, tauri-plugin-*
         update-types: ["version-update:semver-major"]
     groups:
       cargo-minor-patch:
@@ -28,9 +52,6 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
     groups:
       actions:
         patterns: ["*"]
