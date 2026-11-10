@@ -187,7 +187,7 @@ export function render(container: HTMLElement): void {
     for (const g of Array.from($f('chain-add').querySelectorAll('optgroup'))) {
       let any = false;
       for (const o of Array.from(g.querySelectorAll('option'))) {
-        o.hidden = !!q && !o.textContent!.toLowerCase().includes(q) && !o.value.includes(q);
+        o.hidden = !!q && !o.textContent.toLowerCase().includes(q) && !o.value.includes(q);
         any ||= !o.hidden;
       }
       g.hidden = !any;

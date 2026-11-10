@@ -9,8 +9,7 @@ import { clearToolSession } from './session';
 
 /** A palette row: a tool to open, or a command to run. */
 export type PaletteItem =
-  | { kind: 'tool'; tool: Tool }
-  | { kind: 'command'; id: string; title: string; icon: string; run: () => void };
+  { kind: 'tool'; tool: Tool } | { kind: 'command'; id: string; title: string; icon: string; run: () => void };
 
 const MAX_PIN_COMMANDS = 6;
 

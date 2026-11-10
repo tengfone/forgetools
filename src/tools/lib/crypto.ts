@@ -77,17 +77,7 @@ export async function hmacVerify(
 // ── JWT signing ────────────────────────────────────────────────────────────
 
 export type JwtAlg =
-  | 'HS256'
-  | 'HS384'
-  | 'HS512'
-  | 'RS256'
-  | 'RS384'
-  | 'RS512'
-  | 'PS256'
-  | 'ES256'
-  | 'ES384'
-  | 'EdDSA'
-  | 'none';
+  'HS256' | 'HS384' | 'HS512' | 'RS256' | 'RS384' | 'RS512' | 'PS256' | 'ES256' | 'ES384' | 'EdDSA' | 'none';
 
 const subtle = (): SubtleCrypto => globalThis.crypto.subtle;
 const b64urlJson = (o: unknown): string => bytesToBase64Url(toUtf8(JSON.stringify(o)));

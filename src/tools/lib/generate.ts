@@ -227,14 +227,7 @@ export function formatFake(
 // ── Cron builder ───────────────────────────────────────────────────────────
 
 export type CronFreq =
-  | 'minute'
-  | 'hourly'
-  | 'daily'
-  | 'weekly'
-  | 'monthly'
-  | 'yearly'
-  | 'interval-minutes'
-  | 'interval-hours';
+  'minute' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'interval-minutes' | 'interval-hours';
 
 export interface CronSpec {
   freq: CronFreq;
@@ -265,7 +258,7 @@ const MON = [
 function rangeList(nums: number[]): string {
   const s = [...new Set(nums)].sort((a, b) => a - b);
   const out: string[] = [];
-  for (let i = 0; i < s.length; ) {
+  for (let i = 0; i < s.length;) {
     let j = i;
     while (j + 1 < s.length && s[j + 1] === s[j]! + 1) j++;
     out.push(j - i >= 2 ? `${s[i]}-${s[j]}` : s.slice(i, j + 1).join(','));
