@@ -272,7 +272,7 @@ export function formatIp6(n: bigint): string {
   // compress the longest run of zero groups (length >= 2)
   let best = -1,
     bestLen = 0;
-  for (let i = 0; i < 8; ) {
+  for (let i = 0; i < 8;) {
     if (g[i] !== '0') {
       i++;
       continue;

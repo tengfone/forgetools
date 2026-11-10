@@ -1,5 +1,5 @@
 // Pack PNG images into a Windows .ico container (PNG-compressed entries, Vista+).
-export function buildIco(images: Array<{ size: number; png: Uint8Array }>): Uint8Array {
+export function buildIco(images: Array<{ size: number; png: Uint8Array }>): Uint8Array<ArrayBuffer> {
   if (!images.length) throw new Error('No images to pack');
   const header = 6,
     dir = 16 * images.length;

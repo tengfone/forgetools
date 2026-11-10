@@ -4,7 +4,7 @@ export const utf8 = new TextEncoder();
 const utf8Dec = new TextDecoder();
 const utf8Strict = new TextDecoder('utf-8', { fatal: true });
 
-export const toUtf8 = (s: string): Uint8Array => utf8.encode(s);
+export const toUtf8 = (s: string): Uint8Array<ArrayBuffer> => utf8.encode(s);
 export const fromUtf8 = (b: Uint8Array): string => utf8Dec.decode(b);
 /** Strict UTF-8 decode; returns null for invalid sequences. */
 export const tryUtf8 = (b: Uint8Array): string | null => {
@@ -40,7 +40,7 @@ export const bytesToBase64Url = (b: Uint8Array): string =>
   bytesToBase64(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 /** Standard or URL-safe base64, padding optional, whitespace ignored. */
-export function base64ToBytes(str: string): Uint8Array {
+export function base64ToBytes(str: string): Uint8Array<ArrayBuffer> {
   let s = str.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s)) throw new Error('Invalid Base64 characters');
   s = s.replace(/=+$/, '');
